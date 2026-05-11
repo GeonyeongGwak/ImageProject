@@ -126,6 +126,18 @@ public partial class MainWindow : Window
 
     private MainViewModel ViewModel => _viewModel;
 
+    private bool CanHandleUiEvent => _uiReady && !_applyingModel;
+
+    private void HandleUiChange(Action action)
+    {
+        if (!CanHandleUiEvent)
+        {
+            return;
+        }
+
+        action();
+    }
+
     private void OnViewModelSelectionChanged()
     {
         UpdateActiveRoiUi();
@@ -406,98 +418,87 @@ public partial class MainWindow : Window
 
     private void ThresholdSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        ScheduleThreshold();
+            UpdateModelFromUi();
+            ScheduleThreshold();
+        });
     }
 
     private void Threshold3DSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        UpdateMaskDensity();
+            UpdateModelFromUi();
+            UpdateMaskDensity();
+        });
     }
 
     private void EdgeGainSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        UpdateMaskDensity();
+            UpdateModelFromUi();
+            UpdateMaskDensity();
+        });
     }
 
     private void Parameter_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        UpdateMaskDensity();
-        ScheduleThreshold();
+            UpdateModelFromUi();
+            UpdateMaskDensity();
+            ScheduleThreshold();
+        });
     }
 
     private void AlignParameter_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        UpdateRoiText();
+            UpdateModelFromUi();
+            UpdateRoiText();
+        });
     }
 
     private void AlgorithmCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        UpdateAlgorithmPanels();
-        UpdateRoiDrawButtonState();
-        ScheduleThreshold();
+            UpdateModelFromUi();
+            UpdateAlgorithmPanels();
+            UpdateRoiDrawButtonState();
+            ScheduleThreshold();
+        });
     }
 
     private void AlignTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (sender != AlignPanel.AlignTabControl || !_uiReady || _applyingModel)
+        if (sender != AlignPanel.AlignTabControl)
         {
             return;
         }
 
-        if (!IsAlignSearchActive())
+        HandleUiChange(() =>
         {
-            DisableRoiDrawing();
-        }
+            if (!IsAlignSearchActive())
+            {
+                DisableRoiDrawing();
+            }
+        });
     }
 
     private void SearchNumCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        _model.AlignSearchNum = Net48Compat.Clamp(_model.AlignSearchNum, 1, 4);
-        _model.AlignActiveRoiIndex = Math.Min(_model.AlignActiveRoiIndex, _model.AlignSearchNum - 1);
-        UpdateActiveRoiUi();
-        DrawRoiOverlays();
+            UpdateModelFromUi();
+            _model.AlignSearchNum = Net48Compat.Clamp(_model.AlignSearchNum, 1, 4);
+            _model.AlignActiveRoiIndex = Math.Min(_model.AlignActiveRoiIndex, _model.AlignSearchNum - 1);
+            UpdateActiveRoiUi();
+            DrawRoiOverlays();
+        });
     }
 
     private void ActiveRoiButton_Click(object sender, RoutedEventArgs e)
@@ -507,29 +508,30 @@ public partial class MainWindow : Window
 
     private void SearchParameter_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
-        DrawRoiOverlays();
+            UpdateModelFromUi();
+            DrawRoiOverlays();
+        });
     }
 
     private void SearchSizeBox_TextChanged(object sender, RoutedEventArgs e)
     {
-        if (!_uiReady || _applyingModel || _syncingSearchSize)
+        if (_syncingSearchSize)
         {
             return;
         }
 
-        UpdateModelFromUi();
+        HandleUiChange(() =>
+        {
+            UpdateModelFromUi();
 
-        _syncingSearchSize = true;
-        AlignPanel.MirrorSearchSizeInput(sender, _model);
-        _syncingSearchSize = false;
+            _syncingSearchSize = true;
+            AlignPanel.MirrorSearchSizeInput(sender, _model);
+            _syncingSearchSize = false;
 
-        ResizeActiveRoiFromSearchInputs();
+            ResizeActiveRoiFromSearchInputs();
+        });
     }
 
     private void TeachButton_Click(object sender, RoutedEventArgs e)
@@ -540,13 +542,11 @@ public partial class MainWindow : Window
 
     private void PartTeachingOption_Changed(object sender, RoutedEventArgs e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdatePartTeachingUi();
-        UpdateModelFromUi();
+            UpdatePartTeachingUi();
+            UpdateModelFromUi();
+        });
     }
 
     private void PartTeachingOkButton_Click(object sender, RoutedEventArgs e)
@@ -563,18 +563,16 @@ public partial class MainWindow : Window
     {
         UpdateModelFromUi();
         _model.PartTeachingStopRequested = true;
-        AlignPanel.SetPartTeachingStatus("Part Teaching closed. Stop requested.");
+        AlignPanel.ClosePartTeaching();
         ViewModel.StatusMessage = "Align Part Teaching closed.";
     }
 
     private void IpcClassCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        if (!_uiReady || _applyingModel)
+        HandleUiChange(() =>
         {
-            return;
-        }
-
-        UpdateModelFromUi();
+            UpdateModelFromUi();
+        });
     }
 
     private void ImageOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)

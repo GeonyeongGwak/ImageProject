@@ -352,6 +352,23 @@ public sealed class AlignPanelViewModel : ViewModelBase
             : "Draw Window ROI (A)";
     }
 
+    public void UpdatePartTeachingUi()
+    {
+        if (!PartTeachingUseCommonLibrary && !PartTeachingUseLibraryPart)
+        {
+            PartTeachingUseCommonLibrary = true;
+        }
+
+        var useIcMode = PartTeachingUseAutoTeaching && !PartTeachingUseLibraryPart;
+        PartTeachingIcVisibility = useIcMode ? Visibility.Visible : Visibility.Collapsed;
+        PartTeachingOkVisibility = useIcMode ? Visibility.Collapsed : Visibility.Visible;
+        PartTeachingStatus =
+            $"Mode: {(useIcMode ? "FullMap/IC" : "Gerber/Part")} | " +
+            $"Library: {(PartTeachingUseCommonLibrary ? "Common" : "")}" +
+            $"{(PartTeachingUseLibraryPart ? " Part" : "")} | " +
+            $"Match: {PartTeachingLibraryMatchMode}";
+    }
+
     public void SetSearchNum(int value)
     {
         SearchNum = Net48Compat.Clamp(value, 1, 4).ToString();
@@ -377,6 +394,11 @@ public sealed class AlignPanelViewModel : ViewModelBase
         {
             SearchSizeX = SearchSizeY;
         }
+    }
+
+    public void ClosePartTeaching()
+    {
+        PartTeachingStatus = "Part Teaching closed. Stop requested.";
     }
 
     private static int ReadInt(string text, int fallback, int min, int max)

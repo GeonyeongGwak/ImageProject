@@ -113,24 +113,17 @@ public partial class AlignPanelView : UserControl
 
     public void UpdatePartTeachingUi()
     {
-        if (!_viewModel.PartTeachingUseCommonLibrary && !_viewModel.PartTeachingUseLibraryPart)
-        {
-            _viewModel.PartTeachingUseCommonLibrary = true;
-        }
-
-        var useIcMode = _viewModel.PartTeachingUseAutoTeaching && !_viewModel.PartTeachingUseLibraryPart;
-        _viewModel.PartTeachingIcVisibility = useIcMode ? Visibility.Visible : Visibility.Collapsed;
-        _viewModel.PartTeachingOkVisibility = useIcMode ? Visibility.Collapsed : Visibility.Visible;
-        _viewModel.PartTeachingStatus =
-            $"Mode: {(useIcMode ? "FullMap/IC" : "Gerber/Part")} | " +
-            $"Library: {(_viewModel.PartTeachingUseCommonLibrary ? "Common" : "")}" +
-            $"{(_viewModel.PartTeachingUseLibraryPart ? " Part" : "")} | " +
-            $"Match: {_viewModel.PartTeachingLibraryMatchMode}";
+        _viewModel.UpdatePartTeachingUi();
     }
 
     public void SetPartTeachingStatus(string status)
     {
         _viewModel.PartTeachingStatus = status;
+    }
+
+    public void ClosePartTeaching()
+    {
+        _viewModel.ClosePartTeaching();
     }
 
     private void AlignTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
