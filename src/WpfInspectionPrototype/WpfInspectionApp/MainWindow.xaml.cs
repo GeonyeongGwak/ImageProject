@@ -25,8 +25,7 @@ public partial class MainWindow : Window
     private readonly IImageLoadWorkflowService _imageLoadWorkflowService;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IRoiGeometryService _roiGeometryService;
-    private readonly IRoiModelService _roiModelService;
-    private readonly RoiInteractionService _roiInteractionService;
+    private readonly RoiCanvasViewModel _roiCanvasViewModel;
     private readonly IRoiUiStateService _roiUiStateService;
     private readonly IPem3DViewerHostService _pem3DViewerHostService;
     private readonly IPttViewerWorkflowService _pttViewerWorkflowService;
@@ -55,8 +54,7 @@ public partial class MainWindow : Window
         _imageLoadWorkflowService = App.Services.ImageLoadWorkflow;
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
         _roiGeometryService = App.Services.RoiGeometry;
-        _roiModelService = App.Services.RoiModel;
-        _roiInteractionService = App.Services.RoiInteraction;
+        _roiCanvasViewModel = new RoiCanvasViewModel(App.Services.RoiInteraction, App.Services.RoiModel);
         _roiUiStateService = App.Services.RoiUiState;
         _pem3DViewerHostService = App.Services.Pem3DViewerHost;
         _pttViewerWorkflowService = App.Services.PttViewerWorkflow;
@@ -329,7 +327,7 @@ public partial class MainWindow : Window
 
     private void ApplyImportedPart(PartImportWorkflowResult result)
     {
-        _roiInteractionService.ResetDrawing();
+        _roiCanvasViewModel.ResetDrawing();
         DisableRoiDrawing();
         ApplyModelAndRefreshView(result.SelectedWindowId, scheduleThreshold: false);
         if (!string.IsNullOrWhiteSpace(result.Summary))
@@ -567,28 +565,28 @@ public partial class MainWindow : Window
             return;
         }
 
-        e.Handled = _roiInteractionService.TryBegin(canvas, e.GetPosition(canvas), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, CurrentImageZoom());
+        e.Handled = _roiCanvasViewModel.TryBegin(canvas, e.GetPosition(canvas), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, CurrentImageZoom());
     }
 
     private void ImageOverlay_MouseMove(object sender, MouseEventArgs e)
     {
-        if (!_roiInteractionService.IsDrawing || _roiInteractionService.DrawingSurface == null)
+        if (!_roiCanvasViewModel.IsDrawing || _roiCanvasViewModel.DrawingSurface == null)
         {
             return;
         }
 
-        _roiInteractionService.Preview(e.GetPosition(_roiInteractionService.DrawingSurface), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, CurrentImageZoom());
+        _roiCanvasViewModel.Preview(e.GetPosition(_roiCanvasViewModel.DrawingSurface), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, CurrentImageZoom());
         DrawRoiOverlays();
     }
 
     private void ImageOverlay_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
     {
-        if (!_roiInteractionService.IsDrawing || _roiInteractionService.DrawingSurface == null)
+        if (!_roiCanvasViewModel.IsDrawing || _roiCanvasViewModel.DrawingSurface == null)
         {
             return;
         }
 
-        CommitCurrentDrawingRoi(e.GetPosition(_roiInteractionService.DrawingSurface));
+        CommitCurrentDrawingRoi(e.GetPosition(_roiCanvasViewModel.DrawingSurface));
     }
 
     private void Overlay_SizeChanged(object sender, SizeChangedEventArgs e)
@@ -839,22 +837,22 @@ public partial class MainWindow : Window
     {
         get
         {
-            return _roiModelService.GetActiveRoi(_model, _roiInteractionService.PreviewRoi);
+            return _roiCanvasViewModel.GetActiveRoi(_model);
         }
         set
         {
             if (value.HasValue)
             {
-                ApplyRoiModelResult(_roiModelService.UpsertActiveWindow(_model, value.Value));
+                ApplyRoiModelResult(_roiCanvasViewModel.UpsertActiveWindow(_model, value.Value));
             }
         }
     }
 
-    private RoiRect? ActiveInspectionRoi => _roiModelService.GetActiveInspectionRoi(_model, SelectedAlgorithm(), _roiInteractionService.PreviewRoi);
+    private RoiRect? ActiveInspectionRoi => _roiCanvasViewModel.GetActiveInspectionRoi(_model, SelectedAlgorithm());
 
-    private InspectionWindowData? ActiveWindow => _roiModelService.GetActiveWindow(_model);
+    private InspectionWindowData? ActiveWindow => _roiCanvasViewModel.GetActiveWindow(_model);
 
-    private InspectionAlgorithmData? ActiveAlgorithm => _roiModelService.GetActiveAlgorithm(_model, SelectedAlgorithm());
+    private InspectionAlgorithmData? ActiveAlgorithm => _roiCanvasViewModel.GetActiveAlgorithm(_model, SelectedAlgorithm());
 
     private void ApplyRoiModelResult(RoiModelOperationResult result)
     {
@@ -975,7 +973,7 @@ public partial class MainWindow : Window
             AlignPanel.ActivateSearchTab();
         }
 
-        _roiInteractionService.Enable(target);
+        _roiCanvasViewModel.Enable(target);
         UpdateRoiDrawButtonState();
         ViewModel.StatusMessage = target == RoiDrawTarget.Window
             ? "Window ROI draw mode: drag on CAM-03 Binary or CAM-01 2D. Press S to move to the next Window ROI."
@@ -984,37 +982,31 @@ public partial class MainWindow : Window
 
     private void CommitCurrentDrawingRoi()
     {
-        if (!_roiInteractionService.IsDrawing || _roiInteractionService.DrawingSurface == null)
+        if (!_roiCanvasViewModel.IsDrawing || _roiCanvasViewModel.DrawingSurface == null)
         {
             SyncSearchSizeInputsFromActiveRoi();
             DrawRoiOverlays();
             return;
         }
 
-        CommitCurrentDrawingRoi(Mouse.GetPosition(_roiInteractionService.DrawingSurface));
+        CommitCurrentDrawingRoi(Mouse.GetPosition(_roiCanvasViewModel.DrawingSurface));
     }
 
     private void CommitCurrentDrawingRoi(Point surfacePoint)
     {
-        if (!_roiInteractionService.IsDrawing)
+        if (!_roiCanvasViewModel.IsDrawing)
         {
             return;
         }
 
-        var commit = _roiInteractionService.Commit(surfacePoint, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, CurrentImageZoom());
-        if (!commit.Roi.HasValue)
-        {
-            return;
-        }
-
-        if (commit.Target == RoiDrawTarget.Algorithm)
-        {
-            ApplyRoiModelResult(_roiModelService.SetActiveAlgorithmRoi(_model, SelectedAlgorithm(), commit.Roi.Value, FormatRoi));
-        }
-        else
-        {
-            ApplyRoiModelResult(_roiModelService.CreateWindowFromRoi(_model, commit.Roi.Value));
-        }
+        ApplyRoiModelResult(_roiCanvasViewModel.CommitToModel(
+            _model,
+            surfacePoint,
+            _imageRuntimeStateService.SourceWidth,
+            _imageRuntimeStateService.SourceHeight,
+            CurrentImageZoom(),
+            SelectedAlgorithm(),
+            FormatRoi));
 
         SyncSearchSizeInputsFromActiveRoi();
         RefreshRoiOverlaysAndThreshold();
@@ -1022,18 +1014,18 @@ public partial class MainWindow : Window
 
     private void DisableRoiDrawing()
     {
-        _roiInteractionService.Disable();
+        _roiCanvasViewModel.Disable();
         UpdateRoiDrawButtonState();
     }
 
     private void UpdateRoiDrawButtonState()
     {
-        AlignPanel.SetWindowRoiDrawingState(_roiInteractionService.IsEnabled && _roiInteractionService.Target == RoiDrawTarget.Window);
+        AlignPanel.SetWindowRoiDrawingState(_roiCanvasViewModel.IsEnabled && _roiCanvasViewModel.Target == RoiDrawTarget.Window);
     }
 
     private void SelectNextAlignRoi()
     {
-        var result = _roiModelService.SelectNextWindow(_model);
+        var result = _roiCanvasViewModel.SelectNextWindow(_model);
         SyncSearchNumCombo();
         UpdateActiveRoiUi();
         RefreshInspectionView(result.SelectedId);
@@ -1048,7 +1040,7 @@ public partial class MainWindow : Window
 
     private void DeleteActiveAlignRoi()
     {
-        var result = _roiModelService.DeleteActiveWindow(_model);
+        var result = _roiCanvasViewModel.DeleteActiveWindow(_model);
         UpdateActiveRoiUi();
         RefreshInspectionViewAndThreshold(result.SelectedId);
     }
@@ -1061,7 +1053,7 @@ public partial class MainWindow : Window
 
     private void ResizeActiveRoiFromSearchInputs()
     {
-        var result = _roiModelService.ResizeActiveRoiFromSearchInputs(_model, _roiInteractionService.PreviewRoi, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
+        var result = _roiCanvasViewModel.ResizeActiveRoiFromSearchInputs(_model, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
         if (!result.Changed)
         {
             DrawRoiOverlays();
@@ -1088,8 +1080,8 @@ public partial class MainWindow : Window
         return new RoiOverlayState(
             _model,
             ActiveAlgorithm?.Id,
-            _roiInteractionService.PreviewRoi,
-            _roiInteractionService.Target == RoiDrawTarget.Algorithm,
+            _roiCanvasViewModel.PreviewRoi,
+            _roiCanvasViewModel.Target == RoiDrawTarget.Algorithm,
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
             CurrentImageZoom());
@@ -1100,7 +1092,7 @@ public partial class MainWindow : Window
         var text = _roiUiStateService.CreateRoiText(
             _model,
             SelectedAlgorithm(),
-            _roiInteractionService.PreviewRoi,
+            _roiCanvasViewModel.PreviewRoi,
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
             FormatRoi);
@@ -1112,7 +1104,7 @@ public partial class MainWindow : Window
         var state = _roiUiStateService.CreateSyncState(
             _model,
             SelectedAlgorithm(),
-            _roiInteractionService.PreviewRoi,
+            _roiCanvasViewModel.PreviewRoi,
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
             FormatRoi);
