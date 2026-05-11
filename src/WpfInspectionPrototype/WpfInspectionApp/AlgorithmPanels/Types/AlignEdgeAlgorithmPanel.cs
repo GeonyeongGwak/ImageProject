@@ -10,15 +10,25 @@ namespace WpfInspectionApp.AlgorithmPanels.Types;
 
 public sealed class AlignEdgeAlgorithmPanel : IAlgorithmPanel
 {
+    private readonly AlgorithmCatalogItem _catalog;
     private readonly Border _root;
     private readonly StackPanel _content;
+    private readonly AlgorithmPanelInteraction _interaction;
     private AlgorithmPanelContext? _context;
     private bool _binding;
 
     public AlignEdgeAlgorithmPanel()
     {
+        _catalog = AlgorithmCatalog.Find("AlgoAlignEdge");
         _content = new StackPanel();
         _root = AlgorithmPanelUi.RootBorder(_content);
+        _interaction = new AlgorithmPanelInteraction(
+            _catalog,
+            () => _binding,
+            () => _context,
+            Rebuild,
+            _ => false,
+            (_, _) => { });
     }
 
     public string AlgorithmType => "AlgoAlignEdge";
@@ -70,8 +80,8 @@ public sealed class AlignEdgeAlgorithmPanel : IAlgorithmPanel
     private FrameworkElement BuildEdgeTab()
     {
         var panel = TabPanel();
-        panel.Children.Add(Combo("Direction", "AlignEdge.Direction", ["LeftToRight", "RightToLeft", "TopToBottom", "BottomToTop"], ReadIndex("AlignEdge.Direction", "0")));
-        panel.Children.Add(Slider("Threshold", "AlignEdge.Threshold", 0, 255, Read("AlignEdge.Threshold", "128")));
+        panel.Children.Add(Combo("Direction", "AlignEdge.Direction", ["LeftToRight", "RightToLeft", "TopToBottom", "BottomToTop"], _interaction.ReadIndex("AlignEdge.Direction", "0")));
+        panel.Children.Add(Slider("Threshold", "AlignEdge.Threshold", 0, 255, _interaction.Read("AlignEdge.Threshold", "128")));
         panel.Children.Add(Number("Search Width", "AlignEdge.SearchWidth", "40"));
         panel.Children.Add(Number("Search Height", "AlignEdge.SearchHeight", "12"));
         panel.Children.Add(Check("Use Peak Edge", "AlignEdge.UsePeak", true));
@@ -110,7 +120,7 @@ public sealed class AlignEdgeAlgorithmPanel : IAlgorithmPanel
     {
         var panel = TabPanel();
         panel.Children.Add(Check("Use Anchor", "AlignEdge.UseAnchor", false));
-        panel.Children.Add(Combo("Anchor Mode", "AlignEdge.AnchorMode", ["Window ROI", "Algorithm ROI", "Last Align"], ReadIndex("AlignEdge.AnchorMode", "0")));
+        panel.Children.Add(Combo("Anchor Mode", "AlignEdge.AnchorMode", ["Window ROI", "Algorithm ROI", "Last Align"], _interaction.ReadIndex("AlignEdge.AnchorMode", "0")));
         panel.Children.Add(Number("Anchor X", "AlignEdge.AnchorX", "0"));
         panel.Children.Add(Number("Anchor Y", "AlignEdge.AnchorY", "0"));
         panel.Children.Add(Button("Capture Anchor", CaptureAnchor));
@@ -167,9 +177,8 @@ public sealed class AlignEdgeAlgorithmPanel : IAlgorithmPanel
         }
 
         var roi = _context.Algorithm.AlgorithmRoi ?? _context.Window.Roi;
-        Write("AlignEdge.TeachRoi", FormatRoi(roi));
-        AlgorithmPanelCommonEvents.TriggerCommand(_context, AlgorithmCatalog.Find("AlgoAlignEdge"), "AlignEdge.TeachRequested");
-        Rebuild();
+        _interaction.Write("AlignEdge.TeachRoi", FormatRoi(roi));
+        _interaction.ExecuteCommand("AlignEdge.TeachRequested", rebuild: true);
     }
 
     private void CaptureAnchor()
@@ -180,29 +189,29 @@ public sealed class AlignEdgeAlgorithmPanel : IAlgorithmPanel
         }
 
         var roi = _context.Algorithm.AlgorithmRoi ?? _context.Window.Roi;
-        Write("AlignEdge.AnchorX", (roi.X + roi.Width / 2).ToString(CultureInfo.InvariantCulture));
-        Write("AlignEdge.AnchorY", (roi.Y + roi.Height / 2).ToString(CultureInfo.InvariantCulture));
+        _interaction.Write("AlignEdge.AnchorX", (roi.X + roi.Width / 2).ToString(CultureInfo.InvariantCulture));
+        _interaction.Write("AlignEdge.AnchorY", (roi.Y + roi.Height / 2).ToString(CultureInfo.InvariantCulture));
         Rebuild();
     }
 
     private CheckBox Check(string label, string key, bool fallback)
     {
-        return AlgorithmPanelUi.Check(label, Read(key, fallback ? "true" : "false"), fallback, value => Write(key, value));
+        return AlgorithmPanelUi.Check(label, _interaction.Read(key, fallback ? "true" : "false"), fallback, value => _interaction.Write(key, value));
     }
 
     private FrameworkElement Number(string label, string key, string fallback)
     {
-        return AlgorithmPanelUi.Number(label, Read(key, fallback), value => Write(key, value));
+        return AlgorithmPanelUi.Number(label, _interaction.Read(key, fallback), value => _interaction.Write(key, value));
     }
 
     private FrameworkElement Slider(string label, string key, int min, int max, string fallback)
     {
-        return AlgorithmPanelUi.Slider(label, Read(key, fallback), min, max, fallback, value => Write(key, value), labelWidth: 100);
+        return AlgorithmPanelUi.Slider(label, _interaction.Read(key, fallback), min, max, fallback, value => _interaction.Write(key, value), labelWidth: 100);
     }
 
     private FrameworkElement Combo(string label, string key, string[] values, int selectedIndex)
     {
-        return AlgorithmPanelUi.Combo(label, values, selectedIndex, value => Write(key, value.ToString(CultureInfo.InvariantCulture)));
+        return AlgorithmPanelUi.Combo(label, values, selectedIndex, value => _interaction.Write(key, value.ToString(CultureInfo.InvariantCulture)));
     }
 
     private FrameworkElement Row(string label, FrameworkElement editor)
@@ -213,26 +222,6 @@ public sealed class AlignEdgeAlgorithmPanel : IAlgorithmPanel
     private Button Button(string content, Action action)
     {
         return AlgorithmPanelUi.Button(content, action);
-    }
-
-    private string Read(string key, string fallback)
-    {
-        return _context?.Algorithm.Parameters.TryGetValue(key, out var value) == true ? value : fallback;
-    }
-
-    private void Write(string key, string value)
-    {
-        if (_binding || _context == null)
-        {
-            return;
-        }
-
-        AlgorithmPanelCommonEvents.WriteParameter(_context, key, value);
-    }
-
-    private int ReadIndex(string key, string fallback)
-    {
-        return int.TryParse(Read(key, fallback), out var value) ? value : 0;
     }
 
     private static StackPanel TabPanel()
