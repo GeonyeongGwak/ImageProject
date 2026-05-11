@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
-using System.Windows.Media;
 using WpfInspectionApp.Models;
 
 namespace WpfInspectionApp.AlgorithmPanels;
@@ -25,16 +24,7 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
         _catalog = catalog;
         _profile = AlgorithmReferenceUiCatalog.Create(catalog);
         _content = new StackPanel();
-        _root = new Border
-        {
-            Padding = new Thickness(10),
-            Margin = new Thickness(0, 0, 0, 10),
-            Background = Brush("#0B1320"),
-            BorderBrush = Brush("#155FA4"),
-            BorderThickness = new Thickness(1),
-            CornerRadius = new CornerRadius(4),
-            Child = _content
-        };
+        _root = AlgorithmPanelUi.RootBorder(_content);
     }
 
     public string AlgorithmType => _catalog.Type;
@@ -138,115 +128,42 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
 
     private CheckBox Check(string label, string key, bool fallback)
     {
-        var check = new CheckBox
-        {
-            Content = label,
-            IsChecked = Read(key, fallback ? "true" : "false").Equals("true", StringComparison.OrdinalIgnoreCase),
-            Foreground = Brush("#D6E8FF"),
-            FontWeight = FontWeights.SemiBold,
-            Margin = new Thickness(0, 4, 0, 4)
-        };
-        check.Checked += (_, _) => Write(key, "true");
-        check.Unchecked += (_, _) => Write(key, "false");
-        return check;
+        return AlgorithmPanelUi.Check(label, Read(key, fallback ? "true" : "false"), fallback, value => Write(key, value));
     }
 
     private FrameworkElement Number(string label, string key, string fallback)
     {
-        var box = new TextBox
-        {
-            Text = Read(key, fallback),
-            Height = 28,
-            Padding = new Thickness(7, 3, 7, 3),
-            Foreground = Brush("#E4F3FF"),
-            Background = Brush("#07101C"),
-            BorderBrush = Brush("#284A72")
-        };
-        box.TextChanged += (_, _) => Write(key, box.Text);
-        return Row(label, box);
+        return AlgorithmPanelUi.Number(label, Read(key, fallback), value => Write(key, value));
     }
 
     private FrameworkElement Slider(string label, string key, int min, int max, string fallback)
     {
-        var initial = int.TryParse(Read(key, fallback), out var value) ? value : int.Parse(fallback);
-        var valueText = Text(initial.ToString(), 12, "#FFB020", FontWeights.Bold);
-        var slider = new Slider
-        {
-            Minimum = min,
-            Maximum = max,
-            Value = Net48Compat.Clamp(initial, min, max),
-            TickFrequency = 1
-        };
-        slider.ValueChanged += (_, args) =>
-        {
-            var next = ((int)Math.Round(args.NewValue)).ToString();
-            valueText.Text = next;
-            Write(key, next);
-        };
-
-        var grid = new Grid { Margin = new Thickness(0, 4, 0, 8) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(90) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(46) });
-        grid.Children.Add(Text(label, 12, "#9DB4D0", FontWeights.Normal));
-        Grid.SetColumn(slider, 1);
-        grid.Children.Add(slider);
-        Grid.SetColumn(valueText, 2);
-        grid.Children.Add(valueText);
-        return grid;
+        return AlgorithmPanelUi.Slider(label, Read(key, fallback), min, max, fallback, value => Write(key, value));
     }
 
     private FrameworkElement Combo(string label, string key, string[] values, int selectedIndex)
     {
-        var combo = new ComboBox
-        {
-            Height = 28,
-            Foreground = Brush("#E4F3FF"),
-            Background = Brush("#07101C"),
-            BorderBrush = Brush("#284A72"),
-            ItemsSource = values,
-            SelectedIndex = Net48Compat.Clamp(selectedIndex, 0, Math.Max(0, values.Length - 1))
-        };
-        combo.SelectionChanged += (_, _) => Write(key, Math.Max(0, combo.SelectedIndex).ToString());
-        return Row(label, combo);
+        return AlgorithmPanelUi.Combo(label, values, selectedIndex, value => Write(key, value.ToString()));
     }
 
     private FrameworkElement Row(string label, FrameworkElement editor)
     {
-        var grid = new Grid { Margin = new Thickness(0, 4, 0, 8) };
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(110) });
-        grid.ColumnDefinitions.Add(new ColumnDefinition { Width = new GridLength(1, GridUnitType.Star) });
-        grid.Children.Add(Text(label, 12, "#9DB4D0", FontWeights.Normal));
-        Grid.SetColumn(editor, 1);
-        grid.Children.Add(editor);
-        return grid;
+        return AlgorithmPanelUi.Row(label, editor);
     }
 
     private static StackPanel TabPanel()
     {
-        return new StackPanel { Margin = new Thickness(0, 8, 0, 0) };
+        return AlgorithmPanelUi.TabPanel();
     }
 
     private static TabItem Tab(string header, FrameworkElement content)
     {
-        return new TabItem { Header = header, Content = content };
+        return AlgorithmPanelUi.Tab(header, content);
     }
 
     private Button Button(string content, Action action)
     {
-        var button = new Button
-        {
-            Content = content,
-            MinHeight = 30,
-            Margin = new Thickness(0, 0, 6, 6),
-            Padding = new Thickness(10, 4, 10, 4),
-            Foreground = Brush("#E4F3FF"),
-            Background = Brush("#10243D"),
-            BorderBrush = Brush("#236EA8"),
-            FontWeight = FontWeights.SemiBold
-        };
-        button.Click += (_, _) => action();
-        return button;
+        return AlgorithmPanelUi.Button(content, action);
     }
 
     private string Read(string key, string fallback)
@@ -446,25 +363,12 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
 
     private static TextBlock Text(string text, double size, string color, FontWeight weight)
     {
-        return new TextBlock
-        {
-            Text = text,
-            FontSize = size,
-            Foreground = Brush(color),
-            FontWeight = weight,
-            TextWrapping = TextWrapping.Wrap,
-            Margin = new Thickness(0, 0, 0, 6)
-        };
+        return AlgorithmPanelUi.Text(text, size, color, weight);
     }
 
     private static string FormatRoi(RoiRect roi)
     {
         return AlgorithmPanelCommonEvents.FormatRoi(roi);
-    }
-
-    private static SolidColorBrush Brush(string color)
-    {
-        return new SolidColorBrush((Color)ColorConverter.ConvertFromString(color));
     }
 }
 
