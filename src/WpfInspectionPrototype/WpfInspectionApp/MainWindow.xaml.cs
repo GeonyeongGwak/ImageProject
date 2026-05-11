@@ -301,6 +301,7 @@ public partial class MainWindow : Window
             }
 
             ApplyImportedPart(result);
+            var loadedImportImage = false;
             if (!string.IsNullOrWhiteSpace(result.PttPath))
             {
                 LoadPtt(result.PttPath!, prepareMpti: false);
@@ -309,6 +310,12 @@ public partial class MainWindow : Window
             if (!string.IsNullOrWhiteSpace(result.ImagePath))
             {
                 LoadImage(result.ImagePath!);
+                loadedImportImage = true;
+            }
+
+            if (!loadedImportImage)
+            {
+                RefreshRoiOverlaysAndThreshold();
             }
 
             ViewModel.StatusMessage = result.StatusMessage;
@@ -324,7 +331,7 @@ public partial class MainWindow : Window
     {
         _roiInteractionService.ResetDrawing();
         DisableRoiDrawing();
-        ApplyModelAndRefreshView(result.SelectedWindowId);
+        ApplyModelAndRefreshView(result.SelectedWindowId, scheduleThreshold: false);
         if (!string.IsNullOrWhiteSpace(result.Summary))
         {
             ViewModel.InspectionResultText = result.Summary;
