@@ -11,6 +11,7 @@ public sealed class AppServices
         ModelWorkflow = new ModelWorkflowService(ModelPersistence);
         ThresholdResult = new ThresholdResultService(InspectionResultText);
         ImageRuntimeState = new ImageRuntimeStateService(ImageFrame);
+        ThresholdPreviewWorkflow = new ThresholdPreviewWorkflowService(PreviewProcessing, ImageRuntimeState, ThresholdResult);
         RoiInteraction = new RoiInteractionService(RoiGeometry);
         RoiUiState = new RoiUiStateService(RoiModel);
     }
@@ -58,4 +59,6 @@ public sealed class AppServices
     public IInspectionResultTextService InspectionResultText { get; } = new InspectionResultTextService();
 
     public IThresholdResultService ThresholdResult { get; }
+
+    public IThresholdPreviewWorkflowService ThresholdPreviewWorkflow { get; }
 }

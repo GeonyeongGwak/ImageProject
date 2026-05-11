@@ -4,7 +4,6 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using WpfInspectionApp.AlgorithmPanels;
-using WpfInspectionApp.Interop;
 using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
 using WpfInspectionApp.ViewModels;
@@ -22,7 +21,7 @@ public partial class MainWindow : Window
     private readonly IModelWorkflowService _modelWorkflowService;
     private readonly IPartImportWorkflowService _partImportWorkflowService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
-    private readonly IPreviewProcessingService _previewProcessingService;
+    private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IRoiGeometryService _roiGeometryService;
     private readonly IRoiModelService _roiModelService;
@@ -32,9 +31,7 @@ public partial class MainWindow : Window
     private readonly IPttLoadService _pttLoadService;
     private readonly IAlignPartTeachingService _alignPartTeachingService;
     private readonly IAlignConditionService _alignConditionService;
-    private readonly IThresholdResultService _thresholdResultService;
     private readonly MainViewModel _viewModel;
-    private CancellationTokenSource? _thresholdCancellation;
     private IAlgorithmPanel? _activeAlgorithmPanel;
     private InspectionModel _model = new();
     private bool _uiReady;
@@ -53,7 +50,7 @@ public partial class MainWindow : Window
         _modelWorkflowService = App.Services.ModelWorkflow;
         _partImportWorkflowService = App.Services.PartImportWorkflow;
         _inspectionWorkflowService = App.Services.InspectionWorkflow;
-        _previewProcessingService = App.Services.PreviewProcessing;
+        _thresholdPreviewWorkflowService = App.Services.ThresholdPreviewWorkflow;
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
         _roiGeometryService = App.Services.RoiGeometry;
         _roiModelService = App.Services.RoiModel;
@@ -63,7 +60,6 @@ public partial class MainWindow : Window
         _pttLoadService = App.Services.PttLoad;
         _alignPartTeachingService = App.Services.AlignPartTeaching;
         _alignConditionService = App.Services.AlignCondition;
-        _thresholdResultService = App.Services.ThresholdResult;
         _viewModel = new MainViewModel(_model);
         DataContext = _viewModel;
         _viewModel.ConfigureCommands(
@@ -726,67 +722,31 @@ public partial class MainWindow : Window
         }
 
         UpdateModelFromUi();
-        _thresholdCancellation?.Cancel();
-        var cancellation = new CancellationTokenSource();
-        _thresholdCancellation = cancellation;
-
-        var threshold = _model.Use2D ? _model.Threshold2D : 255;
-        var roi = ActiveInspectionRoi;
-
         ViewModel.StatusMessage = "Threshold running...";
 
-        try
-        {
-            var preview = await _previewProcessingService.ThresholdAsync(
-                _imageRuntimeStateService.SourcePixels,
-                _imageRuntimeStateService.SourceWidth,
-                _imageRuntimeStateService.SourceHeight,
-                _imageRuntimeStateService.SourceStride,
-                threshold,
-                roi,
-                cancellation.Token);
-
-            if (cancellation.IsCancellationRequested)
-            {
-                return;
-            }
-
-            UpdateBinaryBitmap(preview.Pixels, preview.Width, preview.Height, preview.Stride);
-            UpdateResult(preview.Response, preview.UiElapsedMs);
-        }
-        catch (OperationCanceledException)
-        {
-        }
-    }
-
-    private void UpdateBinaryBitmap(byte[] pixels, int width, int height, int stride)
-    {
-        ViewModel.BinaryImage = _imageRuntimeStateService.UpdateBinaryBitmap(pixels, width, height, stride);
-        DrawRoiOverlays();
-    }
-
-    private void UpdateResult(NativeThresholdResponse response, double uiElapsedMs)
-    {
-        var nativeLabel = response.UsedNative ? "Native C++" : "Managed fallback";
-        var result = response.Result;
-        ViewModel.MarkBridgeState(response.UsedNative);
-        ViewModel.TimingText = $"{nativeLabel} {result.ElapsedMs:F3} ms / UI {uiElapsedMs:F1} ms";
-        ViewModel.StatusMessage = "Threshold updated.";
-
-        var applied = _thresholdResultService.Apply(
+        var result = await _thresholdPreviewWorkflowService.RunAsync(
             _model,
-            response,
-            nativeLabel,
+            ActiveInspectionRoi,
             ActiveWindow,
             ActiveAlgorithm,
-            ActiveInspectionRoi,
             FormatRoi);
-        if (_inspectionRunRequested && !string.IsNullOrWhiteSpace(applied.UpdatedAlgorithmId))
+
+        if (!result.RanPreview || result.Canceled)
         {
-            RefreshInspectionTree(applied.UpdatedAlgorithmId);
+            return;
+        }
+
+        ViewModel.BinaryImage = result.BinaryImage;
+        ViewModel.MarkBridgeState(result.UsedNative);
+        ViewModel.TimingText = result.TimingText;
+        ViewModel.StatusMessage = result.StatusMessage;
+        if (_inspectionRunRequested && !string.IsNullOrWhiteSpace(result.UpdatedAlgorithmId))
+        {
+            RefreshInspectionTree(result.UpdatedAlgorithmId);
         }
         _inspectionRunRequested = false;
-        ViewModel.InspectionResultText = applied.ResultText;
+        ViewModel.InspectionResultText = result.ResultText;
+        DrawRoiOverlays();
     }
 
     private void UpdateModelFromUi()
