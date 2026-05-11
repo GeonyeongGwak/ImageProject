@@ -8,6 +8,8 @@
     <LangVersion>latest</LangVersion>
     <UseWPF>true</UseWPF>
     <UseWindowsForms>true</UseWindowsForms>
+    <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <GenerateBindingRedirectsOutputType>true</GenerateBindingRedirectsOutputType>
     <Platforms>x64</Platforms>
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
@@ -17,6 +19,7 @@
   <ItemGroup>
     <Using Remove="System.Drawing" />
     <Using Remove="System.Windows.Forms" />
+    <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
     <Reference Include="PEM3DControlWrapper">
       <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControlWrapper.dll</HintPath>
@@ -58,7 +61,7 @@
       <NativePrototypeDll Include="..\bin\$(Configuration)\x64\Barcode_x64.dll" Condition="Exists('..\bin\$(Configuration)\x64\Barcode_x64.dll')" />
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx')" />
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest')" />
-      <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.dll" Exclude="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.resources.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PInspAlgo*.dll" />
+      <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.dll" Exclude="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.resources.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PInspAlgo*.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Microsoft.Bcl.AsyncInterfaces.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Buffers.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Memory.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Numerics.Vectors.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Runtime.CompilerServices.Unsafe.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Text.Encodings.Web.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Text.Json.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Threading.Tasks.Extensions.dll" />
       <NativePrototypeDll Include="..\MptiBridge\NativeSources\PInspAlgo\Release\PInspAlgo.dll" Condition="Exists('..\MptiBridge\NativeSources\PInspAlgo\Release\PInspAlgo.dll')" />
       <NativePrototypeDll Include="..\MptiBridge\NativeSources\PInspAlgo\Release\PemHL.dll" Condition="Exists('..\MptiBridge\NativeSources\PInspAlgo\Release\PemHL.dll')" />
       <NativePrototypeDll Include="..\MptiBridge\NativeSources\jpeg_Dll\JPGIPPLibrary.dll" Condition="Exists('..\MptiBridge\NativeSources\jpeg_Dll\JPGIPPLibrary.dll')" />
