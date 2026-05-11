@@ -22,6 +22,7 @@ public partial class MainWindow : Window
     private readonly IPartImportWorkflowService _partImportWorkflowService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
     private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
+    private readonly IImageLoadWorkflowService _imageLoadWorkflowService;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IRoiGeometryService _roiGeometryService;
     private readonly IRoiModelService _roiModelService;
@@ -51,6 +52,7 @@ public partial class MainWindow : Window
         _partImportWorkflowService = App.Services.PartImportWorkflow;
         _inspectionWorkflowService = App.Services.InspectionWorkflow;
         _thresholdPreviewWorkflowService = App.Services.ThresholdPreviewWorkflow;
+        _imageLoadWorkflowService = App.Services.ImageLoadWorkflow;
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
         _roiGeometryService = App.Services.RoiGeometry;
         _roiModelService = App.Services.RoiModel;
@@ -653,12 +655,11 @@ public partial class MainWindow : Window
 
     private void LoadImage(string path)
     {
-        var frame = _imageRuntimeStateService.LoadImage(path);
-        ViewModel.SourceImage = frame.SourceBitmap;
-        ViewModel.MarkImageLoaded(_imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
-        ViewModel.BinaryImage = frame.BinaryBitmap;
-
-        ViewModel.StatusMessage = $"Loaded 2D image: {path}";
+        var result = _imageLoadWorkflowService.Load(path);
+        ViewModel.SourceImage = result.SourceImage;
+        ViewModel.MarkImageLoaded(result.Width, result.Height);
+        ViewModel.BinaryImage = result.BinaryImage;
+        ViewModel.StatusMessage = result.StatusMessage;
         DrawRoiOverlays();
         ScheduleThreshold();
     }
