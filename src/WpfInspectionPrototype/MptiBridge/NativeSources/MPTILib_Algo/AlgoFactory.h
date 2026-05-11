@@ -1,0 +1,61 @@
+#pragma once
+#include "InspParamDef.h"
+#include "PInsp_Algo/IPInsp_Algo.h"
+
+#include "PInsp_Algo/Align/PInsp_AlgoAlign.h"
+#include "PInsp_Algo/AlignEdge/PInsp_AlgoAlignEdge.h"
+#include "PInsp_Algo/Barcode/PInsp_AlgoBarcode.h"
+#include "PInsp_Algo/BGA/PInsp_AlgoBGA.h"
+#include "PInsp_Algo/Blob/PInsp_AlgoBlob.h"
+#include "PInsp_Algo/BodyBlob/PInsp_AlgoBodyBlob.h"
+#include "PInsp_Algo/Bridge/PInsp_AlgoBridge.h"
+#include "PInsp_Algo/Bump/PInsp_AlgoBump.h"
+#include "PInsp_Algo/BW/PInsp_AlgoBW.h"
+#include "PInsp_Algo/Color/PInsp_AlgoColor.h"
+#include "PInsp_Algo/ColorBandSearch/PInsp_AlgoColorBandSearch.h"
+#include "PInsp_Algo/ColorXY/PInsp_AlgoColorXY.h"
+#include "PInsp_Algo/DisColor/PInsp_AlgoDisColor.h"
+#include "PInsp_Algo/Edge/PInsp_AlgoEdge.h"
+#include "PInsp_Algo/Fillet/PInsp_AlgoFillet.h"
+#include "PInsp_Algo/Foot/PInsp_AlgoFoot.h"
+#include "PInsp_Algo/GrayDiff/PInsp_AlgoGrayDiff.h"
+#include "PInsp_Algo/GrayMean/PInsp_AlgoGrayMean.h"
+#include "PInsp_Algo/Grid/PInsp_AlgoGrid.h"
+#include "PInsp_Algo/HeightDiff/PInsp_AlgoHeightDiff.h"
+#include "PInsp_Algo/HeightMean/PInsp_AlgoHeightMean.h"
+#include "PInsp_Algo/LeadColor/PInsp_AlgoLeadColor.h"
+#include "PInsp_Algo/LeadLift/PInsp_AlgoLeadLift.h"
+#include "PInsp_Algo/LeadSearch/PInsp_AlgoLeadSearch.h"
+#include "PInsp_Algo/LeadSideSolder/PInsp_AlgoLeadSideSolder.h"
+#include "PInsp_Algo/LeadSolder/PInsp_AlgoLeadSolder.h"
+#include "PInsp_Algo/LeadTip/PInsp_AlgoLeadTip.h"
+#include "PInsp_Algo/Line/PInsp_AlgoLine.h"
+#include "PInsp_Algo/NGBlob/PInsp_AlgoNGBlob.h"
+#include "PInsp_Algo/OCR/PInsp_AlgoOCR.h"
+#include "PInsp_Algo/PadAlign/PInsp_AlgoPadAlign.h"
+#include "PInsp_Algo/PadBW/PInsp_AlgoPadBW.h"
+#include "PInsp_Algo/Pattern/PInsp_AlgoPattern.h"
+#include "PInsp_Algo/POCR/PInsp_AlgoPOCR.h"
+#include "PInsp_Algo/SolderCone/PInsp_AlgoSolderCone.h"
+#include "PInsp_Algo/Tab/PInsp_AlgoTab.h"
+#include "PInsp_Algo/TabSearch/PInsp_AlgoTabSearch.h"
+#include "PInsp_Algo/Tilt/PInsp_AlgoTilt.h"
+#include "PInsp_Algo/Volume/PInsp_AlgoVolume.h"
+#include "PInsp_Algo/Width/PInsp_AlgoWidth.h"
+#include "PInsp_Algo/Wire/PInsp_AlgoWire.h"
+#include "PInsp_Algo/BodyEdge/PInsp_AlgoBodyEdge.h"
+#include "PInsp_Algo/Distance/PInsp_AlgoDistance.h"
+#include "PInsp_Algo/GWire/PInsp_AlgoGWire.h"
+#include "PInsp_Algo/PatternDiff/PInsp_AlgoPatternDiff.h"
+#include "PInsp_Algo/ShapeX/PInsp_AlgoShapeX.h"
+#include "PInsp_Algo/PadArray/PInsp_AlgoPadArray.h"
+//#include "PInsp_Algo/NewAlgo1/PInsp_AlgoNewAlgo1.h"
+class CAlgoFactory
+{
+
+public:
+	void CreateCAlgoClone(InspAlgoType eAlgoType, LPVOID lpSource, LPVOID& lpTarget);
+ 	IPINSP_ALGO* CreatePInspAlgo(InspAlgoType eAlgoType);
+ 	void CreateRstAlgoClone(InspAlgoType eAlgoType, LPVOID& lpTarget, bool IsUseMultiArea = false);
+};
+

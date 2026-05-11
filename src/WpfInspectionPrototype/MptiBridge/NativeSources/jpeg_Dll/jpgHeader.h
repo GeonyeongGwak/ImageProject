@@ -1,0 +1,32 @@
+#pragma once
+
+
+typedef enum _IM_COLOR
+{
+	IC_UNKNOWN,
+	IC_GRAY,
+	IC_GRAYA,
+	IC_RGB,
+	IC_BGR,
+	IC_RGBA,
+	IC_BGRA,
+	IC_RGBAP,
+	IC_BGRAP,
+	IC_RGBE,
+	IC_YCBCR,
+	IC_CMYK,
+	IC_CMYKA,
+	IC_YCCK
+
+} IM_COLOR;
+
+
+typedef enum _IM_SAMPLING
+{
+	IS_444,
+	IS_422,
+	IS_244,
+	IS_411,
+	IS_OTHER
+
+} IM_SAMPLING;

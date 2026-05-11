@@ -1,0 +1,33 @@
+# Build output
+bin/
+obj/
+x64/
+Debug/
+Release/
+logs/
+
+# Required native reference binaries used by MptiBridge
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/PInspAlgo/Release/
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/PInspAlgo/Release/PInspAlgo.dll
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/PInspAlgo/Release/PInspAlgo.lib
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/PInspAlgo/Release/PemHL.dll
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/PInspAlgo/Release/PemHL.lib
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/MPTILib_Algo/New_Barcode/Release/
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/MPTILib_Algo/New_Barcode/Release/Barcode_x64.dll
+!src/WpfInspectionPrototype/MptiBridge/NativeSources/MPTILib_Algo/New_Barcode/Release/Barcode_x64.lib
+
+# Visual Studio
+.vs/
+*.user
+*.suo
+*.VC.db
+*.VC.VC.opendb
+
+# Runtime diagnostics
+*.log
+
+# OS/editor
+Thumbs.db
+Desktop.ini
+.idea/
+.vscode/

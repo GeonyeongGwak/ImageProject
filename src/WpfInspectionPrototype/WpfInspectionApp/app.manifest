@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<assembly manifestVersion="1.0" xmlns="urn:schemas-microsoft-com:asm.v1" xmlns:asmv2="urn:schemas-microsoft-com:asm.v2" xmlns:dsig="http://www.w3.org/2000/09/xmldsig#">
+  <assemblyIdentity version="1.0.0.0" name="WpfInspectionApp.app"/>
+  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
+    <security>
+      <requestedPrivileges xmlns="urn:schemas-microsoft-com:asm.v3">
+        <requestedExecutionLevel level="asInvoker" uiAccess="false" />
+      </requestedPrivileges>
+    </security>
+  </trustInfo>
+  <dependency>
+    <dependentAssembly asmv2:dependencyType="install" asmv2:codebase="Native.PEM3DControlWrapper.manifest" asmv2:size="1383">
+      <assemblyIdentity name="Native.PEM3DControlWrapper" version="1.4.3.12" type="win32" />
+      <hash xmlns="urn:schemas-microsoft-com:asm.v2">
+        <dsig:Transforms>
+          <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
+        </dsig:Transforms>
+        <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
+        <dsig:DigestValue>sU51R8vHlCCn13Gh7nsq97WK9ZE=</dsig:DigestValue>
+      </hash>
+    </dependentAssembly>
+  </dependency>
+</assembly>

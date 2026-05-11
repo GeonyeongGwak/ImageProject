@@ -1,0 +1,84 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <Platforms>x64</Platforms>
+    <PlatformTarget>x64</PlatformTarget>
+    <Prefer32Bit>false</Prefer32Bit>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Remove="System.Drawing" />
+    <Using Remove="System.Windows.Forms" />
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <Reference Include="PEM3DControlWrapper">
+      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControlWrapper.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="PEM3DControl.Interfaces">
+      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.Interfaces.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="Interop.PEM3DControlLib">
+      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Interop.PEM3DControlLib.dll</HintPath>
+      <Private>true</Private>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="AxInterop.PEM3DControlLib">
+      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\AxInterop.PEM3DControlLib.dll</HintPath>
+      <Private>true</Private>
+      <EmbedInteropTypes>false</EmbedInteropTypes>
+    </Reference>
+    <Reference Include="Ionic.Zip">
+      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Ionic.Zip.dll</HintPath>
+      <Private>true</Private>
+    </Reference>
+    <Reference Include="System.IO.Compression" />
+    <Reference Include="System.IO.Compression.FileSystem" />
+    <Content Include="..\..\..\Image\2D.jpg" Link="Image\2D.jpg" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CopyNativePrototypeDlls" AfterTargets="Build">
+    <ItemGroup>
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\BridgeLayer.dll" Condition="Exists('..\bin\$(Configuration)\x64\BridgeLayer.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\InspectionCore.dll" Condition="Exists('..\bin\$(Configuration)\x64\InspectionCore.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\MptiBridge.dll" Condition="Exists('..\bin\$(Configuration)\x64\MptiBridge.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\PInspAlgo.dll" Condition="Exists('..\bin\$(Configuration)\x64\PInspAlgo.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\PemHL.dll" Condition="Exists('..\bin\$(Configuration)\x64\PemHL.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\JPGIPPLibrary.dll" Condition="Exists('..\bin\$(Configuration)\x64\JPGIPPLibrary.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\CSML_x64.dll" Condition="Exists('..\bin\$(Configuration)\x64\CSML_x64.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\OCR_Dllx64.dll" Condition="Exists('..\bin\$(Configuration)\x64\OCR_Dllx64.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\Barcode_x64.dll" Condition="Exists('..\bin\$(Configuration)\x64\Barcode_x64.dll')" />
+      <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx')" />
+      <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest')" />
+      <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.dll" Exclude="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.resources.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PInspAlgo*.dll" />
+      <NativePrototypeDll Include="..\MptiBridge\NativeSources\PInspAlgo\Release\PInspAlgo.dll" Condition="Exists('..\MptiBridge\NativeSources\PInspAlgo\Release\PInspAlgo.dll')" />
+      <NativePrototypeDll Include="..\MptiBridge\NativeSources\PInspAlgo\Release\PemHL.dll" Condition="Exists('..\MptiBridge\NativeSources\PInspAlgo\Release\PemHL.dll')" />
+      <NativePrototypeDll Include="..\MptiBridge\NativeSources\jpeg_Dll\JPGIPPLibrary.dll" Condition="Exists('..\MptiBridge\NativeSources\jpeg_Dll\JPGIPPLibrary.dll')" />
+      <NativePrototypeDll Include="..\MptiBridge\NativeSources\MPTILib_Algo\CSML_x64.dll" Condition="Exists('..\MptiBridge\NativeSources\MPTILib_Algo\CSML_x64.dll')" />
+      <NativePrototypeDll Include="..\MptiBridge\NativeSources\MPTILib_Algo\OCR_Dll\OCR_Dllx64.dll" Condition="Exists('..\MptiBridge\NativeSources\MPTILib_Algo\OCR_Dll\OCR_Dllx64.dll')" />
+      <NativePrototypeDll Include="..\MptiBridge\NativeSources\MPTILib_Algo\New_Barcode\Release\Barcode_x64.dll" Condition="Exists('..\MptiBridge\NativeSources\MPTILib_Algo\New_Barcode\Release\Barcode_x64.dll')" />
+      <NativePrototypeDll Include="C:\OpenCV\440\x64\v14\bin\opencv_core440.dll" Condition="Exists('C:\OpenCV\440\x64\v14\bin\opencv_core440.dll')" />
+      <NativePrototypeDll Include="C:\OpenCV\440\x64\v14\bin\opencv_imgproc440.dll" Condition="Exists('C:\OpenCV\440\x64\v14\bin\opencv_imgproc440.dll')" />
+      <NativePrototypeDll Include="C:\OpenCV\440\x64\v14\bin\opencv_imgcodecs440.dll" Condition="Exists('C:\OpenCV\440\x64\v14\bin\opencv_imgcodecs440.dll')" />
+      <NativePrototypeDll Include="C:\OpenCV\440\x64\v14\bin\opencv_features2d440.dll" Condition="Exists('C:\OpenCV\440\x64\v14\bin\opencv_features2d440.dll')" />
+      <NativePrototypeDll Include="C:\OpenCV\440\x64\v14\bin\opencv_highgui440.dll" Condition="Exists('C:\OpenCV\440\x64\v14\bin\opencv_highgui440.dll')" />
+      <NativePrototypeDll Include="C:\OpenCV\440\x64\v14\bin\opencv_photo440.dll" Condition="Exists('C:\OpenCV\440\x64\v14\bin\opencv_photo440.dll')" />
+      <NativePrototypeDll Include="C:\OpenCV\440\x64\v14\bin\opencv_video440.dll" Condition="Exists('C:\OpenCV\440\x64\v14\bin\opencv_video440.dll')" />
+      <NativePrototypeDll Include="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippi.dll" Condition="Exists('C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippi.dll')" />
+      <NativePrototypeDll Include="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ipps.dll" Condition="Exists('C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ipps.dll')" />
+      <NativePrototypeDll Include="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippcc.dll" Condition="Exists('C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippcc.dll')" />
+      <NativePrototypeDll Include="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippcv.dll" Condition="Exists('C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippcv.dll')" />
+      <NativePrototypeDll Include="C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippcore.dll" Condition="Exists('C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp\ippcore.dll')" />
+    </ItemGroup>
+    <Copy SourceFiles="@(NativePrototypeDll)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+  </Target>
+
+</Project>

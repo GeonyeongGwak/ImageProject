@@ -1,0 +1,596 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{E9EB5594-4920-41F0-910D-2BAAB6819307}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx</Extensions>
+    </Filter>
+    <Filter Include="NativeSources">
+      <UniqueIdentifier>{4B849825-BB98-4664-ADDC-F35C5D158647}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo">
+      <UniqueIdentifier>{4B1830E6-DEBC-4407-AD70-095959C23164}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\FOREIGN">
+      <UniqueIdentifier>{A5CC6037-1A6C-40EE-85B1-28BB32E0546C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\Minidump">
+      <UniqueIdentifier>{6F88AB4C-7CD7-4DFB-AFA8-C8C449584352}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo">
+      <UniqueIdentifier>{F1C5F91B-2AFF-4E0E-93DD-FC480B2FB412}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Align">
+      <UniqueIdentifier>{FDBA38E9-B238-491F-93F0-78BBD97DAD2D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\AlignEdge">
+      <UniqueIdentifier>{C89E49C8-7F44-4151-A745-A7F497694AB3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Barcode">
+      <UniqueIdentifier>{652ADB31-2224-4873-A216-82524F5E19C0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\BGA">
+      <UniqueIdentifier>{ACEF654D-8BAB-4CDD-AA3B-45546E58DC1C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Blob">
+      <UniqueIdentifier>{D8E1E0FD-03C8-4C36-A00B-232CF4A29C57}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\BodyBlob">
+      <UniqueIdentifier>{66E6A570-8C4A-4FFA-8929-A4067E2BE23C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\BodyEdge">
+      <UniqueIdentifier>{BD6F0F75-1D10-420C-9B82-8F3073CB9DD9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Bridge">
+      <UniqueIdentifier>{CA915AEB-273B-4288-A6EA-C3669988FAA7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Bump">
+      <UniqueIdentifier>{7520C598-0C61-4E3C-AD0D-5CDC9F654CC3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\BW">
+      <UniqueIdentifier>{6C7BB48B-C140-4652-860E-88C303C3C705}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Color">
+      <UniqueIdentifier>{1EF12505-2722-4DDC-B4B0-B240E534993B}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\ColorBandSearch">
+      <UniqueIdentifier>{1BB161BA-0FAD-4BC1-A9A3-140ADF625592}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\ColorXY">
+      <UniqueIdentifier>{6488EFAB-958B-454C-9DCC-66CC91FF6090}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\DisColor">
+      <UniqueIdentifier>{7709C178-6F54-41EF-9437-2DA9F9403AC4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Distance">
+      <UniqueIdentifier>{2787EA48-2C72-4E4E-892B-AF865BD4C1FC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Edge">
+      <UniqueIdentifier>{BB50A170-76CC-4FD6-AF3A-10D9ADB62C41}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Fillet">
+      <UniqueIdentifier>{688FE53E-D5EB-4B51-B8AC-961024EAD0F9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Foot">
+      <UniqueIdentifier>{E2E6CD04-DCAD-4334-A4C0-83852FE4C3C7}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\GrayDiff">
+      <UniqueIdentifier>{94959C3B-03B8-4DC3-ADE3-097C4C847295}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\GrayMean">
+      <UniqueIdentifier>{560C6449-469B-44DC-868D-E93C0378E76C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Grid">
+      <UniqueIdentifier>{F64A552F-5248-494C-ABCD-FC30FB350EA3}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\GWire">
+      <UniqueIdentifier>{5097181B-48CF-403A-8EC0-EC98EE14FEA0}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\HeightDiff">
+      <UniqueIdentifier>{EE454867-01F0-463E-A745-A55D433CD863}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\HeightMean">
+      <UniqueIdentifier>{F573AC99-BC47-4600-B25F-6C8DA95D2724}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadColor">
+      <UniqueIdentifier>{17694120-4569-4F6D-A4B2-04CCE69D33BA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadLift">
+      <UniqueIdentifier>{4C744D9D-2F66-4ABF-B8CD-3360F6D4AEEE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSearch">
+      <UniqueIdentifier>{697EF43B-8ACF-4594-9E07-54AEAB044290}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSideSolder">
+      <UniqueIdentifier>{9B57FF54-587F-42AC-BB9D-94FB18A003D4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSolder">
+      <UniqueIdentifier>{CDE7E093-1273-4776-93BF-A98EE6A1A60D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadTip">
+      <UniqueIdentifier>{2395CCC7-B9AB-4B64-9782-4C8C6D23498A}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Line">
+      <UniqueIdentifier>{F2444630-038E-4458-B6C0-CF024C8B2BA5}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\NGBlob">
+      <UniqueIdentifier>{3F6A9C13-6944-422E-A9DD-C421ECE2EBD9}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\OCR">
+      <UniqueIdentifier>{2B1439EA-7D40-449F-A2F5-2C04DAEE0B5C}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadAlign">
+      <UniqueIdentifier>{9C0382AB-28CE-42F0-8EDE-1608FBA65591}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadArray">
+      <UniqueIdentifier>{F6771A88-D0D7-42BF-98B7-F603CA6F9FCA}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadBW">
+      <UniqueIdentifier>{700BDBF1-043E-41EB-A3A9-A31CF17CB0FB}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Pattern">
+      <UniqueIdentifier>{BE58853B-B5F5-441F-8440-1DF05E0D8E8D}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\PatternDiff">
+      <UniqueIdentifier>{3C570234-48F5-4E8E-8874-2986B3244CCF}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\POCR">
+      <UniqueIdentifier>{8479D829-F290-411F-B9EE-E221E45B546E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\ShapeX">
+      <UniqueIdentifier>{39C79586-5751-42A5-AE3A-5010B68C5182}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\SolderCone">
+      <UniqueIdentifier>{B340501B-6D71-4675-9CB5-A505BFD35112}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Tab">
+      <UniqueIdentifier>{2CB9EB94-58EF-4963-B250-17A12BC3DAFC}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\TabSearch">
+      <UniqueIdentifier>{F20875C7-A7D7-4570-AA86-B4066C0E735E}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Tilt">
+      <UniqueIdentifier>{6E78F766-5A35-4319-A795-AD5F4426B9FE}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Volume">
+      <UniqueIdentifier>{C4CE1418-7159-42EA-B2E0-7A613DADB086}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Width">
+      <UniqueIdentifier>{94D33F98-80E0-4CD0-A59F-4C024C70F149}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="NativeSources\MPTILib_Algo\PInsp_Algo\Wire">
+      <UniqueIdentifier>{F44EE556-EB80-4806-9C9E-636A44C78310}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="MptiBridge.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\stdafx.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\algo_geometry.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\AlgoFactory.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\alp_file.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\alp_proc.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\awm.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\BilinearInterpolation.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Binarize.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Blob.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\BubbleThreadMng.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\CNN_Inference.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Crypt.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\csml_header.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspLogic.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspParam.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspRoot.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspSub.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtLog.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtTools.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\FOREIGN\FOREIGN_INSP.cpp">
+      <Filter>NativeSources\MPTILib_Algo\FOREIGN</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_BodyBlob.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_Foot.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_Gerber.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_OCV.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_Pattern.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_POCR_v2.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\HistogramAnalysis.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\HistogramAnalysis_New.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ImageModels.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ImgLoadSave.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\InferBubble.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\InferCore.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\InferOCR.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\InspManager.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\InspParamDef.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\InspRstPoly.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\LeastSquare.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Manager.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\MCoordi.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\MemoryManager.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\MilWrapper.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Minidump\PemMinidump.cpp">
+      <Filter>NativeSources\MPTILib_Algo\Minidump</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\MModelManager.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\MNgManager.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelFile_Foot.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelFile_Foreign.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelFile_OCV.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelManager_Geo.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\MPTI.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\OpenCV_Functions.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PAD_PAT_VOL.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PILibrary.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Align\PInsp_AlgoAlign.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Align</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\AlignEdge\PInsp_AlgoAlignEdge.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\AlignEdge</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Barcode\PInsp_AlgoBarcode.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Barcode</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BGA\PInsp_AlgoBGA.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\BGA</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Blob\PInsp_AlgoBlob.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Blob</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BodyBlob\PInsp_AlgoBodyBlob.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\BodyBlob</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BodyEdge\PInsp_AlgoBodyEdge.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\BodyEdge</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Bridge\PInsp_AlgoBridge.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Bridge</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Bump\PInsp_AlgoBump.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Bump</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BW\PInsp_AlgoBW.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\BW</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Color\PInsp_AlgoColor.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Color</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\ColorBandSearch\PInsp_AlgoColorBandSearch.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\ColorBandSearch</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\ColorXY\PInsp_AlgoColorXY.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\ColorXY</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\DisColor\PInsp_AlgoDisColor.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\DisColor</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Distance\PInsp_AlgoDistance.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Distance</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Edge\PInsp_AlgoEdge.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Edge</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Fillet\PInsp_AlgoFillet.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Fillet</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Foot\PInsp_AlgoFoot.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Foot</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\GrayDiff\PInsp_AlgoGrayDiff.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\GrayDiff</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\GrayMean\PInsp_AlgoGrayMean.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\GrayMean</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Grid\PInsp_AlgoGrid.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Grid</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\GWire\PInsp_AlgoGWire.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\GWire</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\HeightDiff\PInsp_AlgoHeightDiff.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\HeightDiff</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\HeightMean\PInsp_AlgoHeightMean.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\HeightMean</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\IPInsp_Algo.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadColor\PInsp_AlgoLeadColor.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\LeadColor</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadLift\PInsp_AlgoLeadLift.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\LeadLift</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSearch\PInsp_AlgoLeadSearch.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\LeadSearch</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSideSolder\PInsp_AlgoLeadSideSolder.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\LeadSideSolder</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSolder\PInsp_AlgoLeadSolder.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\LeadSolder</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadTip\PInsp_AlgoLeadTip.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\LeadTip</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Line\PInsp_AlgoLine.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Line</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\NGBlob\PInsp_AlgoNGBlob.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\NGBlob</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\OCR\PInsp_AlgoOCR.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\OCR</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadAlign\PInsp_AlgoPadAlign.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\PadAlign</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadArray\PInsp_AlgoPadArray.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\PadArray</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadBW\PInsp_AlgoPadBW.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\PadBW</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Pattern\PInsp_AlgoPattern.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Pattern</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PatternDiff\PInsp_AlgoPatternDiff.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\PatternDiff</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\POCR\PInsp_AlgoPOCR.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\POCR</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\ShapeX\PInsp_AlgoShapeX.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\ShapeX</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\SolderCone\PInsp_AlgoSolderCone.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\SolderCone</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Tab\PInsp_AlgoTab.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Tab</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\TabSearch\PInsp_AlgoTabSearch.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\TabSearch</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Tilt\PInsp_AlgoTilt.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Tilt</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Volume\PInsp_AlgoVolume.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Volume</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Width\PInsp_AlgoWidth.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Width</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Wire\PInsp_AlgoWire.cpp">
+      <Filter>NativeSources\MPTILib_Algo\PInsp_Algo\Wire</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Ball.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_BGA.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Color.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Crescent.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Foot.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_ForeignPattern.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Grid.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_LeadSolder.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Mount.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_OCR.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_OCV.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Pattern.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Ribbon.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Tab.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Wedge.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_WireBonding.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInspAlgoWrapper.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInspDecision.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PMemoryPool.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc_Foot.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc_Wire.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc3D.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_BGA.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_Color.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_LeadSolder.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_Mount.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_OCR.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_Pattern.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcPil_ForeignPattern.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcPil_OCV.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcPil_Pattern.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\PsrFileManager.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\QTimer.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\ReadWriteFile.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\SharedMemory.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\tick.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\tstring.cpp">
+      <Filter>NativeSources\MPTILib_Algo</Filter>
+    </ClCompile>
+  </ItemGroup>
+</Project>

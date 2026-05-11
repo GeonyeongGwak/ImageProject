@@ -1,0 +1,272 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{0F127DDC-FC3A-4A63-B9D7-70BFF0E77B3A}</ProjectGuid>
+    <RootNamespace>MptiBridge</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0.17763.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Dynamic</UseOfMfc>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>DynamicLibrary</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v141</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+    <UseOfMfc>Dynamic</UseOfMfc>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <PropertyGroup>
+    <OutDir>$(MSBuildThisFileDirectory)..\bin\$(Configuration)\$(Platform)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)..\obj\$(ProjectName)\$(Configuration)\$(Platform)\</IntDir>
+    <OpenCvBinRoot>C:\OpenCV\440\x64\v14\bin</OpenCvBinRoot>
+    <OpenCvIncludeRoot>C:\OpenCV\440\include</OpenCvIncludeRoot>
+    <OpenCvLibRoot>C:\OpenCV\440\x64\v14\lib</OpenCvLibRoot>
+    <IntelIppIncludeRoot>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020\windows\ipp\include</IntelIppIncludeRoot>
+    <IntelIppLibRoot>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020\windows\ipp\lib\intel64</IntelIppLibRoot>
+    <IntelIppBinRoot>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp</IntelIppBinRoot>
+    <EnableUnitySupport>true</EnableUnitySupport>
+  </PropertyGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;MPTIBRIDGE_EXPORTS;_WINDOWS;_USRDLL;_EXTCLIENT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <ForcedIncludeFiles>stdafx.h;string;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>NativeSources\MPTILib_Algo;NativeSources\MPTILib_Algo\PInsp_Algo;NativeSources\PInspAlgo;$(OpenCvIncludeRoot);$(IntelIppIncludeRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>NativeSources\MPTILib_Algo;NativeSources\jpeg_Dll;NativeSources\PInspAlgo\Release;$(OpenCvLibRoot);$(IntelIppLibRoot);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>onecore.lib;OleAut32.lib;JPGIPPLibrary.lib;CSML_x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>powershell -NoProfile -ExecutionPolicy Bypass -Command "Copy-Item -LiteralPath '$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PInspAlgo.dll','$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PemHL.dll','$(MSBuildThisFileDirectory)NativeSources\jpeg_Dll\JPGIPPLibrary.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\CSML_x64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\OCR_Dll\OCR_Dllx64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\New_Barcode\Release\Barcode_x64.dll' -Destination '$(OutDir)' -Force"
+if exist "$(OpenCvBinRoot)\opencv_core440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_core440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_imgproc440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_imgproc440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_imgcodecs440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_imgcodecs440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_features2d440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_features2d440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_highgui440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_highgui440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_photo440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_photo440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_video440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_video440.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippi.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippi.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ipps.dll" xcopy /Y /D "$(IntelIppBinRoot)\ipps.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippcc.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcc.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippcv.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcv.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcore.dll" "$(OutDir)" &gt;nul</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>false</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;MPTIBRIDGE_EXPORTS;_WINDOWS;_USRDLL;_EXTCLIENT;_CRT_SECURE_NO_WARNINGS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PrecompiledHeader>Use</PrecompiledHeader>
+      <ForcedIncludeFiles>stdafx.h;string;%(ForcedIncludeFiles)</ForcedIncludeFiles>
+      <AdditionalIncludeDirectories>NativeSources\MPTILib_Algo;NativeSources\MPTILib_Algo\PInsp_Algo;NativeSources\PInspAlgo;$(OpenCvIncludeRoot);$(IntelIppIncludeRoot);%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <LanguageStandard>stdcpp14</LanguageStandard>
+      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <IncludeInUnityFile>false</IncludeInUnityFile>
+      <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>NativeSources\MPTILib_Algo;NativeSources\jpeg_Dll;NativeSources\PInspAlgo\Release;$(OpenCvLibRoot);$(IntelIppLibRoot);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>onecore.lib;OleAut32.lib;JPGIPPLibrary.lib;CSML_x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+    <PostBuildEvent>
+      <Command>powershell -NoProfile -ExecutionPolicy Bypass -Command "Copy-Item -LiteralPath '$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PInspAlgo.dll','$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PemHL.dll','$(MSBuildThisFileDirectory)NativeSources\jpeg_Dll\JPGIPPLibrary.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\CSML_x64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\OCR_Dll\OCR_Dllx64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\New_Barcode\Release\Barcode_x64.dll' -Destination '$(OutDir)' -Force"
+if exist "$(OpenCvBinRoot)\opencv_core440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_core440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_imgproc440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_imgproc440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_imgcodecs440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_imgcodecs440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_features2d440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_features2d440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_highgui440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_highgui440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_photo440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_photo440.dll" "$(OutDir)" &gt;nul
+if exist "$(OpenCvBinRoot)\opencv_video440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_video440.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippi.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippi.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ipps.dll" xcopy /Y /D "$(IntelIppBinRoot)\ipps.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippcc.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcc.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippcv.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcv.dll" "$(OutDir)" &gt;nul
+if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcore.dll" "$(OutDir)" &gt;nul</Command>
+    </PostBuildEvent>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ItemGroup>
+    <ClCompile Include="MptiBridge.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\stdafx.cpp">
+      <PrecompiledHeader>Create</PrecompiledHeader>
+    </ClCompile>
+    <ClCompile Include="NativeSources\MPTILib_Algo\algo_geometry.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\AlgoFactory.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\alp_file.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\alp_proc.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\awm.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\BilinearInterpolation.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Binarize.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Blob.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\BubbleThreadMng.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\CNN_Inference.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Crypt.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\csml_header.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspLogic.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspParam.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspRoot.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtInspSub.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtLog.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ExtTools.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\FOREIGN\FOREIGN_INSP.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_BodyBlob.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_Foot.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_Gerber.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_OCV.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_Pattern.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\GeoMatch_POCR_v2.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\HistogramAnalysis.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\HistogramAnalysis_New.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ImageModels.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ImgLoadSave.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\InferBubble.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\InferCore.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\InferOCR.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\InspManager.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\InspParamDef.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\InspRstPoly.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\LeastSquare.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Manager.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\MCoordi.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\MemoryManager.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\MilWrapper.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Minidump\PemMinidump.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\MModelManager.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\MNgManager.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelFile_Foot.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelFile_Foreign.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelFile_OCV.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ModelManager_Geo.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\MPTI.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\OpenCV_Functions.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PAD_PAT_VOL.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PILibrary.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Align\PInsp_AlgoAlign.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\AlignEdge\PInsp_AlgoAlignEdge.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Barcode\PInsp_AlgoBarcode.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BGA\PInsp_AlgoBGA.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Blob\PInsp_AlgoBlob.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BodyBlob\PInsp_AlgoBodyBlob.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BodyEdge\PInsp_AlgoBodyEdge.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Bridge\PInsp_AlgoBridge.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Bump\PInsp_AlgoBump.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\BW\PInsp_AlgoBW.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Color\PInsp_AlgoColor.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\ColorBandSearch\PInsp_AlgoColorBandSearch.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\ColorXY\PInsp_AlgoColorXY.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\DisColor\PInsp_AlgoDisColor.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Distance\PInsp_AlgoDistance.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Edge\PInsp_AlgoEdge.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Fillet\PInsp_AlgoFillet.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Foot\PInsp_AlgoFoot.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\GrayDiff\PInsp_AlgoGrayDiff.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\GrayMean\PInsp_AlgoGrayMean.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Grid\PInsp_AlgoGrid.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\GWire\PInsp_AlgoGWire.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\HeightDiff\PInsp_AlgoHeightDiff.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\HeightMean\PInsp_AlgoHeightMean.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\IPInsp_Algo.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadColor\PInsp_AlgoLeadColor.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadLift\PInsp_AlgoLeadLift.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSearch\PInsp_AlgoLeadSearch.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSideSolder\PInsp_AlgoLeadSideSolder.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadSolder\PInsp_AlgoLeadSolder.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\LeadTip\PInsp_AlgoLeadTip.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Line\PInsp_AlgoLine.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\NGBlob\PInsp_AlgoNGBlob.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\OCR\PInsp_AlgoOCR.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadAlign\PInsp_AlgoPadAlign.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadArray\PInsp_AlgoPadArray.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PadBW\PInsp_AlgoPadBW.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Pattern\PInsp_AlgoPattern.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\PatternDiff\PInsp_AlgoPatternDiff.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\POCR\PInsp_AlgoPOCR.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\ShapeX\PInsp_AlgoShapeX.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\SolderCone\PInsp_AlgoSolderCone.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Tab\PInsp_AlgoTab.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\TabSearch\PInsp_AlgoTabSearch.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Tilt\PInsp_AlgoTilt.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Volume\PInsp_AlgoVolume.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Width\PInsp_AlgoWidth.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Algo\Wire\PInsp_AlgoWire.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Ball.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_BGA.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Color.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Crescent.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Foot.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_ForeignPattern.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Grid.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_LeadSolder.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Mount.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_OCR.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_OCV.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Pattern.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Ribbon.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Tab.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_Wedge.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInsp_WireBonding.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInspAlgoWrapper.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PInspDecision.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PMemoryPool.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc_Foot.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc_Wire.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\Proc3D.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_BGA.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_Color.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_LeadSolder.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_Mount.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_OCR.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcMil_Pattern.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcPil_ForeignPattern.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcPil_OCV.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ProcPil_Pattern.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\PsrFileManager.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\QTimer.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\ReadWriteFile.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\SharedMemory.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\tick.cpp" />
+    <ClCompile Include="NativeSources\MPTILib_Algo\tstring.cpp" />
+  </ItemGroup>
+</Project>
