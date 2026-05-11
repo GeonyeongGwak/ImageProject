@@ -6,6 +6,7 @@ using System.Windows.Media;
 using WpfInspectionApp.Commands;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Models;
+using WpfInspectionApp.Services;
 
 namespace WpfInspectionApp.ViewModels;
 
@@ -423,6 +424,29 @@ public sealed class MainViewModel : ViewModelBase
         TimingText = timingText;
         StatusMessage = statusMessage;
         InspectionResultText = resultText;
+    }
+
+    public void BeginInspectionRun()
+    {
+        StatusMessage = "Part inspection running...";
+        IsInspectionRunning = true;
+    }
+
+    public void ApplyInspectionRun(PartInspectionWorkflowResult result)
+    {
+        if (!string.IsNullOrWhiteSpace(result.TimingText))
+        {
+            TimingText = result.TimingText;
+        }
+
+        StatusMessage = result.StatusMessage;
+        InspectionResultText = result.ResultText;
+    }
+
+    public void ApplyInspectionFailure(Exception exception)
+    {
+        StatusMessage = $"Part inspection failed: {exception.Message}";
+        InspectionResultText = exception.ToString();
     }
 
     public void RefreshInspectionTree(string? selectedId, int sourceWidth, int sourceHeight)

@@ -73,11 +73,7 @@ public partial class MainWindow : Window
             RunInspectionAsync,
             ZoomOne,
             ZoomFit);
-        _viewModel.TreeRefreshRequested += selectedId =>
-        {
-            RefreshInspectionTree(selectedId);
-            DrawRoiOverlays();
-        };
+        _viewModel.TreeRefreshRequested += RefreshInspectionView;
         _viewModel.AlgorithmPanelRefreshRequested += UpdateAlgorithmPanels;
         _viewModel.SelectionChanged += OnViewModelSelectionChanged;
         InitializeAlgorithmPanels();
@@ -93,8 +89,7 @@ public partial class MainWindow : Window
         };
 
         _model.EnsureStructure();
-        ApplyModelToUi();
-        RefreshInspectionTree();
+        ApplyModelAndRefreshView(scheduleThreshold: false);
         PttViewerPanel.Resize += (_, _) => _pem3DViewerHostService.ResizeExternalViewer(PttViewerPanel);
         _uiReady = true;
     }
@@ -140,8 +135,7 @@ public partial class MainWindow : Window
     {
         UpdateActiveRoiUi();
         UpdateAlgorithmPanels();
-        DrawRoiOverlays();
-        ScheduleThreshold();
+        RefreshRoiOverlaysAndThreshold();
     }
 
     private void InitializeAlgorithmPanels()
@@ -279,10 +273,7 @@ public partial class MainWindow : Window
 
         _model = result.Model;
         ViewModel.Model = _model;
-        ApplyModelToUi();
-        RefreshInspectionTree();
-        DrawRoiOverlays();
-        ScheduleThreshold();
+        ApplyModelAndRefreshView();
         ViewModel.StatusMessage = result.StatusMessage;
     }
 
@@ -333,10 +324,7 @@ public partial class MainWindow : Window
     {
         _roiInteractionService.ResetDrawing();
         DisableRoiDrawing();
-        ApplyModelToUi();
-        RefreshInspectionTree(result.SelectedWindowId);
-        DrawRoiOverlays();
-        ScheduleThreshold();
+        ApplyModelAndRefreshView(result.SelectedWindowId);
         if (!string.IsNullOrWhiteSpace(result.Summary))
         {
             ViewModel.InspectionResultText = result.Summary;
@@ -374,8 +362,7 @@ public partial class MainWindow : Window
         UpdateModelFromUi();
 
         _inspectionRunRequested = true;
-        ViewModel.StatusMessage = "Part inspection running...";
-        ViewModel.IsInspectionRunning = true;
+        ViewModel.BeginInspectionRun();
 
         try
         {
@@ -388,19 +375,12 @@ public partial class MainWindow : Window
                 RefreshInspectionTree(result.RefreshSelectedId);
             }
 
-            if (!string.IsNullOrWhiteSpace(result.TimingText))
-            {
-                ViewModel.TimingText = result.TimingText;
-            }
-
-            ViewModel.StatusMessage = result.StatusMessage;
-            ViewModel.InspectionResultText = result.ResultText;
+            ViewModel.ApplyInspectionRun(result);
         }
         catch (Exception ex)
         {
             DiagnosticsLog.Write($"Part inspection failed: {ex}");
-            ViewModel.StatusMessage = $"Part inspection failed: {ex.Message}";
-            ViewModel.InspectionResultText = ex.ToString();
+            ViewModel.ApplyInspectionFailure(ex);
         }
         finally
         {
@@ -657,8 +637,7 @@ public partial class MainWindow : Window
     {
         var result = _imageLoadWorkflowService.Load(path);
         ViewModel.ApplyImageLoad(result.SourceImage, result.BinaryImage, result.Width, result.Height, result.StatusMessage);
-        DrawRoiOverlays();
-        ScheduleThreshold();
+        RefreshRoiOverlaysAndThreshold();
     }
 
     private void LoadPtt(string path, bool prepareMpti = true)
@@ -753,6 +732,36 @@ public partial class MainWindow : Window
         UpdatePartTeachingUi();
     }
 
+    private void ApplyModelAndRefreshView(string? selectedId = null, bool scheduleThreshold = true)
+    {
+        ApplyModelToUi();
+        if (scheduleThreshold)
+        {
+            RefreshInspectionViewAndThreshold(selectedId);
+            return;
+        }
+
+        RefreshInspectionView(selectedId);
+    }
+
+    private void RefreshInspectionView(string? selectedId = null)
+    {
+        RefreshInspectionTree(selectedId);
+        DrawRoiOverlays();
+    }
+
+    private void RefreshInspectionViewAndThreshold(string? selectedId = null)
+    {
+        RefreshInspectionView(selectedId);
+        ScheduleThreshold();
+    }
+
+    private void RefreshRoiOverlaysAndThreshold()
+    {
+        DrawRoiOverlays();
+        ScheduleThreshold();
+    }
+
     private string SelectedAlgorithm()
     {
         return ViewModel.SelectedAlgorithm;
@@ -796,9 +805,7 @@ public partial class MainWindow : Window
                 return;
             }
 
-            ApplyModelToUi();
-            RefreshInspectionTree(teaching.SelectedWindowId);
-            DrawRoiOverlays();
+            ApplyModelAndRefreshView(teaching.SelectedWindowId, scheduleThreshold: false);
 
             AlignPanel.SetPartTeachingStatus(teaching.Status);
             ViewModel.StatusMessage = $"Align Part Teaching completed: {teaching.TaughtCount} Window(s).";
@@ -997,8 +1004,7 @@ public partial class MainWindow : Window
         }
 
         SyncSearchSizeInputsFromActiveRoi();
-        DrawRoiOverlays();
-        ScheduleThreshold();
+        RefreshRoiOverlaysAndThreshold();
     }
 
     private void DisableRoiDrawing()
@@ -1017,11 +1023,7 @@ public partial class MainWindow : Window
         var result = _roiModelService.SelectNextWindow(_model);
         SyncSearchNumCombo();
         UpdateActiveRoiUi();
-        if (!string.IsNullOrWhiteSpace(result.SelectedId))
-        {
-            RefreshInspectionTree(result.SelectedId);
-        }
-        DrawRoiOverlays();
+        RefreshInspectionView(result.SelectedId);
     }
 
     private void SyncSearchNumCombo()
@@ -1035,9 +1037,7 @@ public partial class MainWindow : Window
     {
         var result = _roiModelService.DeleteActiveWindow(_model);
         UpdateActiveRoiUi();
-        RefreshInspectionTree(result.SelectedId);
-        DrawRoiOverlays();
-        ScheduleThreshold();
+        RefreshInspectionViewAndThreshold(result.SelectedId);
     }
 
     private void UpdateActiveRoiUi()
@@ -1056,8 +1056,7 @@ public partial class MainWindow : Window
         }
 
         ApplyRoiModelResult(result);
-        DrawRoiOverlays();
-        ScheduleThreshold();
+        RefreshRoiOverlaysAndThreshold();
     }
 
     private void SyncSearchSizeInputsFromActiveRoi()
