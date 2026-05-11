@@ -6,6 +6,35 @@ using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp.Views;
 
+public enum AlignPanelUpdateKind
+{
+    SearchNum,
+    SearchParameter,
+    SearchSize,
+    Parameter,
+    AlignParameter,
+    Threshold2D,
+    Threshold3D,
+    EdgeGain,
+    IpcClass,
+    PartTeachingOption
+}
+
+public enum AlignPanelActionKind
+{
+    ActiveRoi,
+    DrawWindowRoi,
+    DrawAlgorithmRoi,
+    Teach,
+    PartTeachingIc,
+    PartTeachingOk,
+    PartTeachingClose
+}
+
+public sealed record AlignPanelUpdateRequestedEventArgs(AlignPanelUpdateKind Kind, object? Source);
+
+public sealed record AlignPanelActionRequestedEventArgs(AlignPanelActionKind Kind);
+
 public partial class AlignPanelView : UserControl
 {
     private readonly AlignPanelViewModel _viewModel = new();
@@ -17,24 +46,8 @@ public partial class AlignPanelView : UserControl
     }
 
     public event SelectionChangedEventHandler? AlignTabSelectionChanged;
-    public event SelectionChangedEventHandler? SearchNumSelectionChanged;
-    public event RoutedEventHandler? ActiveRoiRequested;
-    public event RoutedEventHandler? DrawWindowRoiRequested;
-    public event RoutedEventHandler? DrawAlgorithmRoiRequested;
-    public event RoutedEventHandler? SearchParameterChanged;
-    public event RoutedEventHandler? SearchSizeChanged;
-    public event RoutedEventHandler? TeachRequested;
-    public event RoutedEventHandler? ParameterChanged;
-    public event RoutedEventHandler? AlignParameterChanged;
-    public event RoutedPropertyChangedEventHandler<double>? ThresholdSliderChanged;
-    public event RoutedPropertyChangedEventHandler<double>? Threshold3DSliderChanged;
-    public event RoutedPropertyChangedEventHandler<double>? EdgeGainSliderChanged;
-    public event SelectionChangedEventHandler? IpcClassSelectionChanged;
-    public event SelectionChangedEventHandler? PartTeachingOptionSelectionChanged;
-    public event RoutedEventHandler? PartTeachingOptionChanged;
-    public event RoutedEventHandler? PartTeachingIcRequested;
-    public event RoutedEventHandler? PartTeachingOkRequested;
-    public event RoutedEventHandler? PartTeachingCloseRequested;
+    public event EventHandler<AlignPanelUpdateRequestedEventArgs>? UpdateRequested;
+    public event EventHandler<AlignPanelActionRequestedEventArgs>? ActionRequested;
 
     public AlignPanelViewModel ViewModel => _viewModel;
 
@@ -72,7 +85,7 @@ public partial class AlignPanelView : UserControl
         _viewModel.SetSearchSize(width, height);
     }
 
-    public void MirrorSearchSizeInput(object sender, InspectionModel model)
+    public void MirrorSearchSizeInput(object? sender, InspectionModel model)
     {
         if (!_viewModel.SameSize)
         {
@@ -133,92 +146,101 @@ public partial class AlignPanelView : UserControl
 
     private void SearchNumCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        SearchNumSelectionChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.SearchNum, sender);
     }
 
     private void ActiveRoiButton_Click(object sender, RoutedEventArgs e)
     {
-        ActiveRoiRequested?.Invoke(sender, e);
+        RequestAction(AlignPanelActionKind.ActiveRoi);
     }
 
     private void DrawRoiButton_Click(object sender, RoutedEventArgs e)
     {
-        DrawWindowRoiRequested?.Invoke(sender, e);
+        RequestAction(AlignPanelActionKind.DrawWindowRoi);
     }
 
     private void DrawAlgorithmRoiButton_Click(object sender, RoutedEventArgs e)
     {
-        DrawAlgorithmRoiRequested?.Invoke(sender, e);
+        RequestAction(AlignPanelActionKind.DrawAlgorithmRoi);
     }
 
     private void SearchParameter_Changed(object sender, RoutedEventArgs e)
     {
-        SearchParameterChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.SearchParameter, sender);
     }
 
     private void SearchSizeBox_TextChanged(object sender, TextChangedEventArgs e)
     {
-        SearchSizeChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.SearchSize, sender);
     }
 
     private void TeachButton_Click(object sender, RoutedEventArgs e)
     {
-        TeachRequested?.Invoke(sender, e);
+        RequestAction(AlignPanelActionKind.Teach);
     }
 
     private void Parameter_Changed(object sender, RoutedEventArgs e)
     {
-        ParameterChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.Parameter, sender);
     }
 
     private void AlignParameter_Changed(object sender, RoutedEventArgs e)
     {
-        AlignParameterChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.AlignParameter, sender);
     }
 
     private void ThresholdSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        ThresholdSliderChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.Threshold2D, sender);
     }
 
     private void Threshold3DSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        Threshold3DSliderChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.Threshold3D, sender);
     }
 
     private void EdgeGainSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
     {
-        EdgeGainSliderChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.EdgeGain, sender);
     }
 
     private void IpcClassCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        IpcClassSelectionChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.IpcClass, sender);
     }
 
     private void PartTeachingOption_Changed(object sender, RoutedEventArgs e)
     {
-        PartTeachingOptionChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.PartTeachingOption, sender);
     }
 
     private void PartTeachingOption_Changed(object sender, SelectionChangedEventArgs e)
     {
-        PartTeachingOptionSelectionChanged?.Invoke(sender, e);
+        RequestUpdate(AlignPanelUpdateKind.PartTeachingOption, sender);
     }
 
     private void PartTeachingIcButton_Click(object sender, RoutedEventArgs e)
     {
-        PartTeachingIcRequested?.Invoke(sender, e);
+        RequestAction(AlignPanelActionKind.PartTeachingIc);
     }
 
     private void PartTeachingOkButton_Click(object sender, RoutedEventArgs e)
     {
-        PartTeachingOkRequested?.Invoke(sender, e);
+        RequestAction(AlignPanelActionKind.PartTeachingOk);
     }
 
     private void PartTeachingCloseButton_Click(object sender, RoutedEventArgs e)
     {
-        PartTeachingCloseRequested?.Invoke(sender, e);
+        RequestAction(AlignPanelActionKind.PartTeachingClose);
     }
 
+    private void RequestUpdate(AlignPanelUpdateKind kind, object? source)
+    {
+        UpdateRequested?.Invoke(this, new AlignPanelUpdateRequestedEventArgs(kind, source));
+    }
+
+    private void RequestAction(AlignPanelActionKind kind)
+    {
+        ActionRequested?.Invoke(this, new AlignPanelActionRequestedEventArgs(kind));
+    }
 }
