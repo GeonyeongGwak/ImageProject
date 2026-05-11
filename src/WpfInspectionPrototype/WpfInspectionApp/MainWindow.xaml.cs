@@ -13,21 +13,6 @@ namespace WpfInspectionApp;
 
 public partial class MainWindow : Window
 {
-    [Flags]
-    private enum AlignPanelUpdate
-    {
-        None = 0,
-        Model = 1,
-        MaskDensity = 2,
-        Threshold = 4,
-        RoiText = 8,
-        AlgorithmPanels = 16,
-        RoiDrawButton = 32,
-        RoiOverlays = 64,
-        ActiveRoiUi = 128,
-        PartTeachingUi = 256
-    }
-
     private readonly DispatcherTimer _thresholdTimer;
     private readonly AlgorithmPanelFactory _algorithmPanelFactory = new();
     private readonly RoiOverlayCoordinator _roiOverlayCoordinator;
@@ -128,54 +113,54 @@ public partial class MainWindow : Window
         action();
     }
 
-    private void HandleAlignPanelUpdate(AlignPanelUpdate update)
+    private void HandleAlignPanelUpdate(AlignPanelUpdateEffect update)
     {
         HandleUiChange(() => ApplyAlignPanelUpdate(update));
     }
 
-    private void ApplyAlignPanelUpdate(AlignPanelUpdate update)
+    private void ApplyAlignPanelUpdate(AlignPanelUpdateEffect update)
     {
-        if (update.HasFlag(AlignPanelUpdate.PartTeachingUi))
+        if (update.HasFlag(AlignPanelUpdateEffect.PartTeachingUi))
         {
             UpdatePartTeachingUi();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.Model))
+        if (update.HasFlag(AlignPanelUpdateEffect.Model))
         {
             UpdateModelFromUi();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.AlgorithmPanels))
+        if (update.HasFlag(AlignPanelUpdateEffect.AlgorithmPanels))
         {
             UpdateAlgorithmPanels();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.RoiDrawButton))
+        if (update.HasFlag(AlignPanelUpdateEffect.RoiDrawButton))
         {
             UpdateRoiDrawButtonState();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.ActiveRoiUi))
+        if (update.HasFlag(AlignPanelUpdateEffect.ActiveRoiUi))
         {
             UpdateActiveRoiUi();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.MaskDensity))
+        if (update.HasFlag(AlignPanelUpdateEffect.MaskDensity))
         {
             UpdateMaskDensity();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.RoiText))
+        if (update.HasFlag(AlignPanelUpdateEffect.RoiText))
         {
             UpdateRoiText();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.RoiOverlays))
+        if (update.HasFlag(AlignPanelUpdateEffect.RoiOverlays))
         {
             DrawRoiOverlays();
         }
 
-        if (update.HasFlag(AlignPanelUpdate.Threshold))
+        if (update.HasFlag(AlignPanelUpdateEffect.Threshold))
         {
             ScheduleThreshold();
         }
@@ -191,27 +176,8 @@ public partial class MainWindow : Window
             case AlignPanelUpdateKind.SearchSize:
                 SearchSizeBox_TextChanged(e.Source);
                 break;
-            case AlignPanelUpdateKind.SearchParameter:
-                HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.RoiOverlays);
-                break;
-            case AlignPanelUpdateKind.Parameter:
-                HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.MaskDensity | AlignPanelUpdate.Threshold);
-                break;
-            case AlignPanelUpdateKind.AlignParameter:
-                HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.RoiText);
-                break;
-            case AlignPanelUpdateKind.Threshold2D:
-                HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.Threshold);
-                break;
-            case AlignPanelUpdateKind.Threshold3D:
-            case AlignPanelUpdateKind.EdgeGain:
-                HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.MaskDensity);
-                break;
-            case AlignPanelUpdateKind.IpcClass:
-                HandleAlignPanelUpdate(AlignPanelUpdate.Model);
-                break;
-            case AlignPanelUpdateKind.PartTeachingOption:
-                HandleAlignPanelUpdate(AlignPanelUpdate.PartTeachingUi | AlignPanelUpdate.Model);
+            default:
+                HandleAlignPanelUpdate(e.Kind.ToEffect());
                 break;
         }
     }
@@ -510,7 +476,7 @@ public partial class MainWindow : Window
 
     private void AlgorithmCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.AlgorithmPanels | AlignPanelUpdate.RoiDrawButton | AlignPanelUpdate.Threshold);
+        HandleAlignPanelUpdate(AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.AlgorithmPanels | AlignPanelUpdateEffect.RoiDrawButton | AlignPanelUpdateEffect.Threshold);
     }
 
     private void AlignTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
