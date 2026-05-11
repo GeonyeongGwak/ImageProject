@@ -10,7 +10,7 @@ public sealed class FileDialogService : IFileDialogService
         return Browse(
             owner,
             "Load 2D image",
-            "Image Files|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff|All Files|*.*",
+            "Image Files|*.jpg;*.jpeg;*.png;*.bmp;*.tif;*.tiff",
             initialDirectory: null);
     }
 

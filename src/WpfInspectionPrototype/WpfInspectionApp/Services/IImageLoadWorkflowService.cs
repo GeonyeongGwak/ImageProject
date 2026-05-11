@@ -3,8 +3,9 @@ using System.Windows.Media;
 namespace WpfInspectionApp.Services;
 
 public sealed record ImageLoadWorkflowResult(
-    ImageSource SourceImage,
-    ImageSource BinaryImage,
+    bool Success,
+    ImageSource? SourceImage,
+    ImageSource? BinaryImage,
     int Width,
     int Height,
     string StatusMessage);

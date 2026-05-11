@@ -643,6 +643,12 @@ public partial class MainWindow : Window
     private void LoadImage(string path)
     {
         var result = _imageLoadWorkflowService.Load(path);
+        if (!result.Success || result.SourceImage == null || result.BinaryImage == null)
+        {
+            ViewModel.StatusMessage = result.StatusMessage;
+            return;
+        }
+
         ViewModel.ApplyImageLoad(result.SourceImage, result.BinaryImage, result.Width, result.Height, result.StatusMessage);
         RefreshRoiOverlaysAndThreshold();
     }
