@@ -11,6 +11,7 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
     private readonly AlgorithmReferenceUiProfile _profile;
     private readonly Border _root;
     private readonly StackPanel _content;
+    private readonly AlgorithmPanelInteraction _interaction;
     private readonly AlgorithmPanelControlStatePolicy _controlStatePolicy;
     private AlgorithmPanelContext? _context;
     private bool _binding;
@@ -26,7 +27,14 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
         _profile = AlgorithmReferenceUiCatalog.Create(catalog);
         _content = new StackPanel();
         _root = AlgorithmPanelUi.RootBorder(_content);
-        _controlStatePolicy = new AlgorithmPanelControlStatePolicy(_catalog, Read);
+        _interaction = new AlgorithmPanelInteraction(
+            _catalog,
+            () => _binding,
+            () => _context,
+            Rebuild,
+            OnAlgorithmSpecificCommand,
+            OnAlgorithmSpecificParameterChanged);
+        _controlStatePolicy = new AlgorithmPanelControlStatePolicy(_catalog, _interaction.Read);
     }
 
     public string AlgorithmType => _catalog.Type;
@@ -65,9 +73,9 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
 
         var commandGrid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 8, 0, 8) };
         commandGrid.Children.Add(Button("Draw Algorithm ROI", () => AlgorithmPanelCommonEvents.RequestAlgorithmRoi(_context)));
-        commandGrid.Children.Add(Button("Teach", () => ExecuteCommand($"{_catalog.ParameterFamily}.TeachRequested", rebuild: false)));
-        commandGrid.Children.Add(Button("Search", () => ExecuteCommand($"{_catalog.ParameterFamily}.SearchRequested", rebuild: false)));
-        commandGrid.Children.Add(Button("Apply All", () => ExecuteCommand("Command.ApplyAllTarget", rebuild: false)));
+        commandGrid.Children.Add(Button("Teach", () => _interaction.ExecuteCommand($"{_catalog.ParameterFamily}.TeachRequested", rebuild: false)));
+        commandGrid.Children.Add(Button("Search", () => _interaction.ExecuteCommand($"{_catalog.ParameterFamily}.SearchRequested", rebuild: false)));
+        commandGrid.Children.Add(Button("Apply All", () => _interaction.ExecuteCommand("Command.ApplyAllTarget", rebuild: false)));
         _content.Children.Add(commandGrid);
 
         var tabs = new TabControl
@@ -120,8 +128,8 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
             AlgorithmReferenceControlKind.Check => Check(control.Label, control.Key, control.DefaultValue.Equals("true", StringComparison.OrdinalIgnoreCase)),
             AlgorithmReferenceControlKind.Number => Number(control.Label, control.Key, control.DefaultValue),
             AlgorithmReferenceControlKind.Slider => Slider(control.Label, control.Key, control.Minimum, control.Maximum, control.DefaultValue),
-            AlgorithmReferenceControlKind.Combo => Combo(control.Label, control.Key, control.Options ?? [], ReadIndex(control.Key, control.DefaultValue)),
-            AlgorithmReferenceControlKind.Command => Button(control.Label, () => ExecuteCommand(control.Key, rebuild: false)),
+            AlgorithmReferenceControlKind.Combo => Combo(control.Label, control.Key, control.Options ?? [], _interaction.ReadIndex(control.Key, control.DefaultValue)),
+            AlgorithmReferenceControlKind.Command => Button(control.Label, () => _interaction.ExecuteCommand(control.Key, rebuild: false)),
             _ => Text(control.Label, 12, "#8BA5C4", FontWeights.SemiBold)
         };
         element.IsEnabled = _controlStatePolicy.IsControlEnabled(control);
@@ -130,22 +138,22 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
 
     private CheckBox Check(string label, string key, bool fallback)
     {
-        return AlgorithmPanelUi.Check(label, Read(key, fallback ? "true" : "false"), fallback, value => Write(key, value));
+        return AlgorithmPanelUi.Check(label, _interaction.Read(key, fallback ? "true" : "false"), fallback, value => _interaction.Write(key, value));
     }
 
     private FrameworkElement Number(string label, string key, string fallback)
     {
-        return AlgorithmPanelUi.Number(label, Read(key, fallback), value => Write(key, value));
+        return AlgorithmPanelUi.Number(label, _interaction.Read(key, fallback), value => _interaction.Write(key, value));
     }
 
     private FrameworkElement Slider(string label, string key, int min, int max, string fallback)
     {
-        return AlgorithmPanelUi.Slider(label, Read(key, fallback), min, max, fallback, value => Write(key, value));
+        return AlgorithmPanelUi.Slider(label, _interaction.Read(key, fallback), min, max, fallback, value => _interaction.Write(key, value));
     }
 
     private FrameworkElement Combo(string label, string key, string[] values, int selectedIndex)
     {
-        return AlgorithmPanelUi.Combo(label, values, selectedIndex, value => Write(key, value.ToString()));
+        return AlgorithmPanelUi.Combo(label, values, selectedIndex, value => _interaction.Write(key, value.ToString()));
     }
 
     private FrameworkElement Row(string label, FrameworkElement editor)
@@ -168,49 +176,6 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
         return AlgorithmPanelUi.Button(content, action);
     }
 
-    private string Read(string key, string fallback)
-    {
-        return _context?.Algorithm.Parameters.TryGetValue(key, out var value) == true ? value : fallback;
-    }
-
-    private void Write(string key, string value)
-    {
-        if (_binding || _context == null)
-        {
-            return;
-        }
-
-        AlgorithmPanelCommonEvents.WriteParameter(_context, key, value);
-        OnAlgorithmSpecificParameterChanged(key, value);
-
-        if (AlgorithmPanelControlStatePolicy.ShouldRebuildForDependency(key))
-        {
-            Rebuild();
-        }
-    }
-
-    private void ExecuteCommand(string key, bool rebuild)
-    {
-        if (_context == null)
-        {
-            return;
-        }
-
-        if (AlgorithmPanelCommonEvents.IsCommonCommand(_catalog, key))
-        {
-            AlgorithmPanelCommonEvents.TriggerCommand(_context, _catalog, key);
-        }
-        else if (!OnAlgorithmSpecificCommand(key))
-        {
-            AlgorithmPanelCommonEvents.TriggerCommand(_context, _catalog, key);
-        }
-
-        if (rebuild)
-        {
-            Rebuild();
-        }
-    }
-
     protected virtual bool OnAlgorithmSpecificCommand(string key)
     {
         return false;
@@ -218,11 +183,6 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
 
     protected virtual void OnAlgorithmSpecificParameterChanged(string key, string value)
     {
-    }
-
-    private int ReadIndex(string key, string fallback)
-    {
-        return int.TryParse(Read(key, fallback), out var value) ? value : 0;
     }
 
     private static TextBlock Text(string text, double size, string color, FontWeight weight)
