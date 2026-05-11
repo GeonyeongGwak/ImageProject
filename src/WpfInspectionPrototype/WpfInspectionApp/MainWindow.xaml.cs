@@ -13,6 +13,21 @@ namespace WpfInspectionApp;
 
 public partial class MainWindow : Window
 {
+    [Flags]
+    private enum AlignPanelUpdate
+    {
+        None = 0,
+        Model = 1,
+        MaskDensity = 2,
+        Threshold = 4,
+        RoiText = 8,
+        AlgorithmPanels = 16,
+        RoiDrawButton = 32,
+        RoiOverlays = 64,
+        ActiveRoiUi = 128,
+        PartTeachingUi = 256
+    }
+
     private readonly DispatcherTimer _thresholdTimer;
     private readonly AlgorithmPanelFactory _algorithmPanelFactory = new();
     private readonly RoiOverlayCoordinator _roiOverlayCoordinator;
@@ -99,17 +114,17 @@ public partial class MainWindow : Window
         AlignPanel.ActiveRoiRequested += ActiveRoiButton_Click;
         AlignPanel.DrawWindowRoiRequested += DrawRoiButton_Click;
         AlignPanel.DrawAlgorithmRoiRequested += DrawAlgorithmRoiButton_Click;
-        AlignPanel.SearchParameterChanged += SearchParameter_Changed;
+        AlignPanel.SearchParameterChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.RoiOverlays);
         AlignPanel.SearchSizeChanged += SearchSizeBox_TextChanged;
         AlignPanel.TeachRequested += TeachButton_Click;
-        AlignPanel.ParameterChanged += Parameter_Changed;
-        AlignPanel.AlignParameterChanged += AlignParameter_Changed;
-        AlignPanel.ThresholdSliderChanged += ThresholdSlider_ValueChanged;
-        AlignPanel.Threshold3DSliderChanged += Threshold3DSlider_ValueChanged;
-        AlignPanel.EdgeGainSliderChanged += EdgeGainSlider_ValueChanged;
-        AlignPanel.IpcClassSelectionChanged += IpcClassCombo_SelectionChanged;
-        AlignPanel.PartTeachingOptionChanged += PartTeachingOption_Changed;
-        AlignPanel.PartTeachingOptionSelectionChanged += PartTeachingOption_Changed;
+        AlignPanel.ParameterChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.MaskDensity | AlignPanelUpdate.Threshold);
+        AlignPanel.AlignParameterChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.RoiText);
+        AlignPanel.ThresholdSliderChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.Threshold);
+        AlignPanel.Threshold3DSliderChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.MaskDensity);
+        AlignPanel.EdgeGainSliderChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.MaskDensity);
+        AlignPanel.IpcClassSelectionChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.Model);
+        AlignPanel.PartTeachingOptionChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.PartTeachingUi | AlignPanelUpdate.Model);
+        AlignPanel.PartTeachingOptionSelectionChanged += (_, _) => HandleAlignPanelUpdate(AlignPanelUpdate.PartTeachingUi | AlignPanelUpdate.Model);
         AlignPanel.PartTeachingIcRequested += PartTeachingIcButton_Click;
         AlignPanel.PartTeachingOkRequested += PartTeachingOkButton_Click;
         AlignPanel.PartTeachingCloseRequested += PartTeachingCloseButton_Click;
@@ -127,6 +142,59 @@ public partial class MainWindow : Window
         }
 
         action();
+    }
+
+    private void HandleAlignPanelUpdate(AlignPanelUpdate update)
+    {
+        HandleUiChange(() => ApplyAlignPanelUpdate(update));
+    }
+
+    private void ApplyAlignPanelUpdate(AlignPanelUpdate update)
+    {
+        if (update.HasFlag(AlignPanelUpdate.PartTeachingUi))
+        {
+            UpdatePartTeachingUi();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.Model))
+        {
+            UpdateModelFromUi();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.AlgorithmPanels))
+        {
+            UpdateAlgorithmPanels();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.RoiDrawButton))
+        {
+            UpdateRoiDrawButtonState();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.ActiveRoiUi))
+        {
+            UpdateActiveRoiUi();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.MaskDensity))
+        {
+            UpdateMaskDensity();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.RoiText))
+        {
+            UpdateRoiText();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.RoiOverlays))
+        {
+            DrawRoiOverlays();
+        }
+
+        if (update.HasFlag(AlignPanelUpdate.Threshold))
+        {
+            ScheduleThreshold();
+        }
     }
 
     private void OnViewModelSelectionChanged()
@@ -399,61 +467,9 @@ public partial class MainWindow : Window
         return _imageRuntimeStateService.CreatePartRuntimeImage(_model.Threshold2D);
     }
 
-    private void ThresholdSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-            ScheduleThreshold();
-        });
-    }
-
-    private void Threshold3DSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-            UpdateMaskDensity();
-        });
-    }
-
-    private void EdgeGainSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-            UpdateMaskDensity();
-        });
-    }
-
-    private void Parameter_Changed(object sender, RoutedEventArgs e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-            UpdateMaskDensity();
-            ScheduleThreshold();
-        });
-    }
-
-    private void AlignParameter_Changed(object sender, RoutedEventArgs e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-            UpdateRoiText();
-        });
-    }
-
     private void AlgorithmCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-            UpdateAlgorithmPanels();
-            UpdateRoiDrawButtonState();
-            ScheduleThreshold();
-        });
+        HandleAlignPanelUpdate(AlignPanelUpdate.Model | AlignPanelUpdate.AlgorithmPanels | AlignPanelUpdate.RoiDrawButton | AlignPanelUpdate.Threshold);
     }
 
     private void AlignTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -489,15 +505,6 @@ public partial class MainWindow : Window
         SelectNextAlignRoi();
     }
 
-    private void SearchParameter_Changed(object sender, RoutedEventArgs e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-            DrawRoiOverlays();
-        });
-    }
-
     private void SearchSizeBox_TextChanged(object sender, RoutedEventArgs e)
     {
         if (_syncingSearchSize)
@@ -523,15 +530,6 @@ public partial class MainWindow : Window
         ViewModel.StatusMessage = $"Teach active ROI size: {FormatRoi(ActiveRoi)}";
     }
 
-    private void PartTeachingOption_Changed(object sender, RoutedEventArgs e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdatePartTeachingUi();
-            UpdateModelFromUi();
-        });
-    }
-
     private void PartTeachingOkButton_Click(object sender, RoutedEventArgs e)
     {
         RunAlignPartTeaching(useGerber: true);
@@ -548,14 +546,6 @@ public partial class MainWindow : Window
         _model.PartTeachingStopRequested = true;
         AlignPanel.ClosePartTeaching();
         ViewModel.StatusMessage = "Align Part Teaching closed.";
-    }
-
-    private void IpcClassCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        HandleUiChange(() =>
-        {
-            UpdateModelFromUi();
-        });
     }
 
     private void ImageOverlay_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
