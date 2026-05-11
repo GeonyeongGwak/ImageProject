@@ -29,7 +29,7 @@ public partial class MainWindow : Window
     private readonly RoiInteractionService _roiInteractionService;
     private readonly IRoiUiStateService _roiUiStateService;
     private readonly IPem3DViewerHostService _pem3DViewerHostService;
-    private readonly IPttLoadService _pttLoadService;
+    private readonly IPttViewerWorkflowService _pttViewerWorkflowService;
     private readonly IAlignPartTeachingService _alignPartTeachingService;
     private readonly IAlignConditionService _alignConditionService;
     private readonly MainViewModel _viewModel;
@@ -59,7 +59,7 @@ public partial class MainWindow : Window
         _roiInteractionService = App.Services.RoiInteraction;
         _roiUiStateService = App.Services.RoiUiState;
         _pem3DViewerHostService = App.Services.Pem3DViewerHost;
-        _pttLoadService = App.Services.PttLoad;
+        _pttViewerWorkflowService = App.Services.PttViewerWorkflow;
         _alignPartTeachingService = App.Services.AlignPartTeaching;
         _alignConditionService = App.Services.AlignCondition;
         _viewModel = new MainViewModel(_model);
@@ -666,34 +666,17 @@ public partial class MainWindow : Window
 
     private void LoadPtt(string path, bool prepareMpti = true)
     {
-        try
+        var result = _pttViewerWorkflowService.LoadIntoControl(path, PttViewerPanel, prepareMpti);
+        if (result.Success)
         {
-            DiagnosticsLog.Write($"LoadPtt: {path}");
-            LoadPttIntoPem3DControl(path);
-            var mptiStatus = prepareMpti
-                ? _pttLoadService.PrepareMptiBridge(path).StatusMessage
-                : "MPTI prep skipped for Part Import";
-            ViewModel.MarkPttLoaded(path);
-            ViewModel.StatusMessage = $"Loaded 3D PTT in PEM3DControl: {path} | {mptiStatus}";
-            DiagnosticsLog.Write($"LoadPtt succeeded: {path}");
+            ViewModel.MarkPttLoaded(result.Path);
         }
-        catch (Exception ex)
+        else
         {
-            DiagnosticsLog.Write($"LoadPtt failed: {ex}");
             ViewModel.MarkPttLoadFailed();
-            ViewModel.StatusMessage = $"3D PTT load failed: {ex.Message}";
-        }
-    }
-
-    private void LoadPttIntoPem3DControl(string path)
-    {
-        if (!File.Exists(path))
-        {
-            throw new FileNotFoundException("PTT file was not found.", path);
         }
 
-        DiagnosticsLog.Write(_pttLoadService.CreateFileDiagnostics(path));
-        _pem3DViewerHostService.LoadIntoControl(path, PttViewerPanel);
+        ViewModel.StatusMessage = result.StatusMessage;
     }
 
     private void ScheduleThreshold()

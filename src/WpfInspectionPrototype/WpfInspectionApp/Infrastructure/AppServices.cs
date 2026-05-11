@@ -13,6 +13,7 @@ public sealed class AppServices
         ImageRuntimeState = new ImageRuntimeStateService(ImageFrame);
         ImageLoadWorkflow = new ImageLoadWorkflowService(ImageRuntimeState);
         ThresholdPreviewWorkflow = new ThresholdPreviewWorkflowService(PreviewProcessing, ImageRuntimeState, ThresholdResult);
+        PttViewerWorkflow = new PttViewerWorkflowService(Pem3DViewerHost, PttLoad);
         RoiInteraction = new RoiInteractionService(RoiGeometry);
         RoiUiState = new RoiUiStateService(RoiModel);
     }
@@ -54,6 +55,8 @@ public sealed class AppServices
     public IPem3DViewerHostService Pem3DViewerHost { get; } = new Pem3DViewerHostService();
 
     public IPttLoadService PttLoad { get; } = new PttLoadService();
+
+    public IPttViewerWorkflowService PttViewerWorkflow { get; }
 
     public IAlignPartTeachingService AlignPartTeaching { get; } = new AlignPartTeachingService();
 
