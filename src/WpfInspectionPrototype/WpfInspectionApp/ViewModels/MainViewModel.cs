@@ -373,6 +373,14 @@ public sealed class MainViewModel : ViewModelBase
         SourceInfoBrush = new SolidColorBrush(Color.FromRgb(24, 224, 123));
     }
 
+    public void ApplyImageLoad(ImageSource sourceImage, ImageSource binaryImage, int width, int height, string statusMessage)
+    {
+        SourceImage = sourceImage;
+        BinaryImage = binaryImage;
+        MarkImageLoaded(width, height);
+        StatusMessage = statusMessage;
+    }
+
     public void MarkPttLoaded(string path)
     {
         PttEmptyVisibility = Visibility.Collapsed;
@@ -386,12 +394,35 @@ public sealed class MainViewModel : ViewModelBase
         PttInfoBrush = new SolidColorBrush(Color.FromRgb(255, 176, 32));
     }
 
+    public void ApplyPttLoad(bool success, string path, string statusMessage)
+    {
+        if (success)
+        {
+            MarkPttLoaded(path);
+        }
+        else
+        {
+            MarkPttLoadFailed();
+        }
+
+        StatusMessage = statusMessage;
+    }
+
     public void MarkBridgeState(bool usedNative)
     {
         BridgeState = usedNative ? "C++ BRIDGE ACTIVE" : "C++ BRIDGE FALLBACK";
         BridgeStateBrush = usedNative
             ? new SolidColorBrush(Color.FromRgb(24, 224, 123))
             : new SolidColorBrush(Color.FromRgb(255, 176, 32));
+    }
+
+    public void ApplyThresholdPreview(ImageSource? binaryImage, bool usedNative, string timingText, string statusMessage, string resultText)
+    {
+        BinaryImage = binaryImage;
+        MarkBridgeState(usedNative);
+        TimingText = timingText;
+        StatusMessage = statusMessage;
+        InspectionResultText = resultText;
     }
 
     public void RefreshInspectionTree(string? selectedId, int sourceWidth, int sourceHeight)

@@ -656,10 +656,7 @@ public partial class MainWindow : Window
     private void LoadImage(string path)
     {
         var result = _imageLoadWorkflowService.Load(path);
-        ViewModel.SourceImage = result.SourceImage;
-        ViewModel.MarkImageLoaded(result.Width, result.Height);
-        ViewModel.BinaryImage = result.BinaryImage;
-        ViewModel.StatusMessage = result.StatusMessage;
+        ViewModel.ApplyImageLoad(result.SourceImage, result.BinaryImage, result.Width, result.Height, result.StatusMessage);
         DrawRoiOverlays();
         ScheduleThreshold();
     }
@@ -667,16 +664,7 @@ public partial class MainWindow : Window
     private void LoadPtt(string path, bool prepareMpti = true)
     {
         var result = _pttViewerWorkflowService.LoadIntoControl(path, PttViewerPanel, prepareMpti);
-        if (result.Success)
-        {
-            ViewModel.MarkPttLoaded(result.Path);
-        }
-        else
-        {
-            ViewModel.MarkPttLoadFailed();
-        }
-
-        ViewModel.StatusMessage = result.StatusMessage;
+        ViewModel.ApplyPttLoad(result.Success, result.Path, result.StatusMessage);
     }
 
     private void ScheduleThreshold()
@@ -720,16 +708,17 @@ public partial class MainWindow : Window
             return;
         }
 
-        ViewModel.BinaryImage = result.BinaryImage;
-        ViewModel.MarkBridgeState(result.UsedNative);
-        ViewModel.TimingText = result.TimingText;
-        ViewModel.StatusMessage = result.StatusMessage;
+        ViewModel.ApplyThresholdPreview(
+            result.BinaryImage,
+            result.UsedNative,
+            result.TimingText,
+            result.StatusMessage,
+            result.ResultText);
         if (_inspectionRunRequested && !string.IsNullOrWhiteSpace(result.UpdatedAlgorithmId))
         {
             RefreshInspectionTree(result.UpdatedAlgorithmId);
         }
         _inspectionRunRequested = false;
-        ViewModel.InspectionResultText = result.ResultText;
         DrawRoiOverlays();
     }
 
