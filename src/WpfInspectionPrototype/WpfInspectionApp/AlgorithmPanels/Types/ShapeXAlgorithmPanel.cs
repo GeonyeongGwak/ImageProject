@@ -12,8 +12,8 @@ public sealed class ShapeXAlgorithmPanel : DynamicAlgorithmPanel
         }
 
         AlgorithmPanelCommonEvents.WriteParameter(Context, "ShapeX.Event.LastPanelCommand", key);
-        Context.RequestPreviewUpdate?.Invoke();
-        Context.RequestTreeRefresh?.Invoke();
+        Context.RequestPreviewUpdate();
+        Context.RequestTreeRefresh();
         return true;
     }
 

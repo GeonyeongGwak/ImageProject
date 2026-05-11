@@ -12,8 +12,8 @@ public sealed class NgBlobAlgorithmPanel : DynamicAlgorithmPanel
         }
 
         AlgorithmPanelCommonEvents.WriteParameter(Context, "NGBlob.Event.LastPanelCommand", key);
-        Context.RequestPreviewUpdate?.Invoke();
-        Context.RequestTreeRefresh?.Invoke();
+        Context.RequestPreviewUpdate();
+        Context.RequestTreeRefresh();
         return true;
     }
 

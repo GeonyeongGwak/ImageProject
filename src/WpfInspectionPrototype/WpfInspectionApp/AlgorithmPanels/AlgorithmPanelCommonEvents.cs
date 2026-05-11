@@ -16,7 +16,7 @@ public static class AlgorithmPanelCommonEvents
         context.Algorithm.Parameters["ROI.DrawTarget"] = "Algorithm";
         context.Algorithm.Parameters["ROI.DrawRequestedAt"] = stamp;
         CommitTeachingChange(context, "ROI", "DrawAlgorithmRoi", "Algorithm ROI drawing requested", stamp);
-        context.RequestAlgorithmRoiDrawing?.Invoke();
+        context.RequestAlgorithmRoiDrawing();
     }
 
     public static void WriteParameter(AlgorithmPanelContext? context, string key, string value)
@@ -29,7 +29,7 @@ public static class AlgorithmPanelCommonEvents
         context.Algorithm.Parameters[key] = value;
         var stamp = Now();
         context.Algorithm.Parameters[$"Event.{key}.ChangedAt"] = stamp;
-        context.SetParameter?.Invoke(key, value);
+        context.SetParameter(key, value);
         CommitTeachingChange(context, key, "ParameterChanged", value, stamp);
     }
 
@@ -45,7 +45,7 @@ public static class AlgorithmPanelCommonEvents
         context.Algorithm.Parameters[$"Event.{key}.Click"] = stamp;
         context.Algorithm.Parameters["Common.LastCommandKey"] = key;
         context.Algorithm.Parameters["Common.LastCommandAt"] = stamp;
-        context.SetParameter?.Invoke(key, stamp);
+        context.SetParameter(key, stamp);
 
         if (IsTeachCommand(key))
         {
@@ -103,14 +103,14 @@ public static class AlgorithmPanelCommonEvents
         context.Algorithm.Parameters["Common.WindowName"] = context.Window.Name;
         context.Algorithm.Parameters["Common.AlgorithmId"] = context.Algorithm.Id;
 
-        context.RequestPreviewUpdate?.Invoke();
-        context.RequestTreeRefresh?.Invoke();
+        context.RequestPreviewUpdate();
+        context.RequestTreeRefresh();
     }
 
     private static void StampClick(AlgorithmPanelContext context, string key, string stamp)
     {
         context.Algorithm.Parameters[$"Event.{key}.Click"] = stamp;
-        context.SetParameter?.Invoke($"Event.{key}.Click", stamp);
+        context.SetParameter($"Event.{key}.Click", stamp);
     }
 
     public static string FormatRoi(RoiRect roi)

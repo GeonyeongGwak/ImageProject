@@ -16,10 +16,31 @@ public sealed class AlgorithmPanelContext
     public InspectionModel Model { get; set; } = null!;
     public InspectionWindowData Window { get; set; } = null!;
     public InspectionAlgorithmData Algorithm { get; set; } = null!;
-    public Action? RequestPreviewUpdate { get; set; }
-    public Action? RequestTreeRefresh { get; set; }
-    public Action? RequestWindowRoiDrawing { get; set; }
-    public Action? RequestAlgorithmRoiDrawing { get; set; }
-    public Action<string, string>? SetParameter { get; set; }
+    public Action<AlgorithmPanelRequest>? Request { get; set; }
+
+    public void RequestPreviewUpdate()
+    {
+        Request?.Invoke(AlgorithmPanelRequest.PreviewUpdate());
+    }
+
+    public void RequestTreeRefresh()
+    {
+        Request?.Invoke(AlgorithmPanelRequest.TreeRefresh());
+    }
+
+    public void RequestWindowRoiDrawing()
+    {
+        Request?.Invoke(AlgorithmPanelRequest.WindowRoiDrawing());
+    }
+
+    public void RequestAlgorithmRoiDrawing()
+    {
+        Request?.Invoke(AlgorithmPanelRequest.AlgorithmRoiDrawing());
+    }
+
+    public void SetParameter(string name, string value)
+    {
+        Request?.Invoke(AlgorithmPanelRequest.SetParameter(name, value));
+    }
 }
 

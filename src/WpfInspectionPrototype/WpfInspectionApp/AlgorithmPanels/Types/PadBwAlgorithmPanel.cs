@@ -12,8 +12,8 @@ public sealed class PadBwAlgorithmPanel : DynamicAlgorithmPanel
         }
 
         AlgorithmPanelCommonEvents.WriteParameter(Context, "PadBW.Event.LastPanelCommand", key);
-        Context.RequestPreviewUpdate?.Invoke();
-        Context.RequestTreeRefresh?.Invoke();
+        Context.RequestPreviewUpdate();
+        Context.RequestTreeRefresh();
         return true;
     }
 

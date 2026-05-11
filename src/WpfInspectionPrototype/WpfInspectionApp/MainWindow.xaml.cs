@@ -887,11 +887,7 @@ public partial class MainWindow : Window
                 Model = _model,
                 Window = window,
                 Algorithm = algorithm,
-                RequestPreviewUpdate = ScheduleThreshold,
-                RequestTreeRefresh = () => RefreshInspectionTree(algorithm.Id),
-                RequestWindowRoiDrawing = EnableWindowRoiDrawing,
-                RequestAlgorithmRoiDrawing = EnableAlgorithmRoiDrawing,
-                SetParameter = (name, value) => SetAlgorithmParameter(algorithm, name, value)
+                Request = request => HandleAlgorithmPanelRequest(algorithm, request)
             });
         }
         else
@@ -908,6 +904,31 @@ public partial class MainWindow : Window
     private IAlgorithmPanel ResolveAlgorithmPanel(string algorithmType)
     {
         return _algorithmPanelFactory.Resolve(algorithmType);
+    }
+
+    private void HandleAlgorithmPanelRequest(InspectionAlgorithmData algorithm, AlgorithmPanelRequest request)
+    {
+        switch (request.Kind)
+        {
+            case AlgorithmPanelRequestKind.PreviewUpdate:
+                ScheduleThreshold();
+                break;
+            case AlgorithmPanelRequestKind.TreeRefresh:
+                RefreshInspectionTree(algorithm.Id);
+                break;
+            case AlgorithmPanelRequestKind.WindowRoiDrawing:
+                EnableWindowRoiDrawing();
+                break;
+            case AlgorithmPanelRequestKind.AlgorithmRoiDrawing:
+                EnableAlgorithmRoiDrawing();
+                break;
+            case AlgorithmPanelRequestKind.SetParameter:
+                if (request.ParameterName != null && request.ParameterValue != null)
+                {
+                    SetAlgorithmParameter(algorithm, request.ParameterName, request.ParameterValue);
+                }
+                break;
+        }
     }
 
     private void SetAlgorithmParameter(InspectionAlgorithmData algorithm, string name, string value)
