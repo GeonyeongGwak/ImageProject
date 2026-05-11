@@ -41,11 +41,13 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
     public FrameworkElement View => _root;
     protected AlgorithmCatalogItem Catalog => _catalog;
     protected AlgorithmPanelContext? Context => _context;
+    protected AlgorithmPanelInteraction Interaction => _interaction;
 
     public void Bind(AlgorithmPanelContext context)
     {
         _context = context;
         _context.Algorithm.ApplyCatalogDefaults();
+        ApplyDefaults(context);
         Rebuild();
     }
 
@@ -86,6 +88,7 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
         {
             tabs.Items.Add(Tab(group.Key, BuildReferenceTab(group.Key, group.ToList())));
         }
+        AddCustomTabs(tabs);
         _content.Children.Add(tabs);
         _binding = false;
     }
@@ -93,6 +96,14 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
     protected void RequestRebuild()
     {
         Rebuild();
+    }
+
+    protected virtual void ApplyDefaults(AlgorithmPanelContext context)
+    {
+    }
+
+    protected virtual void AddCustomTabs(TabControl tabs)
+    {
     }
 
     private FrameworkElement BuildReferenceTab(string tab, List<AlgorithmReferenceControl> controls)

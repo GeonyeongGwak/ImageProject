@@ -284,6 +284,9 @@ public static class AlgorithmReferenceUiCatalog
             case "AlgoBW":
                 AddBlackWhite(profile, family);
                 break;
+            case "AlgoAlignEdge":
+                AddAlignEdge(profile, family);
+                break;
             case "AlgoBarcode":
                 AddBarcode(profile, family);
                 break;
@@ -420,6 +423,39 @@ public static class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Check("BGA Advanced", "Anomaly Width", $"{family}.AnomalyWidth", "false"));
         profile.Controls.Add(Check("BGA Advanced", "Anomaly Length", $"{family}.AnomalyLength", "false"));
         profile.Controls.Add(Number("BGA Advanced", "Anomaly Area", $"{family}.AnomalyArea", "0"));
+    }
+
+    private static void AddAlignEdge(AlgorithmReferenceUiProfile profile, string family)
+    {
+        profile.Controls.Add(Combo("AlignEdge", "Direction", $"{family}.Direction", "0", ["LeftToRight", "RightToLeft", "TopToBottom", "BottomToTop"]));
+        profile.Controls.Add(Slider("AlignEdge", "Threshold", $"{family}.Threshold", "128", 0, 255));
+        profile.Controls.Add(Number("AlignEdge", "Search Width", $"{family}.SearchWidth", "40"));
+        profile.Controls.Add(Number("AlignEdge", "Search Height", $"{family}.SearchHeight", "12"));
+        profile.Controls.Add(Check("AlignEdge", "Use Peak Edge", $"{family}.UsePeak", "true"));
+        profile.Controls.Add(Check("AlignEdge", "Use Sub Pixel", $"{family}.UseSubPixel", "true"));
+
+        profile.Controls.Add(Check("AlignEdge Range", "Use 2D Range", $"{family}.Use2D", "true"));
+        profile.Controls.Add(Number("AlignEdge Range", "2D Min", $"{family}.Min2D", "0"));
+        profile.Controls.Add(Number("AlignEdge Range", "2D Max", $"{family}.Max2D", "255"));
+        profile.Controls.Add(Check("AlignEdge Range", "Use 3D Range", $"{family}.Use3D", "false"));
+        profile.Controls.Add(Number("AlignEdge Range", "3D Min", $"{family}.Min3D", "0"));
+        profile.Controls.Add(Number("AlignEdge Range", "3D Max", $"{family}.Max3D", "1000"));
+
+        profile.Controls.Add(Check("AlignEdge Measure", "Use Distance", $"{family}.UseDistance", "true"));
+        profile.Controls.Add(Number("AlignEdge Measure", "Distance Spec", $"{family}.DistanceSpec", "0"));
+        profile.Controls.Add(Number("AlignEdge Measure", "Distance Tol", $"{family}.DistanceTolerance", "10"));
+        profile.Controls.Add(Check("AlignEdge Measure", "Use Angle", $"{family}.UseAngle", "true"));
+        profile.Controls.Add(Number("AlignEdge Measure", "Angle Spec", $"{family}.AngleSpec", "0"));
+        profile.Controls.Add(Number("AlignEdge Measure", "Angle Tol", $"{family}.AngleTolerance", "5"));
+        profile.Controls.Add(Check("AlignEdge Measure", "Use Shift", $"{family}.UseShift", "true"));
+        profile.Controls.Add(Number("AlignEdge Measure", "Shift X", $"{family}.ShiftX", "0"));
+        profile.Controls.Add(Number("AlignEdge Measure", "Shift Y", $"{family}.ShiftY", "0"));
+
+        profile.Controls.Add(Check("AlignEdge Anchor", "Use Anchor", $"{family}.UseAnchor", "false"));
+        profile.Controls.Add(Combo("AlignEdge Anchor", "Anchor Mode", $"{family}.AnchorMode", "0", ["Window ROI", "Algorithm ROI", "Last Align"]));
+        profile.Controls.Add(Number("AlignEdge Anchor", "Anchor X", $"{family}.AnchorX", "0"));
+        profile.Controls.Add(Number("AlignEdge Anchor", "Anchor Y", $"{family}.AnchorY", "0"));
+        profile.Controls.Add(Command("AlignEdge Anchor", "Capture Anchor", $"{family}.CaptureAnchorRequested"));
     }
 
     private static void AddNgBlob(AlgorithmReferenceUiProfile profile, string family)
