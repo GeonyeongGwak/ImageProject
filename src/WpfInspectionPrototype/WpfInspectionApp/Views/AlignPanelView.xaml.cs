@@ -6,35 +6,6 @@ using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp.Views;
 
-public enum AlignPanelUpdateKind
-{
-    SearchNum,
-    SearchParameter,
-    SearchSize,
-    Parameter,
-    AlignParameter,
-    Threshold2D,
-    Threshold3D,
-    EdgeGain,
-    IpcClass,
-    PartTeachingOption
-}
-
-public enum AlignPanelActionKind
-{
-    ActiveRoi,
-    DrawWindowRoi,
-    DrawAlgorithmRoi,
-    Teach,
-    PartTeachingIc,
-    PartTeachingOk,
-    PartTeachingClose
-}
-
-public sealed record AlignPanelUpdateRequestedEventArgs(AlignPanelUpdateKind Kind, object? Source);
-
-public sealed record AlignPanelActionRequestedEventArgs(AlignPanelActionKind Kind);
-
 public partial class AlignPanelView : UserControl
 {
     private readonly AlignPanelViewModel _viewModel = new();
@@ -43,6 +14,7 @@ public partial class AlignPanelView : UserControl
     {
         InitializeComponent();
         DataContext = _viewModel;
+        _viewModel.ActionRequested += (_, e) => ActionRequested?.Invoke(this, e);
     }
 
     public event SelectionChangedEventHandler? AlignTabSelectionChanged;
@@ -149,21 +121,6 @@ public partial class AlignPanelView : UserControl
         RequestUpdate(AlignPanelUpdateKind.SearchNum, sender);
     }
 
-    private void ActiveRoiButton_Click(object sender, RoutedEventArgs e)
-    {
-        RequestAction(AlignPanelActionKind.ActiveRoi);
-    }
-
-    private void DrawRoiButton_Click(object sender, RoutedEventArgs e)
-    {
-        RequestAction(AlignPanelActionKind.DrawWindowRoi);
-    }
-
-    private void DrawAlgorithmRoiButton_Click(object sender, RoutedEventArgs e)
-    {
-        RequestAction(AlignPanelActionKind.DrawAlgorithmRoi);
-    }
-
     private void SearchParameter_Changed(object sender, RoutedEventArgs e)
     {
         RequestUpdate(AlignPanelUpdateKind.SearchParameter, sender);
@@ -172,11 +129,6 @@ public partial class AlignPanelView : UserControl
     private void SearchSizeBox_TextChanged(object sender, TextChangedEventArgs e)
     {
         RequestUpdate(AlignPanelUpdateKind.SearchSize, sender);
-    }
-
-    private void TeachButton_Click(object sender, RoutedEventArgs e)
-    {
-        RequestAction(AlignPanelActionKind.Teach);
     }
 
     private void Parameter_Changed(object sender, RoutedEventArgs e)
@@ -219,28 +171,9 @@ public partial class AlignPanelView : UserControl
         RequestUpdate(AlignPanelUpdateKind.PartTeachingOption, sender);
     }
 
-    private void PartTeachingIcButton_Click(object sender, RoutedEventArgs e)
-    {
-        RequestAction(AlignPanelActionKind.PartTeachingIc);
-    }
-
-    private void PartTeachingOkButton_Click(object sender, RoutedEventArgs e)
-    {
-        RequestAction(AlignPanelActionKind.PartTeachingOk);
-    }
-
-    private void PartTeachingCloseButton_Click(object sender, RoutedEventArgs e)
-    {
-        RequestAction(AlignPanelActionKind.PartTeachingClose);
-    }
-
     private void RequestUpdate(AlignPanelUpdateKind kind, object? source)
     {
         UpdateRequested?.Invoke(this, new AlignPanelUpdateRequestedEventArgs(kind, source));
     }
 
-    private void RequestAction(AlignPanelActionKind kind)
-    {
-        ActionRequested?.Invoke(this, new AlignPanelActionRequestedEventArgs(kind));
-    }
 }

@@ -48,7 +48,7 @@
                                                 <ComboBoxItem Content="3" />
                                                 <ComboBoxItem Content="4" IsSelected="True" />
                                             </ComboBox>
-                                            <Button x:Name="ActiveRoiButton" Grid.Column="2" Content="{Binding ActiveRoiText}" Click="ActiveRoiButton_Click" />
+                                            <Button x:Name="ActiveRoiButton" Grid.Column="2" Content="{Binding ActiveRoiText}" Command="{Binding ActiveRoiCommand}" />
                                         </Grid>
 
                                         <Grid Margin="0,0,0,6">
@@ -60,14 +60,14 @@
                                             <Border Background="#3CFF50" CornerRadius="3" Padding="6,4" Margin="0,0,6,0">
                                                 <TextBlock Text="Binary ROI" Foreground="#06111C" FontWeight="Bold" />
                                             </Border>
-                                             <Button x:Name="DrawRoiButton" Grid.Column="1" Content="{Binding DrawWindowRoiText}" Background="{Binding DrawWindowRoiBrush}" Click="DrawRoiButton_Click" />
+                                             <Button x:Name="DrawRoiButton" Grid.Column="1" Content="{Binding DrawWindowRoiText}" Background="{Binding DrawWindowRoiBrush}" Command="{Binding DrawWindowRoiCommand}" />
                                              <TextBlock Grid.Column="2" Text="Original px" Foreground="#8BA5C4" VerticalAlignment="Center" />
                                          </Grid>
 
                                         <Button x:Name="DrawAlignAlgorithmRoiButton"
                                                 Content="Draw Algorithm ROI"
                                                 Margin="0,0,0,8"
-                                                Click="DrawAlgorithmRoiButton_Click" />
+                                                Command="{Binding DrawAlgorithmRoiCommand}" />
 
                                          <TextBlock x:Name="RoiText"
                                                    Margin="0,0,0,8"
@@ -117,7 +117,7 @@
                                                      Grid.Column="1"
                                                      Text="{Binding SearchSizeX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                                                      TextChanged="SearchSizeBox_TextChanged" />
-                                            <Button Grid.Column="2" Content="Teach" Click="TeachButton_Click" />
+                                            <Button Grid.Column="2" Content="Teach" Command="{Binding TeachCommand}" />
                                         </Grid>
 
                                         <Grid Margin="0,0,0,4">
@@ -295,14 +295,14 @@
                                             <Button x:Name="PartTeachingIcButton"
                                                     Content="IC"
                                                     Visibility="{Binding PartTeachingIcVisibility}"
-                                                    Click="PartTeachingIcButton_Click" />
+                                                    Command="{Binding PartTeachingIcCommand}" />
                                             <Button x:Name="PartTeachingOkButton"
                                                     Content="OK"
                                                     Visibility="{Binding PartTeachingOkVisibility}"
-                                                    Click="PartTeachingOkButton_Click" />
+                                                    Command="{Binding PartTeachingOkCommand}" />
                                             <Button x:Name="PartTeachingCloseButton"
                                                     Content="Close"
-                                                    Click="PartTeachingCloseButton_Click" />
+                                                    Command="{Binding PartTeachingCloseCommand}" />
                                         </UniformGrid>
 
                                         <TextBlock x:Name="PartTeachingStatusText"

@@ -1,5 +1,7 @@
 using System.Windows;
+using System.Windows.Input;
 using System.Windows.Media;
+using WpfInspectionApp.Commands;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Models;
 
@@ -42,6 +44,33 @@ public sealed class AlignPanelViewModel : ViewModelBase
     private string _partTeachingStatus = "Part Teaching ready.";
     private Visibility _partTeachingIcVisibility = Visibility.Visible;
     private Visibility _partTeachingOkVisibility = Visibility.Collapsed;
+
+    public AlignPanelViewModel()
+    {
+        ActiveRoiCommand = ActionCommand(AlignPanelActionKind.ActiveRoi);
+        DrawWindowRoiCommand = ActionCommand(AlignPanelActionKind.DrawWindowRoi);
+        DrawAlgorithmRoiCommand = ActionCommand(AlignPanelActionKind.DrawAlgorithmRoi);
+        TeachCommand = ActionCommand(AlignPanelActionKind.Teach);
+        PartTeachingIcCommand = ActionCommand(AlignPanelActionKind.PartTeachingIc);
+        PartTeachingOkCommand = ActionCommand(AlignPanelActionKind.PartTeachingOk);
+        PartTeachingCloseCommand = ActionCommand(AlignPanelActionKind.PartTeachingClose);
+    }
+
+    public event EventHandler<AlignPanelActionRequestedEventArgs>? ActionRequested;
+
+    public ICommand ActiveRoiCommand { get; }
+
+    public ICommand DrawWindowRoiCommand { get; }
+
+    public ICommand DrawAlgorithmRoiCommand { get; }
+
+    public ICommand TeachCommand { get; }
+
+    public ICommand PartTeachingIcCommand { get; }
+
+    public ICommand PartTeachingOkCommand { get; }
+
+    public ICommand PartTeachingCloseCommand { get; }
 
     public int Threshold2D
     {
@@ -399,6 +428,11 @@ public sealed class AlignPanelViewModel : ViewModelBase
     public void ClosePartTeaching()
     {
         PartTeachingStatus = "Part Teaching closed. Stop requested.";
+    }
+
+    private RelayCommand ActionCommand(AlignPanelActionKind kind)
+    {
+        return new RelayCommand(() => ActionRequested?.Invoke(this, new AlignPanelActionRequestedEventArgs(kind)));
     }
 
     private static int ReadInt(string text, int fallback, int min, int max)
