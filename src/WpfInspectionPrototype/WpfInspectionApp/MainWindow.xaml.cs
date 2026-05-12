@@ -73,9 +73,8 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.ModelLoaded += OnModelLoaded;
         _viewModel.ModelSyncFromUiRequested += UpdateModelFromUi;
         _viewModel.ThresholdScheduleRequested += ScheduleThreshold;
-        _viewModel.WindowRoiDrawingRequested += EnableWindowRoiDrawing;
-        _viewModel.AlgorithmRoiDrawingRequested += EnableAlgorithmRoiDrawing;
-        _viewModel.RoiDrawingDisableRequested += DisableRoiDrawing;
+        _viewModel.AlignSearchTabActivationRequested += AlignPanel.ActivateSearchTab;
+        _viewModel.AlignRoiDrawButtonStateRequested += AlignPanel.SetWindowRoiDrawingState;
         _viewModel.OverlayRefreshRequested += DrawRoiOverlays;
         InitializeAlgorithmPanels();
 
@@ -92,6 +91,7 @@ public partial class MainWindow : Window, IDialogOwner
         _model.EnsureStructure();
         ApplyModelAndRefreshView(scheduleThreshold: false);
         PttViewerPanel.Resize += (_, _) => _pem3DViewerHostService.ResizeExternalViewer(PttViewerPanel);
+        _viewModel.SetAlignSearchTabActive(AlignPanel.IsSearchTabActive);
         _uiReady = true;
     }
 
@@ -140,7 +140,7 @@ public partial class MainWindow : Window, IDialogOwner
 
         if (update.HasFlag(AlignPanelUpdateEffect.RoiDrawButton))
         {
-            UpdateRoiDrawButtonState();
+            _viewModel.UpdateRoiDrawButtonState();
         }
 
         if (update.HasFlag(AlignPanelUpdateEffect.ActiveRoiUi))
@@ -193,10 +193,10 @@ public partial class MainWindow : Window, IDialogOwner
                 SelectNextAlignRoi();
                 break;
             case AlignPanelActionKind.DrawWindowRoi:
-                EnableWindowRoiDrawing();
+                _viewModel.EnableWindowRoiDrawing();
                 break;
             case AlignPanelActionKind.DrawAlgorithmRoi:
-                EnableAlgorithmRoiDrawing();
+                _viewModel.EnableAlgorithmRoiDrawing();
                 break;
             case AlignPanelActionKind.Teach:
                 TeachActiveRoiSize();
@@ -280,7 +280,7 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
-        if (!IsAlignSearchActive() || Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
+        if (!_viewModel.IsAlignSearchActive || Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         {
             return;
         }
@@ -288,7 +288,7 @@ public partial class MainWindow : Window, IDialogOwner
         if (e.Key == Key.A)
         {
             e.Handled = true;
-            EnableWindowRoiDrawing();
+            _viewModel.EnableWindowRoiDrawing();
             return;
         }
 
@@ -297,7 +297,7 @@ public partial class MainWindow : Window, IDialogOwner
             e.Handled = true;
             CommitCurrentDrawingRoi();
             SelectNextAlignRoi();
-            EnableWindowRoiDrawing();
+            _viewModel.EnableWindowRoiDrawing();
             return;
         }
 
@@ -364,7 +364,7 @@ public partial class MainWindow : Window, IDialogOwner
     private void ApplyImportedPart(PartImportWorkflowResult result)
     {
         _roiCanvasViewModel.ResetDrawing();
-        DisableRoiDrawing();
+        _viewModel.DisableRoiDrawing();
         ApplyModelAndRefreshView(result.SelectedWindowId, scheduleThreshold: false);
         if (!string.IsNullOrWhiteSpace(result.Summary))
         {
@@ -389,7 +389,7 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void DrawAlgorithmRoiButton_Click(object sender, RoutedEventArgs e)
     {
-        EnableAlgorithmRoiDrawing();
+        _viewModel.EnableAlgorithmRoiDrawing();
     }
 
     private void AlgorithmCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
@@ -406,9 +406,10 @@ public partial class MainWindow : Window, IDialogOwner
 
         HandleUiChange(() =>
         {
-            if (!IsAlignSearchActive())
+            _viewModel.SetAlignSearchTabActive(AlignPanel.IsSearchTabActive);
+            if (!_viewModel.IsAlignSearchActive)
             {
-                DisableRoiDrawing();
+                _viewModel.DisableRoiDrawing();
             }
         });
     }
@@ -642,16 +643,6 @@ public partial class MainWindow : Window, IDialogOwner
         return ViewModel.SelectedAlgorithm;
     }
 
-    private bool IsAlignSelected()
-    {
-        return string.Equals(_model.Algorithm, "AlgoAlign", StringComparison.OrdinalIgnoreCase);
-    }
-
-    private bool IsAlignSearchActive()
-    {
-        return IsAlignSelected() && AlignPanel.IsSearchTabActive;
-    }
-
     private void UpdatePartTeachingUi()
     {
         var wasApplying = _applyingModel;
@@ -764,36 +755,6 @@ public partial class MainWindow : Window, IDialogOwner
         AlignPanel.SetMaskDensity(maskDensity);
     }
 
-    private void EnableWindowRoiDrawing()
-    {
-        EnableRoiDrawing(RoiDrawTarget.Window);
-    }
-
-    private void EnableAlgorithmRoiDrawing()
-    {
-        if (ActiveAlgorithm == null)
-        {
-            ViewModel.StatusMessage = "Select or add an Algorithm before drawing Algorithm ROI.";
-            return;
-        }
-
-        EnableRoiDrawing(RoiDrawTarget.Algorithm);
-    }
-
-    private void EnableRoiDrawing(RoiDrawTarget target)
-    {
-        if (target == RoiDrawTarget.Window && !IsAlignSearchActive())
-        {
-            AlignPanel.ActivateSearchTab();
-        }
-
-        _roiCanvasViewModel.Enable(target);
-        UpdateRoiDrawButtonState();
-        ViewModel.StatusMessage = target == RoiDrawTarget.Window
-            ? "Window ROI draw mode: drag on CAM-03 Binary or CAM-01 2D. Press S to move to the next Window ROI."
-            : $"Algorithm ROI draw mode: drag on CAM-03 Binary or CAM-01 2D for {ActiveAlgorithm?.Type}.";
-    }
-
     private void CommitCurrentDrawingRoi()
     {
         if (!_roiCanvasViewModel.IsDrawing || _roiCanvasViewModel.DrawingSurface == null)
@@ -826,16 +787,6 @@ public partial class MainWindow : Window, IDialogOwner
         RefreshRoiOverlaysAndThreshold();
     }
 
-    private void DisableRoiDrawing()
-    {
-        _roiCanvasViewModel.Disable();
-        UpdateRoiDrawButtonState();
-    }
-
-    private void UpdateRoiDrawButtonState()
-    {
-        AlignPanel.SetWindowRoiDrawingState(_roiCanvasViewModel.IsEnabled && _roiCanvasViewModel.Target == RoiDrawTarget.Window);
-    }
 
     private void SelectNextAlignRoi()
     {

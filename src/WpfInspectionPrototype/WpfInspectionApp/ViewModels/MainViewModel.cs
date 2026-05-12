@@ -40,6 +40,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
     private AlgorithmPanelFactory? _algorithmPanelFactory;
     private IAlgorithmPanel? _activeAlgorithmPanel;
+    private bool _alignSearchTabActive;
 
     public MainViewModel(
         InspectionModel model,
@@ -112,10 +113,59 @@ public sealed class MainViewModel : ViewModelBase
     public event Action<InspectionModel, string>? ModelLoaded;
     public event Action? ModelSyncFromUiRequested;
     public event Action? ThresholdScheduleRequested;
-    public event Action? WindowRoiDrawingRequested;
-    public event Action? AlgorithmRoiDrawingRequested;
-    public event Action? RoiDrawingDisableRequested;
+    public event Action? AlignSearchTabActivationRequested;
+    public event Action<bool>? AlignRoiDrawButtonStateRequested;
     public event Action? OverlayRefreshRequested;
+
+    public bool IsAlignSelected => string.Equals(_model.Algorithm, "AlgoAlign", StringComparison.OrdinalIgnoreCase);
+
+    public bool IsAlignSearchActive => IsAlignSelected && _alignSearchTabActive;
+
+    public void SetAlignSearchTabActive(bool active)
+    {
+        _alignSearchTabActive = active;
+    }
+
+    public void EnableWindowRoiDrawing()
+    {
+        EnableRoiDrawing(RoiDrawTarget.Window);
+    }
+
+    public void EnableAlgorithmRoiDrawing()
+    {
+        if (ActiveAlgorithm == null)
+        {
+            StatusMessage = "Select or add an Algorithm before drawing Algorithm ROI.";
+            return;
+        }
+
+        EnableRoiDrawing(RoiDrawTarget.Algorithm);
+    }
+
+    public void DisableRoiDrawing()
+    {
+        _roi.Disable();
+        UpdateRoiDrawButtonState();
+    }
+
+    private void EnableRoiDrawing(RoiDrawTarget target)
+    {
+        if (target == RoiDrawTarget.Window && !IsAlignSearchActive)
+        {
+            AlignSearchTabActivationRequested?.Invoke();
+        }
+
+        _roi.Enable(target);
+        UpdateRoiDrawButtonState();
+        StatusMessage = target == RoiDrawTarget.Window
+            ? "Window ROI draw mode: drag on CAM-03 Binary or CAM-01 2D. Press S to move to the next Window ROI."
+            : $"Algorithm ROI draw mode: drag on CAM-03 Binary or CAM-01 2D for {ActiveAlgorithm?.Type}.";
+    }
+
+    public void UpdateRoiDrawButtonState()
+    {
+        AlignRoiDrawButtonStateRequested?.Invoke(_roi.IsEnabled && _roi.Target == RoiDrawTarget.Window);
+    }
 
     private RoiRect? ActiveInspectionRoi => _roi.GetActiveInspectionRoi(_model, SelectedAlgorithm);
 
@@ -193,7 +243,7 @@ public sealed class MainViewModel : ViewModelBase
 
         if (!string.Equals(panel.AlgorithmType, "AlgoAlign", StringComparison.OrdinalIgnoreCase))
         {
-            RoiDrawingDisableRequested?.Invoke();
+            DisableRoiDrawing();
         }
     }
 
@@ -208,10 +258,10 @@ public sealed class MainViewModel : ViewModelBase
                 TreeRefreshRequested?.Invoke(algorithm.Id);
                 break;
             case AlgorithmPanelRequestKind.WindowRoiDrawing:
-                WindowRoiDrawingRequested?.Invoke();
+                EnableWindowRoiDrawing();
                 break;
             case AlgorithmPanelRequestKind.AlgorithmRoiDrawing:
-                AlgorithmRoiDrawingRequested?.Invoke();
+                EnableAlgorithmRoiDrawing();
                 break;
             case AlgorithmPanelRequestKind.SetParameter:
                 if (request.ParameterName != null && request.ParameterValue != null)
