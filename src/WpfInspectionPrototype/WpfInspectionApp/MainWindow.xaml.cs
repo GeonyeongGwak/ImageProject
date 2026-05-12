@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using WpfInspectionApp.AlgorithmPanels;
+using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
 using WpfInspectionApp.ViewModels;
@@ -11,14 +12,14 @@ using WpfInspectionApp.Views;
 
 namespace WpfInspectionApp;
 
-public partial class MainWindow : Window
+public partial class MainWindow : Window, IDialogOwner
 {
+    Window IDialogOwner.GetDialogOwner() => this;
+
     private readonly DispatcherTimer _thresholdTimer;
     private readonly AlgorithmPanelFactory _algorithmPanelFactory = new();
     private readonly RoiOverlayCoordinator _roiOverlayCoordinator;
     private readonly IApplicationPathService _applicationPathService;
-    private readonly IFileDialogService _fileDialogService;
-    private readonly IModelWorkflowService _modelWorkflowService;
     private readonly IPartImportWorkflowService _partImportWorkflowService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
     private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
@@ -45,8 +46,6 @@ public partial class MainWindow : Window
         SubscribeAlignPanelEvents();
         _roiOverlayCoordinator = new RoiOverlayCoordinator(App.Services.RoiGeometry);
         _applicationPathService = App.Services.ApplicationPath;
-        _fileDialogService = App.Services.FileDialog;
-        _modelWorkflowService = App.Services.ModelWorkflow;
         _partImportWorkflowService = App.Services.PartImportWorkflow;
         _inspectionWorkflowService = App.Services.InspectionWorkflow;
         _thresholdPreviewWorkflowService = App.Services.ThresholdPreviewWorkflow;
@@ -59,20 +58,22 @@ public partial class MainWindow : Window
         _pttViewerWorkflowService = App.Services.PttViewerWorkflow;
         _alignPartTeachingService = App.Services.AlignPartTeaching;
         _alignConditionService = App.Services.AlignCondition;
-        _viewModel = new MainViewModel(_model);
+        _viewModel = new MainViewModel(
+            _model,
+            this,
+            App.Services.FileDialog,
+            App.Services.ModelWorkflow,
+            _applicationPathService);
         DataContext = _viewModel;
-        _viewModel.ConfigureCommands(
-            BrowseAndLoadImage,
-            BrowseAndLoadPtt,
-            SaveModel,
-            BrowseAndLoadModel,
-            BrowseAndImportPart,
-            RunInspectionAsync,
-            ZoomOne,
-            ZoomFit);
+        _viewModel.ConfigureCommands(RunInspectionAsync, ZoomOne, ZoomFit);
         _viewModel.TreeRefreshRequested += RefreshInspectionView;
         _viewModel.AlgorithmPanelRefreshRequested += UpdateAlgorithmPanels;
         _viewModel.SelectionChanged += OnViewModelSelectionChanged;
+        _viewModel.ImageLoadRequested += LoadImage;
+        _viewModel.PttLoadRequested += path => LoadPtt(path);
+        _viewModel.PartImportRequested += ImportPartFromPath;
+        _viewModel.ModelLoaded += OnModelLoaded;
+        _viewModel.ModelSyncFromUiRequested += UpdateModelFromUi;
         InitializeAlgorithmPanels();
 
         _thresholdTimer = new DispatcherTimer
@@ -309,61 +310,12 @@ public partial class MainWindow : Window
         base.OnClosed(e);
     }
 
-    private void BrowseAndLoadImage()
+    private void OnModelLoaded(InspectionModel loadedModel, string statusMessage)
     {
-        var path = _fileDialogService.BrowseImage(this);
-        if (!string.IsNullOrWhiteSpace(path))
-        {
-            LoadImage(path!);
-        }
-    }
-
-    private void BrowseAndLoadPtt()
-    {
-        var path = _fileDialogService.BrowsePtt(this);
-        if (!string.IsNullOrWhiteSpace(path))
-        {
-            LoadPtt(path!);
-        }
-    }
-
-    private void SaveModel()
-    {
-        UpdateModelFromUi();
-        var path = _modelWorkflowService.Save(_model, _applicationPathService.GetModelDirectory());
-        ViewModel.StatusMessage = $"Model saved: {path}";
-    }
-
-    private void BrowseAndLoadModel()
-    {
-        var path = _fileDialogService.BrowseModel(this, _applicationPathService.GetModelDirectory());
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return;
-        }
-
-        var result = _modelWorkflowService.Load(path!);
-        if (!result.Success || result.Model == null)
-        {
-            ViewModel.StatusMessage = result.StatusMessage;
-            return;
-        }
-
-        _model = result.Model;
+        _model = loadedModel;
         ViewModel.Model = _model;
         ApplyModelAndRefreshView();
-        ViewModel.StatusMessage = result.StatusMessage;
-    }
-
-    private void BrowseAndImportPart()
-    {
-        var path = _fileDialogService.BrowsePart(this, _applicationPathService.GetModelDirectory());
-        if (string.IsNullOrWhiteSpace(path))
-        {
-            return;
-        }
-
-        ImportPartFromPath(path!);
+        ViewModel.StatusMessage = statusMessage;
     }
 
     private void ImportPartFromPath(string path)

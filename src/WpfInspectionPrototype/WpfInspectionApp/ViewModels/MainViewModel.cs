@@ -30,23 +30,95 @@ public sealed class MainViewModel : ViewModelBase
     private ImageSource? _binaryImage;
     private object? _activeAlgorithmPanelContent;
 
-    public MainViewModel(InspectionModel model)
+    private readonly IDialogOwner _dialogOwner;
+    private readonly IFileDialogService _fileDialogService;
+    private readonly IModelWorkflowService _modelWorkflowService;
+    private readonly IApplicationPathService _applicationPathService;
+
+    public MainViewModel(
+        InspectionModel model,
+        IDialogOwner dialogOwner,
+        IFileDialogService fileDialogService,
+        IModelWorkflowService modelWorkflowService,
+        IApplicationPathService applicationPathService)
     {
         _model = model;
         _model.EnsureStructure();
         _selectedAlgorithm = _model.Algorithm;
+        _dialogOwner = dialogOwner;
+        _fileDialogService = fileDialogService;
+        _modelWorkflowService = modelWorkflowService;
+        _applicationPathService = applicationPathService;
         AlgorithmTypes = new ObservableCollection<string>(AlgorithmCatalog.All.Select(item => item.Type));
         InspectionTreeNodes = [];
 
-        LoadImageCommand = DisabledCommand();
-        LoadPttCommand = DisabledCommand();
-        SaveModelCommand = DisabledCommand();
-        LoadModelCommand = DisabledCommand();
-        ImportPartCommand = DisabledCommand();
+        LoadImageCommand = new RelayCommand(BrowseAndLoadImage);
+        LoadPttCommand = new RelayCommand(BrowseAndLoadPtt);
+        SaveModelCommand = new RelayCommand(SaveModel);
+        LoadModelCommand = new RelayCommand(BrowseAndLoadModel);
+        ImportPartCommand = new RelayCommand(BrowseAndImportPart);
         AddAlgorithmCommand = new RelayCommand(AddAlgorithm);
         RunInspectionCommand = DisabledCommand();
         ZoomOneCommand = DisabledCommand();
         ZoomFitCommand = DisabledCommand();
+    }
+
+    public event Action<string>? ImageLoadRequested;
+    public event Action<string>? PttLoadRequested;
+    public event Action<string>? PartImportRequested;
+    public event Action<InspectionModel, string>? ModelLoaded;
+    public event Action? ModelSyncFromUiRequested;
+
+    private void BrowseAndLoadImage()
+    {
+        var path = _fileDialogService.BrowseImage(_dialogOwner.GetDialogOwner());
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            ImageLoadRequested?.Invoke(path!);
+        }
+    }
+
+    private void BrowseAndLoadPtt()
+    {
+        var path = _fileDialogService.BrowsePtt(_dialogOwner.GetDialogOwner());
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            PttLoadRequested?.Invoke(path!);
+        }
+    }
+
+    private void SaveModel()
+    {
+        ModelSyncFromUiRequested?.Invoke();
+        var path = _modelWorkflowService.Save(_model, _applicationPathService.GetModelDirectory());
+        StatusMessage = $"Model saved: {path}";
+    }
+
+    private void BrowseAndLoadModel()
+    {
+        var path = _fileDialogService.BrowseModel(_dialogOwner.GetDialogOwner(), _applicationPathService.GetModelDirectory());
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            return;
+        }
+
+        var result = _modelWorkflowService.Load(path!);
+        if (!result.Success || result.Model == null)
+        {
+            StatusMessage = result.StatusMessage;
+            return;
+        }
+
+        ModelLoaded?.Invoke(result.Model, result.StatusMessage);
+    }
+
+    private void BrowseAndImportPart()
+    {
+        var path = _fileDialogService.BrowsePart(_dialogOwner.GetDialogOwner(), _applicationPathService.GetModelDirectory());
+        if (!string.IsNullOrWhiteSpace(path))
+        {
+            PartImportRequested?.Invoke(path!);
+        }
     }
 
     public InspectionModel Model
@@ -324,29 +396,14 @@ public sealed class MainViewModel : ViewModelBase
     public event Action? SelectionChanged;
 
     public void ConfigureCommands(
-        Action loadImage,
-        Action loadPtt,
-        Action saveModel,
-        Action loadModel,
-        Action importPart,
         Func<Task> runInspection,
         Action zoomOne,
         Action zoomFit)
     {
-        LoadImageCommand = new RelayCommand(loadImage);
-        LoadPttCommand = new RelayCommand(loadPtt);
-        SaveModelCommand = new RelayCommand(saveModel);
-        LoadModelCommand = new RelayCommand(loadModel);
-        ImportPartCommand = new RelayCommand(importPart);
         RunInspectionCommand = new AsyncRelayCommand(runInspection, () => CanRunInspection);
         ZoomOneCommand = new RelayCommand(zoomOne);
         ZoomFitCommand = new RelayCommand(zoomFit);
 
-        OnPropertyChanged(nameof(LoadImageCommand));
-        OnPropertyChanged(nameof(LoadPttCommand));
-        OnPropertyChanged(nameof(SaveModelCommand));
-        OnPropertyChanged(nameof(LoadModelCommand));
-        OnPropertyChanged(nameof(ImportPartCommand));
         OnPropertyChanged(nameof(RunInspectionCommand));
         OnPropertyChanged(nameof(ZoomOneCommand));
         OnPropertyChanged(nameof(ZoomFitCommand));
