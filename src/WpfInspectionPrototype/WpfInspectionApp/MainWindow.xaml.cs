@@ -38,7 +38,6 @@ public partial class MainWindow : Window
     private bool _applyingModel;
     private bool _syncingSearchSize;
     private bool _refreshingInspectionTree;
-    private bool _inspectionRunRequested;
 
     public MainWindow()
     {
@@ -441,7 +440,6 @@ public partial class MainWindow : Window
     {
         UpdateModelFromUi();
 
-        _inspectionRunRequested = true;
         ViewModel.BeginInspectionRun();
 
         try
@@ -464,7 +462,6 @@ public partial class MainWindow : Window
         }
         finally
         {
-            _inspectionRunRequested = false;
             ViewModel.IsInspectionRunning = false;
         }
     }
@@ -658,7 +655,7 @@ public partial class MainWindow : Window
         _thresholdTimer.Start();
     }
 
-    private async Task RunThresholdAsync()
+    private async Task RunThresholdAsync(bool refreshTreeOnAlgorithmUpdate = false)
     {
         if (!_imageRuntimeStateService.HasSourceImage)
         {
@@ -686,11 +683,10 @@ public partial class MainWindow : Window
             result.TimingText,
             result.StatusMessage,
             result.ResultText);
-        if (_inspectionRunRequested && !string.IsNullOrWhiteSpace(result.UpdatedAlgorithmId))
+        if (refreshTreeOnAlgorithmUpdate && !string.IsNullOrWhiteSpace(result.UpdatedAlgorithmId))
         {
             RefreshInspectionTree(result.UpdatedAlgorithmId);
         }
-        _inspectionRunRequested = false;
         DrawRoiOverlays();
     }
 
@@ -804,8 +800,7 @@ public partial class MainWindow : Window
             ViewModel.StatusMessage = $"Align Part Teaching completed: {teaching.TaughtCount} Window(s).";
             ViewModel.InspectionResultText = teaching.Summary;
 
-            _inspectionRunRequested = true;
-            await RunThresholdAsync();
+            await RunThresholdAsync(refreshTreeOnAlgorithmUpdate: true);
         }
         catch (Exception ex)
         {
