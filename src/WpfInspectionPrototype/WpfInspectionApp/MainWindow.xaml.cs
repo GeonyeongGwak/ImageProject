@@ -31,7 +31,6 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly IAlignPartTeachingService _alignPartTeachingService;
     private readonly IAlignConditionService _alignConditionService;
     private readonly MainViewModel _viewModel;
-    private InspectionModel _model = new();
     private bool _uiReady;
     private bool _applyingModel;
     private bool _syncingSearchSize;
@@ -54,7 +53,7 @@ public partial class MainWindow : Window, IDialogOwner
         _alignPartTeachingService = App.Services.AlignPartTeaching;
         _alignConditionService = App.Services.AlignCondition;
         _viewModel = new MainViewModel(
-            _model,
+            new InspectionModel(),
             this,
             App.Services.FileDialog,
             App.Services.ModelWorkflow,
@@ -90,7 +89,6 @@ public partial class MainWindow : Window, IDialogOwner
             await _viewModel.RunThresholdAsync();
         };
 
-        _model.EnsureStructure();
         ApplyModelAndRefreshView(scheduleThreshold: false);
         PttViewerPanel.Resize += (_, _) => _pem3DViewerHostService.ResizeExternalViewer(PttViewerPanel);
         _viewModel.SetAlignSearchTabActive(AlignPanel.IsSearchTabActive);
@@ -318,8 +316,7 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void OnModelLoaded(InspectionModel loadedModel, string statusMessage)
     {
-        _model = loadedModel;
-        ViewModel.Model = _model;
+        ViewModel.Model = loadedModel;
         ApplyModelAndRefreshView();
         ViewModel.StatusMessage = statusMessage;
     }
@@ -329,7 +326,7 @@ public partial class MainWindow : Window, IDialogOwner
         try
         {
             UpdateModelFromUi();
-            var result = _partImportWorkflowService.ImportIntoModel(_model, path);
+            var result = _partImportWorkflowService.ImportIntoModel(ViewModel.Model, path);
             if (!result.Success)
             {
                 ViewModel.StatusMessage = result.StatusMessage;
@@ -421,8 +418,8 @@ public partial class MainWindow : Window, IDialogOwner
         HandleUiChange(() =>
         {
             UpdateModelFromUi();
-            _model.AlignSearchNum = Net48Compat.Clamp(_model.AlignSearchNum, 1, 4);
-            _model.AlignActiveRoiIndex = Math.Min(_model.AlignActiveRoiIndex, _model.AlignSearchNum - 1);
+            ViewModel.Model.AlignSearchNum = Net48Compat.Clamp(ViewModel.Model.AlignSearchNum, 1, 4);
+            ViewModel.Model.AlignActiveRoiIndex = Math.Min(ViewModel.Model.AlignActiveRoiIndex, ViewModel.Model.AlignSearchNum - 1);
             UpdateActiveRoiUi();
             DrawRoiOverlays();
         });
@@ -440,7 +437,7 @@ public partial class MainWindow : Window, IDialogOwner
             UpdateModelFromUi();
 
             _syncingSearchSize = true;
-            AlignPanel.MirrorSearchSizeInput(source, _model);
+            AlignPanel.MirrorSearchSizeInput(source, ViewModel.Model);
             _syncingSearchSize = false;
 
             ResizeActiveRoiFromSearchInputs();
@@ -456,7 +453,7 @@ public partial class MainWindow : Window, IDialogOwner
     private void CloseAlignPartTeaching()
     {
         UpdateModelFromUi();
-        _model.PartTeachingStopRequested = true;
+        ViewModel.Model.PartTeachingStopRequested = true;
         AlignPanel.ClosePartTeaching();
         ViewModel.StatusMessage = "Align Part Teaching closed.";
     }
@@ -499,14 +496,14 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void ImageOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!_model.WheelZoomEnabled || !_imageRuntimeStateService.HasSourceImage)
+        if (!ViewModel.Model.WheelZoomEnabled || !_imageRuntimeStateService.HasSourceImage)
         {
             return;
         }
 
         var direction = e.Delta > 0 ? 1 : -1;
-        var step = Net48Compat.Clamp(_model.WheelZoomStep, 0.01, 1.0);
-        var next = _model.ImageZoom + direction * step;
+        var step = Net48Compat.Clamp(ViewModel.Model.WheelZoomStep, 0.01, 1.0);
+        var next = ViewModel.Model.ImageZoom + direction * step;
         SetImageZoom(next);
         e.Handled = true;
     }
@@ -581,26 +578,26 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void UpdateModelFromUi()
     {
-        _model.EnsureStructure();
-        _model.ModelName = string.IsNullOrWhiteSpace(ViewModel.ModelName) ? "UnnamedModel" : ViewModel.ModelName.Trim();
-        _model.Part.Name = _model.ModelName;
-        AlignPanel.ApplyToModel(_model, SelectedAlgorithm(), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
-        _model.WheelZoomEnabled = ViewModel.WheelZoomEnabled;
-        _model.ImageZoom = ViewModel.ImageZoom;
+        ViewModel.Model.EnsureStructure();
+        ViewModel.Model.ModelName = string.IsNullOrWhiteSpace(ViewModel.ModelName) ? "UnnamedModel" : ViewModel.ModelName.Trim();
+        ViewModel.Model.Part.Name = ViewModel.Model.ModelName;
+        AlignPanel.ApplyToModel(ViewModel.Model, SelectedAlgorithm(), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
+        ViewModel.Model.WheelZoomEnabled = ViewModel.WheelZoomEnabled;
+        ViewModel.Model.ImageZoom = ViewModel.ImageZoom;
     }
 
     private void ApplyModelToUi()
     {
         _applyingModel = true;
-        _model.EnsureStructure();
-        _model.AlignSearchNum = Net48Compat.Clamp(_model.AlignSearchNum, 1, 4);
-        _model.AlignActiveRoiIndex = Net48Compat.Clamp(_model.AlignActiveRoiIndex, 0, _model.AlignSearchNum - 1);
+        ViewModel.Model.EnsureStructure();
+        ViewModel.Model.AlignSearchNum = Net48Compat.Clamp(ViewModel.Model.AlignSearchNum, 1, 4);
+        ViewModel.Model.AlignActiveRoiIndex = Net48Compat.Clamp(ViewModel.Model.AlignActiveRoiIndex, 0, ViewModel.Model.AlignSearchNum - 1);
 
         ViewModel.RefreshModelBindings();
-        ViewModel.SelectedAlgorithm = _model.Algorithm;
-        AlignPanel.LoadFromModel(_model);
-        ViewModel.ImageZoomMaximum = Math.Max(1.0, _model.WheelZoomMax);
-        ViewModel.ImageZoom = _model.ImageZoom;
+        ViewModel.SelectedAlgorithm = ViewModel.Model.Algorithm;
+        AlignPanel.LoadFromModel(ViewModel.Model);
+        ViewModel.ImageZoomMaximum = Math.Max(1.0, ViewModel.Model.WheelZoomMax);
+        ViewModel.ImageZoom = ViewModel.Model.ImageZoom;
 
         _applyingModel = false;
         _viewModel.UpdateAlgorithmPanels();
@@ -665,7 +662,7 @@ public partial class MainWindow : Window, IDialogOwner
         {
             UpdatePartTeachingUi();
             UpdateModelFromUi();
-            var teaching = _alignPartTeachingService.Apply(_model, useGerber, FormatRoi);
+            var teaching = _alignPartTeachingService.Apply(ViewModel.Model, useGerber, FormatRoi);
             if (!teaching.Success)
             {
                 AlignPanel.SetPartTeachingStatus(teaching.Status);
@@ -693,22 +690,22 @@ public partial class MainWindow : Window, IDialogOwner
     {
         get
         {
-            return _roiCanvasViewModel.GetActiveRoi(_model);
+            return _roiCanvasViewModel.GetActiveRoi(ViewModel.Model);
         }
         set
         {
             if (value.HasValue)
             {
-                ApplyRoiModelResult(_roiCanvasViewModel.UpsertActiveWindow(_model, value.Value));
+                ApplyRoiModelResult(_roiCanvasViewModel.UpsertActiveWindow(ViewModel.Model, value.Value));
             }
         }
     }
 
-    private RoiRect? ActiveInspectionRoi => _roiCanvasViewModel.GetActiveInspectionRoi(_model, SelectedAlgorithm());
+    private RoiRect? ActiveInspectionRoi => _roiCanvasViewModel.GetActiveInspectionRoi(ViewModel.Model, SelectedAlgorithm());
 
-    private InspectionWindowData? ActiveWindow => _roiCanvasViewModel.GetActiveWindow(_model);
+    private InspectionWindowData? ActiveWindow => _roiCanvasViewModel.GetActiveWindow(ViewModel.Model);
 
-    private InspectionAlgorithmData? ActiveAlgorithm => _roiCanvasViewModel.GetActiveAlgorithm(_model, SelectedAlgorithm());
+    private InspectionAlgorithmData? ActiveAlgorithm => _roiCanvasViewModel.GetActiveAlgorithm(ViewModel.Model, SelectedAlgorithm());
 
     private void ApplyRoiModelResult(RoiModelOperationResult result)
     {
@@ -744,7 +741,7 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void SetImageZoom(double zoom)
     {
-        var nextZoom = Net48Compat.Clamp(zoom, 1.0, Math.Max(1.0, _model.WheelZoomMax));
+        var nextZoom = Net48Compat.Clamp(zoom, 1.0, Math.Max(1.0, ViewModel.Model.WheelZoomMax));
         _applyingModel = true;
         ViewModel.ImageZoom = nextZoom;
         _applyingModel = false;
@@ -753,7 +750,7 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void UpdateMaskDensity()
     {
-        var maskDensity = _alignConditionService.CalculateMaskDensity(_model);
+        var maskDensity = _alignConditionService.CalculateMaskDensity(ViewModel.Model);
         AlignPanel.SetMaskDensity(maskDensity);
     }
 
@@ -777,7 +774,7 @@ public partial class MainWindow : Window, IDialogOwner
         }
 
         ApplyRoiModelResult(_roiCanvasViewModel.CommitToModel(
-            _model,
+            ViewModel.Model,
             surfacePoint,
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
@@ -805,7 +802,7 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void ResizeActiveRoiFromSearchInputs()
     {
-        var result = _roiCanvasViewModel.ResizeActiveRoiFromSearchInputs(_model, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
+        var result = _roiCanvasViewModel.ResizeActiveRoiFromSearchInputs(ViewModel.Model, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
         if (!result.Changed)
         {
             DrawRoiOverlays();
@@ -830,7 +827,7 @@ public partial class MainWindow : Window, IDialogOwner
     private RoiOverlayState CreateRoiOverlayState()
     {
         return new RoiOverlayState(
-            _model,
+            ViewModel.Model,
             ActiveAlgorithm?.Id,
             _roiCanvasViewModel.PreviewRoi,
             _roiCanvasViewModel.Target == RoiDrawTarget.Algorithm,
@@ -842,7 +839,7 @@ public partial class MainWindow : Window, IDialogOwner
     private void UpdateRoiText()
     {
         var text = _roiUiStateService.CreateRoiText(
-            _model,
+            ViewModel.Model,
             SelectedAlgorithm(),
             _roiCanvasViewModel.PreviewRoi,
             _imageRuntimeStateService.SourceWidth,
@@ -854,7 +851,7 @@ public partial class MainWindow : Window, IDialogOwner
     private void ApplyRoiUiSyncState()
     {
         var state = _roiUiStateService.CreateSyncState(
-            _model,
+            ViewModel.Model,
             SelectedAlgorithm(),
             _roiCanvasViewModel.PreviewRoi,
             _imageRuntimeStateService.SourceWidth,
@@ -879,7 +876,7 @@ public partial class MainWindow : Window, IDialogOwner
 
     private double CurrentImageZoom()
     {
-        return Net48Compat.Clamp(_model.ImageZoom, 1.0, Math.Max(1.0, _model.WheelZoomMax));
+        return Net48Compat.Clamp(ViewModel.Model.ImageZoom, 1.0, Math.Max(1.0, ViewModel.Model.WheelZoomMax));
     }
 
     private string FormatRoi(RoiRect? roi)
