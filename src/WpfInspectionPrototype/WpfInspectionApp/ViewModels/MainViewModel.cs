@@ -137,6 +137,8 @@ public sealed class MainViewModel : ViewModelBase
         ThresholdScheduleRequested?.Invoke();
     }
 
+    public double CurrentImageZoom => Net48Compat.Clamp(_model.ImageZoom, 1.0, Math.Max(1.0, _model.WheelZoomMax));
+
     public bool IsAlignSelected => string.Equals(_model.Algorithm, "AlgoAlign", StringComparison.OrdinalIgnoreCase);
 
     public bool IsAlignSearchActive => IsAlignSelected && _alignSearchTabActive;

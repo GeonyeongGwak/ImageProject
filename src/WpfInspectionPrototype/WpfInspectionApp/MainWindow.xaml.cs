@@ -465,7 +465,7 @@ public partial class MainWindow : Window, IDialogOwner
             return;
         }
 
-        e.Handled = _roiCanvasViewModel.TryBegin(canvas, e.GetPosition(canvas), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, CurrentImageZoom());
+        e.Handled = _roiCanvasViewModel.TryBegin(canvas, e.GetPosition(canvas), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, _viewModel.CurrentImageZoom);
     }
 
     private void ImageOverlay_MouseMove(object sender, MouseEventArgs e)
@@ -475,7 +475,7 @@ public partial class MainWindow : Window, IDialogOwner
             return;
         }
 
-        _roiCanvasViewModel.Preview(e.GetPosition(_roiCanvasViewModel.DrawingSurface), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, CurrentImageZoom());
+        _roiCanvasViewModel.Preview(e.GetPosition(_roiCanvasViewModel.DrawingSurface), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, _viewModel.CurrentImageZoom);
         DrawRoiOverlays();
     }
 
@@ -778,7 +778,7 @@ public partial class MainWindow : Window, IDialogOwner
             surfacePoint,
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
-            CurrentImageZoom(),
+            _viewModel.CurrentImageZoom,
             SelectedAlgorithm(),
             FormatRoi));
 
@@ -833,7 +833,7 @@ public partial class MainWindow : Window, IDialogOwner
             _roiCanvasViewModel.Target == RoiDrawTarget.Algorithm,
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
-            CurrentImageZoom());
+            _viewModel.CurrentImageZoom);
     }
 
     private void UpdateRoiText()
@@ -872,11 +872,6 @@ public partial class MainWindow : Window, IDialogOwner
     private Rect GetImageDisplayRect(FrameworkElement surface)
     {
         return _roiOverlayCoordinator.GetImageDisplayRect(surface, CreateRoiOverlayState());
-    }
-
-    private double CurrentImageZoom()
-    {
-        return Net48Compat.Clamp(ViewModel.Model.ImageZoom, 1.0, Math.Max(1.0, ViewModel.Model.WheelZoomMax));
     }
 
     private string FormatRoi(RoiRect? roi)
