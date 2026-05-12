@@ -940,6 +940,23 @@ public sealed class MainViewModel : ViewModelBase
             }
         }
 
+        var genericBridge = Lookup(algorithm.Parameters, "Runtime.GenericBridge");
+        if (!string.IsNullOrEmpty(genericBridge))
+        {
+            if (string.Equals(genericBridge, "native", StringComparison.OrdinalIgnoreCase))
+            {
+                var kind = Lookup(algorithm.Parameters, "Runtime.GenericAlgoKind", "?");
+                var ok = Lookup(algorithm.Parameters, "Runtime.GenericIsOK", "?");
+                var areaRatio = Lookup(algorithm.Parameters, "Runtime.GenericAreaRatio", "?");
+                var shift = Lookup(algorithm.Parameters, "Runtime.GenericShift", "?");
+                yield return $"{kind} bridge: native | OK={ok} | Area ratio={areaRatio} | Shift {shift}";
+            }
+            else
+            {
+                yield return $"Generic bridge: fallback ({Lookup(algorithm.Parameters, "Runtime.GenericBridgeMessage", "unavailable")})";
+            }
+        }
+
         var padBridge = Lookup(algorithm.Parameters, "Runtime.PadBWBridge");
         if (!string.IsNullOrEmpty(padBridge))
         {

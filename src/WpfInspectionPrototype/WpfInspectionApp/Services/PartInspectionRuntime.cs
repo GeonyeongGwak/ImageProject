@@ -311,6 +311,10 @@ public sealed class PartInspectionRuntime
             {
                 RunPadBWViaBridge(image, model, algorithm, result);
             }
+            else if (TryMapToGenericKind(algorithm.Type, out var genericKind))
+            {
+                RunGenericViaBridge(image, model, algorithm, result, genericKind);
+            }
             else
             {
                 RunThresholdFallback(image, model, algorithm, result);
@@ -468,6 +472,72 @@ public sealed class PartInspectionRuntime
         {
             algorithm.Source.Parameters["Runtime.PadBWBridge"] = "fallback";
             algorithm.Source.Parameters["Runtime.PadBWBridgeMessage"] = response.Message;
+            RunThresholdFallback(image, model, algorithm, result);
+        }
+    }
+
+    private static bool TryMapToGenericKind(string algorithmType, out MptiBridgeAlgoKind kind)
+    {
+        switch (algorithmType.ToUpperInvariant())
+        {
+            case "ALGOBGA":
+                kind = MptiBridgeAlgoKind.BGA;
+                return true;
+            case "ALGOBLOB":
+                kind = MptiBridgeAlgoKind.Blob;
+                return true;
+            case "ALGOEDGE":
+                kind = MptiBridgeAlgoKind.Edge;
+                return true;
+            case "ALGOPATTERN":
+                kind = MptiBridgeAlgoKind.Pattern;
+                return true;
+            default:
+                kind = MptiBridgeAlgoKind.Unknown;
+                return false;
+        }
+    }
+
+    private static void RunGenericViaBridge(PartRuntimeImage image, InspectionModel model, AlgorithmRuntimePacket algorithm, AlgorithmRunResult result, MptiBridgeAlgoKind kind)
+    {
+        var roi = algorithm.InspectionRoi;
+        var parameters = new MptiBridgeGenericParams
+        {
+            AlgoKind = (int)kind,
+            BinaryMin = Net48Compat.Clamp(model.Threshold2D, 0, 255),
+            BinaryMax = 255,
+            UseInsp2D = 1,
+            InvertCheck = 0,
+            MinBlobArea = 10,
+            ExpectedCenterX = roi.X + roi.Width / 2,
+            ExpectedCenterY = roi.Y + roi.Height / 2,
+            MinAreaRatio = 0.05f,
+            MaxAreaRatio = 0.95f,
+            ShiftXTolerance = 10,
+            ShiftYTolerance = 10
+        };
+
+        var response = MptiAlgorithmNativeBridge.RunGeneric(
+            image.SourcePixels, image.Width, image.Height, image.SourceStride,
+            roi, parameters);
+
+        result.UsedImage = true;
+        if (response.Available && response.Success)
+        {
+            result.ElapsedMs = response.ElapsedMs;
+            result.ForegroundPixels = response.ForegroundPixels;
+            result.BlobCount = response.BlobCount;
+            result.Bounds = response.ForegroundPixels > 0 ? roi : (RoiRect?)null;
+            algorithm.Source.Parameters["Runtime.GenericBridge"] = "native";
+            algorithm.Source.Parameters["Runtime.GenericAlgoKind"] = kind.ToString();
+            algorithm.Source.Parameters["Runtime.GenericIsOK"] = response.IsOK.ToString();
+            algorithm.Source.Parameters["Runtime.GenericAreaRatio"] = response.AreaRate.ToString("F4");
+            algorithm.Source.Parameters["Runtime.GenericShift"] = $"{response.ShiftX:F2},{response.ShiftY:F2}";
+        }
+        else
+        {
+            algorithm.Source.Parameters["Runtime.GenericBridge"] = "fallback";
+            algorithm.Source.Parameters["Runtime.GenericBridgeMessage"] = response.Message;
             RunThresholdFallback(image, model, algorithm, result);
         }
     }

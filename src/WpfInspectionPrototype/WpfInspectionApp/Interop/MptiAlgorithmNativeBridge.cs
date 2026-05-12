@@ -88,6 +88,51 @@ public struct MptiBridgePadBWResult
     [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string Message;
 }
 
+public enum MptiBridgeAlgoKind
+{
+    Unknown = 0,
+    BGA = 1,
+    Blob = 2,
+    Edge = 3,
+    Pattern = 4
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeGenericParams
+{
+    public int AlgoKind;
+    public int BinaryMin;
+    public int BinaryMax;
+    public int UseInsp2D;
+    public int InvertCheck;
+    public int MinBlobArea;
+    public int ExpectedCenterX;
+    public int ExpectedCenterY;
+    public float MinAreaRatio;
+    public float MaxAreaRatio;
+    public float ShiftXTolerance;
+    public float ShiftYTolerance;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8, CharSet = CharSet.Unicode)]
+public struct MptiBridgeGenericResult
+{
+    public int IsInsp;
+    public int IsOK;
+    public int OkArea;
+    public int OkShift;
+    public int FoundCenterX;
+    public int FoundCenterY;
+    public float AreaRatio;
+    public float ShiftX;
+    public float ShiftY;
+    public int ForegroundPixels;
+    public int BlobCount;
+    public double ElapsedMs;
+    public int ErrorCode;
+    [MarshalAs(UnmanagedType.ByValTStr, SizeConst = 256)] public string Message;
+}
+
 public sealed record AlgorithmBridgeResponse(
     bool Available,
     bool Success,
@@ -117,6 +162,14 @@ public static class MptiAlgorithmNativeBridge
 
     [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+    private static extern int MptiBridgeRunGeneric(
+        IntPtr image, int imageWidth, int imageHeight, int sourceStride,
+        int roiX, int roiY, int roiW, int roiH,
+        ref MptiBridgeGenericParams parameters,
+        ref MptiBridgeGenericResult result);
+
+    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
+    [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeRunPadBW(
         IntPtr image, int imageWidth, int imageHeight, int sourceStride,
         int roiX, int roiY, int roiW, int roiH,
@@ -141,6 +194,32 @@ public static class MptiAlgorithmNativeBridge
                     roi.X, roi.Y, roi.Width, roi.Height,
                     ref parameters, ref result);
                 return ToShapeXResponse(code, result);
+            }
+            finally
+            {
+                handle.Free();
+            }
+        });
+    }
+
+    public static AlgorithmBridgeResponse RunGeneric(
+        byte[] image,
+        int imageWidth, int imageHeight, int sourceStride,
+        RoiRect roi,
+        MptiBridgeGenericParams parameters)
+    {
+        return InvokeBridge(image, () =>
+        {
+            var result = new MptiBridgeGenericResult { Message = string.Empty };
+            var handle = GCHandle.Alloc(image, GCHandleType.Pinned);
+            try
+            {
+                var code = MptiBridgeRunGeneric(
+                    handle.AddrOfPinnedObject(),
+                    imageWidth, imageHeight, sourceStride,
+                    roi.X, roi.Y, roi.Width, roi.Height,
+                    ref parameters, ref result);
+                return ToGenericResponse(code, result);
             }
             finally
             {
@@ -189,6 +268,27 @@ public static class MptiAlgorithmNativeBridge
     private static AlgorithmBridgeResponse BridgeUnavailable(int code, string message)
     {
         return new AlgorithmBridgeResponse(false, false, code, message, false, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+    }
+
+    private static AlgorithmBridgeResponse ToGenericResponse(int code, MptiBridgeGenericResult r)
+    {
+        var flags = (r.OkArea << 0) | (r.OkShift << 1);
+        return new AlgorithmBridgeResponse(
+            true,
+            code == 0,
+            code,
+            r.Message ?? string.Empty,
+            r.IsOK != 0,
+            0,
+            r.ShiftX,
+            r.ShiftY,
+            r.AreaRatio,
+            r.ForegroundPixels,
+            r.BlobCount,
+            r.ElapsedMs,
+            r.FoundCenterX,
+            r.FoundCenterY,
+            flags);
     }
 
     private static AlgorithmBridgeResponse ToShapeXResponse(int code, MptiBridgeShapeXResult r)

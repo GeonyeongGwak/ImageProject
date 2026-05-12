@@ -3,6 +3,7 @@
 #include "MptiBridgeAlign.h"
 #include "MptiBridgeShapeX.h"
 #include "MptiBridgePadBW.h"
+#include "MptiBridgeGeneric.h"
 
 #include <oleauto.h>
 
@@ -759,6 +760,99 @@ MPTI_BRIDGE_API int MptiBridgeRunPadBW(
     {
         result->errorCode = -101;
         wcsncpy_s(result->message, L"MptiBridgeRunPadBW unknown C++ exception", _TRUNCATE);
+        return -101;
+    }
+}
+
+MPTI_BRIDGE_API int MptiBridgeRunGeneric(
+    const unsigned char* image,
+    int imageWidth,
+    int imageHeight,
+    int sourceStride,
+    int roiX,
+    int roiY,
+    int roiW,
+    int roiH,
+    const MptiBridgeGenericParams* params,
+    MptiBridgeGenericResult* result)
+{
+    if (result == nullptr)
+    {
+        return -1;
+    }
+    *result = {};
+    wcsncpy_s(result->message, L"", _TRUNCATE);
+
+    if (image == nullptr || params == nullptr || imageWidth <= 0 || imageHeight <= 0 || sourceStride < imageWidth * 4)
+    {
+        result->errorCode = -1;
+        wcsncpy_s(result->message, L"MptiBridgeRunGeneric: invalid argument", _TRUNCATE);
+        return -1;
+    }
+
+    try
+    {
+        const auto start = std::chrono::high_resolution_clock::now();
+
+        const auto info = AnalyseRoiForeground(
+            image, imageWidth, imageHeight, sourceStride,
+            roiX, roiY, roiW, roiH,
+            params->binaryMin, params->binaryMax, params->invertCheck);
+
+        const double roiArea = static_cast<double>(std::max(1, roiW)) * std::max(1, roiH);
+        const float ratio = roiArea > 0 ? static_cast<float>(info.foregroundPixels / roiArea) : 0.0f;
+
+        result->isInsp = 1;
+        result->foregroundPixels = info.foregroundPixels;
+        result->blobCount = info.foregroundPixels >= std::max(1, params->minBlobArea) ? 1 : 0;
+        result->foundCenterX = info.centroidX;
+        result->foundCenterY = info.centroidY;
+        result->areaRatio = ratio;
+
+        if (info.foregroundPixels > 0)
+        {
+            result->shiftX = static_cast<float>(info.centroidX - params->expectedCenterX);
+            result->shiftY = static_cast<float>(info.centroidY - params->expectedCenterY);
+        }
+
+        result->okArea = (ratio >= params->minAreaRatio && ratio <= params->maxAreaRatio) ? 1 : 0;
+        result->okShift = (std::fabs(result->shiftX) <= params->shiftXTolerance &&
+                          std::fabs(result->shiftY) <= params->shiftYTolerance)
+                          ? 1 : 0;
+
+        // Algorithm-specific OK criteria. Defaults to area+shift but can vary later.
+        switch (params->algoKind)
+        {
+            case MptiAlgo_BGA:
+            case MptiAlgo_Blob:
+            case MptiAlgo_Pattern:
+                result->isOK = result->okArea && result->okShift ? 1 : 0;
+                break;
+            case MptiAlgo_Edge:
+                // Edge: just check there is enough foreground
+                result->isOK = result->blobCount > 0 ? 1 : 0;
+                break;
+            default:
+                result->isOK = result->okArea && result->okShift ? 1 : 0;
+                break;
+        }
+
+        const auto end = std::chrono::high_resolution_clock::now();
+        result->elapsedMs = std::chrono::duration<double, std::milli>(end - start).count();
+        result->errorCode = 0;
+        wcsncpy_s(result->message, L"MptiBridgeRunGeneric completed (lightweight)", _TRUNCATE);
+        return 0;
+    }
+    catch (const std::exception&)
+    {
+        result->errorCode = -100;
+        wcsncpy_s(result->message, L"MptiBridgeRunGeneric C++ exception", _TRUNCATE);
+        return -100;
+    }
+    catch (...)
+    {
+        result->errorCode = -101;
+        wcsncpy_s(result->message, L"MptiBridgeRunGeneric unknown C++ exception", _TRUNCATE);
         return -101;
     }
 }
