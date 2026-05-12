@@ -74,7 +74,7 @@ public partial class MainWindow
 
         if (!string.IsNullOrWhiteSpace(result.SelectedId))
         {
-            RefreshInspectionTree(result.SelectedId);
+            _viewModel.RefreshInspectionTree(result.SelectedId);
         }
 
         if (!string.IsNullOrWhiteSpace(result.StatusMessage))

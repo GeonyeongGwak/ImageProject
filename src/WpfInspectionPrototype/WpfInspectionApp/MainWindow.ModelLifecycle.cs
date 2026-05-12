@@ -121,7 +121,7 @@ public partial class MainWindow
 
     private void RefreshInspectionView(string? selectedId = null)
     {
-        RefreshInspectionTree(selectedId);
+        _viewModel.RefreshInspectionTree(selectedId);
         DrawRoiOverlays();
     }
 

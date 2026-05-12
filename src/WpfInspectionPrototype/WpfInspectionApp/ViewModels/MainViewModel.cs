@@ -41,6 +41,7 @@ public sealed class MainViewModel : ViewModelBase
     private AlgorithmPanelFactory? _algorithmPanelFactory;
     private IAlgorithmPanel? _activeAlgorithmPanel;
     private bool _alignSearchTabActive;
+    private bool _refreshingTree;
 
     public MainViewModel(
         InspectionModel model,
@@ -729,7 +730,25 @@ public sealed class MainViewModel : ViewModelBase
         InspectionResultText = exception.ToString();
     }
 
+    public void RefreshInspectionTree(string? selectedId = null)
+    {
+        RefreshInspectionTree(selectedId, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
+    }
+
     public void RefreshInspectionTree(string? selectedId, int sourceWidth, int sourceHeight)
+    {
+        _refreshingTree = true;
+        try
+        {
+            RebuildInspectionTree(selectedId, sourceWidth, sourceHeight);
+        }
+        finally
+        {
+            _refreshingTree = false;
+        }
+    }
+
+    private void RebuildInspectionTree(string? selectedId, int sourceWidth, int sourceHeight)
     {
         Model.EnsureStructure();
         selectedId ??= Model.SelectedWindowId;
@@ -804,6 +823,11 @@ public sealed class MainViewModel : ViewModelBase
 
     public bool SelectTreeNode(InspectionTreeNodeViewModel? node)
     {
+        if (_refreshingTree)
+        {
+            return false;
+        }
+
         if (node?.Payload is InspectionWindowData window)
         {
             Model.SelectedWindowId = window.Id;

@@ -34,7 +34,6 @@ public partial class MainWindow : Window, IDialogOwner
     private bool _uiReady;
     private bool _applyingModel;
     private bool _syncingSearchSize;
-    private bool _refreshingInspectionTree;
 
     public MainWindow()
     {
@@ -220,17 +219,10 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void InspectionTree_SelectedItemChanged(object sender, RoutedPropertyChangedEventArgs<object> e)
     {
-        if (_refreshingInspectionTree)
+        if (e.NewValue is InspectionTreeNodeViewModel node)
         {
-            return;
+            ViewModel.SelectTreeNode(node);
         }
-
-        if (e.NewValue is not InspectionTreeNodeViewModel node)
-        {
-            return;
-        }
-
-        ViewModel.SelectTreeNode(node);
     }
 
     private void DrawAlgorithmRoiButton_Click(object sender, RoutedEventArgs e)
@@ -275,19 +267,6 @@ public partial class MainWindow : Window, IDialogOwner
     private string SelectedAlgorithm()
     {
         return ViewModel.SelectedAlgorithm;
-    }
-
-    private void RefreshInspectionTree(string? selectedId = null)
-    {
-        _refreshingInspectionTree = true;
-        try
-        {
-            ViewModel.RefreshInspectionTree(selectedId, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
-        }
-        finally
-        {
-            _refreshingInspectionTree = false;
-        }
     }
 
 }
