@@ -98,8 +98,6 @@ public partial class MainWindow
         ViewModel.RefreshModelBindings();
         ViewModel.SelectedAlgorithm = ViewModel.Model.Algorithm;
         AlignPanel.LoadFromModel(ViewModel.Model);
-        ViewModel.ImageZoomMaximum = Math.Max(1.0, ViewModel.Model.WheelZoomMax);
-        ViewModel.ImageZoom = ViewModel.Model.ImageZoom;
 
         _applyingModel = false;
         _viewModel.UpdateAlgorithmPanels();
