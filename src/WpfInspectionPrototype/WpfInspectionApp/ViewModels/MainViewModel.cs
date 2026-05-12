@@ -115,7 +115,27 @@ public sealed class MainViewModel : ViewModelBase
     public event Action? ThresholdScheduleRequested;
     public event Action? AlignSearchTabActivationRequested;
     public event Action<bool>? AlignRoiDrawButtonStateRequested;
+    public event Action<int>? AlignSearchNumSyncRequested;
+    public event Action? AlignActiveRoiUiRefreshRequested;
     public event Action? OverlayRefreshRequested;
+
+    public void SelectNextAlignRoi()
+    {
+        var result = _roi.SelectNextWindow(_model);
+        AlignSearchNumSyncRequested?.Invoke(_model.AlignSearchNum);
+        AlignActiveRoiUiRefreshRequested?.Invoke();
+        TreeRefreshRequested?.Invoke(result.SelectedId);
+        OverlayRefreshRequested?.Invoke();
+    }
+
+    public void DeleteActiveAlignRoi()
+    {
+        var result = _roi.DeleteActiveWindow(_model);
+        AlignActiveRoiUiRefreshRequested?.Invoke();
+        TreeRefreshRequested?.Invoke(result.SelectedId);
+        OverlayRefreshRequested?.Invoke();
+        ThresholdScheduleRequested?.Invoke();
+    }
 
     public bool IsAlignSelected => string.Equals(_model.Algorithm, "AlgoAlign", StringComparison.OrdinalIgnoreCase);
 

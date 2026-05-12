@@ -75,6 +75,8 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.ThresholdScheduleRequested += ScheduleThreshold;
         _viewModel.AlignSearchTabActivationRequested += AlignPanel.ActivateSearchTab;
         _viewModel.AlignRoiDrawButtonStateRequested += AlignPanel.SetWindowRoiDrawingState;
+        _viewModel.AlignSearchNumSyncRequested += SyncAlignSearchNumFromViewModel;
+        _viewModel.AlignActiveRoiUiRefreshRequested += UpdateActiveRoiUi;
         _viewModel.OverlayRefreshRequested += DrawRoiOverlays;
         InitializeAlgorithmPanels();
 
@@ -190,7 +192,7 @@ public partial class MainWindow : Window, IDialogOwner
         switch (e.Kind)
         {
             case AlignPanelActionKind.ActiveRoi:
-                SelectNextAlignRoi();
+                _viewModel.SelectNextAlignRoi();
                 break;
             case AlignPanelActionKind.DrawWindowRoi:
                 _viewModel.EnableWindowRoiDrawing();
@@ -296,7 +298,7 @@ public partial class MainWindow : Window, IDialogOwner
         {
             e.Handled = true;
             CommitCurrentDrawingRoi();
-            SelectNextAlignRoi();
+            _viewModel.SelectNextAlignRoi();
             _viewModel.EnableWindowRoiDrawing();
             return;
         }
@@ -304,7 +306,7 @@ public partial class MainWindow : Window, IDialogOwner
         if (e.Key == Key.Delete)
         {
             e.Handled = true;
-            DeleteActiveAlignRoi();
+            _viewModel.DeleteActiveAlignRoi();
         }
     }
 
@@ -788,26 +790,11 @@ public partial class MainWindow : Window, IDialogOwner
     }
 
 
-    private void SelectNextAlignRoi()
-    {
-        var result = _roiCanvasViewModel.SelectNextWindow(_model);
-        SyncSearchNumCombo();
-        UpdateActiveRoiUi();
-        RefreshInspectionView(result.SelectedId);
-    }
-
-    private void SyncSearchNumCombo()
+    private void SyncAlignSearchNumFromViewModel(int searchNum)
     {
         _applyingModel = true;
-        AlignPanel.SetSearchNum(_model.AlignSearchNum);
+        AlignPanel.SetSearchNum(searchNum);
         _applyingModel = false;
-    }
-
-    private void DeleteActiveAlignRoi()
-    {
-        var result = _roiCanvasViewModel.DeleteActiveWindow(_model);
-        UpdateActiveRoiUi();
-        RefreshInspectionViewAndThreshold(result.SelectedId);
     }
 
     private void UpdateActiveRoiUi()
