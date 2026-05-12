@@ -122,6 +122,14 @@ public sealed class InspectionAlgorithmData
     public AlgorithmPanelData PanelData { get; set; } = new();
     public InspectionResultData Result { get; set; } = new();
 
+    // Optional bridge result snapshot for Align. Used by the ROI overlay to draw
+    // detected fiducial centers; null when bridge has not produced a result yet.
+    public int[]? AlignDetectedCentersX { get; set; }
+    public int[]? AlignDetectedCentersY { get; set; }
+    public double? AlignOffsetX { get; set; }
+    public double? AlignOffsetY { get; set; }
+    public double? AlignTheta { get; set; }
+
     public static string CreateId() => $"ALG-{Guid.NewGuid():N}";
 
     public void ApplyCatalogDefaults()

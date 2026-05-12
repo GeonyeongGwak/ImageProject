@@ -400,6 +400,12 @@ public sealed class PartInspectionRuntime
             result.AlignOkShiftY = response.OkShiftY;
             result.AlignOkAngle = response.OkAngle;
             result.NativeAlignMessage = response.Message;
+
+            algorithm.Source.AlignDetectedCentersX = (int[])response.DetectedCentersX.Clone();
+            algorithm.Source.AlignDetectedCentersY = (int[])response.DetectedCentersY.Clone();
+            algorithm.Source.AlignOffsetX = response.OffsetX;
+            algorithm.Source.AlignOffsetY = response.OffsetY;
+            algorithm.Source.AlignTheta = response.Theta;
         }
         else
         {
