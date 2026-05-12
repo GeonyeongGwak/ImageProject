@@ -76,6 +76,16 @@ public sealed class AlgorithmRunResult
     public int BlobCount { get; set; }
     public RoiRect? Bounds { get; set; }
     public RoiRect InspectionRoi { get; set; }
+
+    public bool NativeAlignAvailable { get; set; }
+    public int AlignOkCount { get; set; }
+    public double AlignOffsetX { get; set; }
+    public double AlignOffsetY { get; set; }
+    public double AlignTheta { get; set; }
+    public bool AlignOkShiftX { get; set; }
+    public bool AlignOkShiftY { get; set; }
+    public bool AlignOkAngle { get; set; }
+    public string NativeAlignMessage { get; set; } = "";
 }
 
 public sealed class WindowRunResult
@@ -204,8 +214,24 @@ public sealed class PartInspectionRuntime
 
                 if (IsAlignFamily(algorithm.Type))
                 {
-                    alignState = CreateAlignState(model, window, algorithm);
+                    alignState = CreateAlignState(model, window, algorithm, result);
                     algorithm.Source.Parameters["Runtime.AlignResult"] = alignState.ToRuntimeText();
+                    if (result.NativeAlignAvailable)
+                    {
+                        algorithm.Source.Parameters["Runtime.AlignBridge"] = "native";
+                        algorithm.Source.Parameters["Runtime.AlignOkCount"] = result.AlignOkCount.ToString();
+                        algorithm.Source.Parameters["Runtime.AlignOkShiftX"] = result.AlignOkShiftX.ToString();
+                        algorithm.Source.Parameters["Runtime.AlignOkShiftY"] = result.AlignOkShiftY.ToString();
+                        algorithm.Source.Parameters["Runtime.AlignOkAngle"] = result.AlignOkAngle.ToString();
+                    }
+                    else
+                    {
+                        algorithm.Source.Parameters["Runtime.AlignBridge"] = "fallback";
+                        if (!string.IsNullOrWhiteSpace(result.NativeAlignMessage))
+                        {
+                            algorithm.Source.Parameters["Runtime.AlignBridgeMessage"] = result.NativeAlignMessage;
+                        }
+                    }
                 }
                 else if (alignState != null)
                 {
@@ -273,27 +299,45 @@ public sealed class PartInspectionRuntime
 
         if (image != null && image.Width > 0 && image.Height > 0)
         {
-            var destinationStride = image.Width;
-            var destination = new byte[destinationStride * image.Height];
-            var threshold = ReadAlgorithmThreshold(model, algorithm);
-            var response = NativeInspectionBridge.ThresholdBgra(
-                image.SourcePixels,
-                image.Width,
-                image.Height,
-                image.SourceStride,
-                destination,
-                destinationStride,
-                threshold,
-                algorithm.InspectionRoi);
+            if (string.Equals(algorithm.Type, "AlgoAlign", StringComparison.OrdinalIgnoreCase))
+            {
+                var alignParams = AlignBridgeAdapter.BuildParams(model, window.Roi, algorithm);
+                var alignResponse = MptiAlignNativeBridge.Run(
+                    image.SourcePixels,
+                    image.Width,
+                    image.Height,
+                    image.SourceStride,
+                    window.Roi,
+                    alignParams);
 
-            var native = response.Result;
-            result.UsedImage = true;
-            result.ElapsedMs = native.ElapsedMs;
-            result.ForegroundPixels = native.ForegroundPixels;
-            result.BlobCount = native.BlobCount;
-            result.Bounds = native.ForegroundPixels > 0
-                ? new RoiRect(native.MinX, native.MinY, Math.Max(1, native.MaxX - native.MinX + 1), Math.Max(1, native.MaxY - native.MinY + 1))
-                : null;
+                result.UsedImage = true;
+                result.NativeAlignAvailable = alignResponse.Available;
+                if (alignResponse.Available && alignResponse.Success)
+                {
+                    result.ElapsedMs = alignResponse.ElapsedMs;
+                    result.ForegroundPixels = alignResponse.ForegroundPixels;
+                    result.BlobCount = alignResponse.BlobCount;
+                    result.Bounds = ComputeAlignBounds(alignParams, alignResponse);
+                    result.AlignOkCount = alignResponse.OkCount;
+                    result.AlignOffsetX = alignResponse.OffsetX;
+                    result.AlignOffsetY = alignResponse.OffsetY;
+                    result.AlignTheta = alignResponse.Theta;
+                    result.AlignOkShiftX = alignResponse.OkShiftX;
+                    result.AlignOkShiftY = alignResponse.OkShiftY;
+                    result.AlignOkAngle = alignResponse.OkAngle;
+                    result.NativeAlignMessage = alignResponse.Message;
+                }
+                else
+                {
+                    // Bridge missing or failed — fall back to threshold path
+                    RunThresholdFallback(image, model, algorithm, result);
+                    result.NativeAlignMessage = alignResponse.Message;
+                }
+            }
+            else
+            {
+                RunThresholdFallback(image, model, algorithm, result);
+            }
         }
         else
         {
@@ -324,13 +368,26 @@ public sealed class PartInspectionRuntime
         return $"{algorithm.DisplayName} OK | {roiKind} | {alignText}";
     }
 
-    private static AlignRuntimeState CreateAlignState(InspectionModel model, WindowRuntimePacket window, AlgorithmRuntimePacket algorithm)
+    private static AlignRuntimeState CreateAlignState(InspectionModel model, WindowRuntimePacket window, AlgorithmRuntimePacket algorithm, AlgorithmRunResult? lastResult)
     {
         var roi = algorithm.InspectionRoi;
         var windowCenterX = window.Roi.X + window.Roi.Width / 2.0;
         var windowCenterY = window.Roi.Y + window.Roi.Height / 2.0;
         var roiCenterX = roi.X + roi.Width / 2.0;
         var roiCenterY = roi.Y + roi.Height / 2.0;
+
+        if (lastResult is { NativeAlignAvailable: true })
+        {
+            return new AlignRuntimeState
+            {
+                AlgorithmId = algorithm.Id,
+                OffsetX = lastResult.AlignOffsetX,
+                OffsetY = lastResult.AlignOffsetY,
+                Angle = lastResult.AlignTheta,
+                CenterX = roiCenterX,
+                CenterY = roiCenterY
+            };
+        }
 
         return new AlignRuntimeState
         {
@@ -341,6 +398,53 @@ public sealed class PartInspectionRuntime
             CenterX = roiCenterX,
             CenterY = roiCenterY
         };
+    }
+
+    private static void RunThresholdFallback(PartRuntimeImage image, InspectionModel model, AlgorithmRuntimePacket algorithm, AlgorithmRunResult result)
+    {
+        var destinationStride = image.Width;
+        var destination = new byte[destinationStride * image.Height];
+        var threshold = ReadAlgorithmThreshold(model, algorithm);
+        var response = NativeInspectionBridge.ThresholdBgra(
+            image.SourcePixels,
+            image.Width,
+            image.Height,
+            image.SourceStride,
+            destination,
+            destinationStride,
+            threshold,
+            algorithm.InspectionRoi);
+
+        var native = response.Result;
+        result.UsedImage = true;
+        result.ElapsedMs = native.ElapsedMs;
+        result.ForegroundPixels = native.ForegroundPixels;
+        result.BlobCount = native.BlobCount;
+        result.Bounds = native.ForegroundPixels > 0
+            ? new RoiRect(native.MinX, native.MinY, Math.Max(1, native.MaxX - native.MinX + 1), Math.Max(1, native.MaxY - native.MinY + 1))
+            : null;
+    }
+
+    private static RoiRect? ComputeAlignBounds(MptiBridgeAlignParams parameters, AlignBridgeResponse response)
+    {
+        if (response.OkCount <= 0)
+        {
+            return null;
+        }
+
+        var minX = int.MaxValue;
+        var minY = int.MaxValue;
+        var maxX = int.MinValue;
+        var maxY = int.MinValue;
+        for (var i = 0; i < parameters.SearchNum; i++)
+        {
+            minX = Math.Min(minX, response.DetectedCentersX[i]);
+            minY = Math.Min(minY, response.DetectedCentersY[i]);
+            maxX = Math.Max(maxX, response.DetectedCentersX[i]);
+            maxY = Math.Max(maxY, response.DetectedCentersY[i]);
+        }
+
+        return new RoiRect(minX, minY, Math.Max(1, maxX - minX + 1), Math.Max(1, maxY - minY + 1));
     }
 
     private static int ReadAlgorithmThreshold(InspectionModel model, AlgorithmRuntimePacket algorithm)
