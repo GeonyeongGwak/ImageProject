@@ -37,6 +37,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly RoiCanvasViewModel _roi;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
+    private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
     private AlgorithmPanelFactory? _algorithmPanelFactory;
     private IAlgorithmPanel? _activeAlgorithmPanel;
 
@@ -48,7 +49,8 @@ public sealed class MainViewModel : ViewModelBase
         IApplicationPathService applicationPathService,
         RoiCanvasViewModel roi,
         IImageRuntimeStateService imageRuntimeStateService,
-        IInspectionWorkflowService inspectionWorkflowService)
+        IInspectionWorkflowService inspectionWorkflowService,
+        IThresholdPreviewWorkflowService thresholdPreviewWorkflowService)
     {
         _model = model;
         _model.EnsureStructure();
@@ -60,6 +62,7 @@ public sealed class MainViewModel : ViewModelBase
         _roi = roi;
         _imageRuntimeStateService = imageRuntimeStateService;
         _inspectionWorkflowService = inspectionWorkflowService;
+        _thresholdPreviewWorkflowService = thresholdPreviewWorkflowService;
         AlgorithmTypes = new ObservableCollection<string>(AlgorithmCatalog.All.Select(item => item.Type));
         InspectionTreeNodes = [];
 
@@ -112,6 +115,44 @@ public sealed class MainViewModel : ViewModelBase
     public event Action? WindowRoiDrawingRequested;
     public event Action? AlgorithmRoiDrawingRequested;
     public event Action? RoiDrawingDisableRequested;
+    public event Action? OverlayRefreshRequested;
+
+    private RoiRect? ActiveInspectionRoi => _roi.GetActiveInspectionRoi(_model, SelectedAlgorithm);
+
+    public async Task RunThresholdAsync(bool refreshTreeOnAlgorithmUpdate = false)
+    {
+        if (!_imageRuntimeStateService.HasSourceImage)
+        {
+            return;
+        }
+
+        ModelSyncFromUiRequested?.Invoke();
+        StatusMessage = "Threshold running...";
+
+        var result = await _thresholdPreviewWorkflowService.RunAsync(
+            _model,
+            ActiveInspectionRoi,
+            ActiveWindow,
+            ActiveAlgorithm,
+            FormatRoi);
+
+        if (!result.RanPreview || result.Canceled)
+        {
+            return;
+        }
+
+        ApplyThresholdPreview(
+            result.BinaryImage,
+            result.UsedNative,
+            result.TimingText,
+            result.StatusMessage,
+            result.ResultText);
+        if (refreshTreeOnAlgorithmUpdate && !string.IsNullOrWhiteSpace(result.UpdatedAlgorithmId))
+        {
+            TreeRefreshRequested?.Invoke(result.UpdatedAlgorithmId);
+        }
+        OverlayRefreshRequested?.Invoke();
+    }
 
     public void SetAlgorithmPanelFactory(AlgorithmPanelFactory factory)
     {

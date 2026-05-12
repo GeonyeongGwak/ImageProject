@@ -21,7 +21,6 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly RoiOverlayCoordinator _roiOverlayCoordinator;
     private readonly IApplicationPathService _applicationPathService;
     private readonly IPartImportWorkflowService _partImportWorkflowService;
-    private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
     private readonly IImageLoadWorkflowService _imageLoadWorkflowService;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IRoiGeometryService _roiGeometryService;
@@ -45,7 +44,6 @@ public partial class MainWindow : Window, IDialogOwner
         _roiOverlayCoordinator = new RoiOverlayCoordinator(App.Services.RoiGeometry);
         _applicationPathService = App.Services.ApplicationPath;
         _partImportWorkflowService = App.Services.PartImportWorkflow;
-        _thresholdPreviewWorkflowService = App.Services.ThresholdPreviewWorkflow;
         _imageLoadWorkflowService = App.Services.ImageLoadWorkflow;
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
         _roiGeometryService = App.Services.RoiGeometry;
@@ -63,7 +61,8 @@ public partial class MainWindow : Window, IDialogOwner
             _applicationPathService,
             _roiCanvasViewModel,
             _imageRuntimeStateService,
-            App.Services.InspectionWorkflow);
+            App.Services.InspectionWorkflow,
+            App.Services.ThresholdPreviewWorkflow);
         DataContext = _viewModel;
         _viewModel.ConfigureCommands(ZoomOne, ZoomFit);
         _viewModel.TreeRefreshRequested += RefreshInspectionView;
@@ -77,6 +76,7 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.WindowRoiDrawingRequested += EnableWindowRoiDrawing;
         _viewModel.AlgorithmRoiDrawingRequested += EnableAlgorithmRoiDrawing;
         _viewModel.RoiDrawingDisableRequested += DisableRoiDrawing;
+        _viewModel.OverlayRefreshRequested += DrawRoiOverlays;
         InitializeAlgorithmPanels();
 
         _thresholdTimer = new DispatcherTimer
@@ -86,7 +86,7 @@ public partial class MainWindow : Window, IDialogOwner
         _thresholdTimer.Tick += async (_, _) =>
         {
             _thresholdTimer.Stop();
-            await RunThresholdAsync();
+            await _viewModel.RunThresholdAsync();
         };
 
         _model.EnsureStructure();
@@ -576,41 +576,6 @@ public partial class MainWindow : Window, IDialogOwner
         _thresholdTimer.Start();
     }
 
-    private async Task RunThresholdAsync(bool refreshTreeOnAlgorithmUpdate = false)
-    {
-        if (!_imageRuntimeStateService.HasSourceImage)
-        {
-            return;
-        }
-
-        UpdateModelFromUi();
-        ViewModel.StatusMessage = "Threshold running...";
-
-        var result = await _thresholdPreviewWorkflowService.RunAsync(
-            _model,
-            ActiveInspectionRoi,
-            ActiveWindow,
-            ActiveAlgorithm,
-            FormatRoi);
-
-        if (!result.RanPreview || result.Canceled)
-        {
-            return;
-        }
-
-        ViewModel.ApplyThresholdPreview(
-            result.BinaryImage,
-            result.UsedNative,
-            result.TimingText,
-            result.StatusMessage,
-            result.ResultText);
-        if (refreshTreeOnAlgorithmUpdate && !string.IsNullOrWhiteSpace(result.UpdatedAlgorithmId))
-        {
-            RefreshInspectionTree(result.UpdatedAlgorithmId);
-        }
-        DrawRoiOverlays();
-    }
-
     private void UpdateModelFromUi()
     {
         _model.EnsureStructure();
@@ -721,7 +686,7 @@ public partial class MainWindow : Window, IDialogOwner
             ViewModel.StatusMessage = $"Align Part Teaching completed: {teaching.TaughtCount} Window(s).";
             ViewModel.InspectionResultText = teaching.Summary;
 
-            await RunThresholdAsync(refreshTreeOnAlgorithmUpdate: true);
+            await _viewModel.RunThresholdAsync(refreshTreeOnAlgorithmUpdate: true);
         }
         catch (Exception ex)
         {
