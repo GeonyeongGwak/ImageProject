@@ -21,7 +21,6 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly RoiOverlayCoordinator _roiOverlayCoordinator;
     private readonly IApplicationPathService _applicationPathService;
     private readonly IPartImportWorkflowService _partImportWorkflowService;
-    private readonly IInspectionWorkflowService _inspectionWorkflowService;
     private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
     private readonly IImageLoadWorkflowService _imageLoadWorkflowService;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
@@ -47,7 +46,6 @@ public partial class MainWindow : Window, IDialogOwner
         _roiOverlayCoordinator = new RoiOverlayCoordinator(App.Services.RoiGeometry);
         _applicationPathService = App.Services.ApplicationPath;
         _partImportWorkflowService = App.Services.PartImportWorkflow;
-        _inspectionWorkflowService = App.Services.InspectionWorkflow;
         _thresholdPreviewWorkflowService = App.Services.ThresholdPreviewWorkflow;
         _imageLoadWorkflowService = App.Services.ImageLoadWorkflow;
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
@@ -63,9 +61,12 @@ public partial class MainWindow : Window, IDialogOwner
             this,
             App.Services.FileDialog,
             App.Services.ModelWorkflow,
-            _applicationPathService);
+            _applicationPathService,
+            _roiCanvasViewModel,
+            _imageRuntimeStateService,
+            App.Services.InspectionWorkflow);
         DataContext = _viewModel;
-        _viewModel.ConfigureCommands(RunInspectionAsync, ZoomOne, ZoomFit);
+        _viewModel.ConfigureCommands(ZoomOne, ZoomFit);
         _viewModel.TreeRefreshRequested += RefreshInspectionView;
         _viewModel.AlgorithmPanelRefreshRequested += UpdateAlgorithmPanels;
         _viewModel.SelectionChanged += OnViewModelSelectionChanged;
@@ -386,41 +387,6 @@ public partial class MainWindow : Window, IDialogOwner
     private void DrawAlgorithmRoiButton_Click(object sender, RoutedEventArgs e)
     {
         EnableAlgorithmRoiDrawing();
-    }
-
-    private async Task RunInspectionAsync()
-    {
-        UpdateModelFromUi();
-
-        ViewModel.BeginInspectionRun();
-
-        try
-        {
-            var result = await _inspectionWorkflowService.RunPartAsync(
-                _model,
-                CreatePartRuntimeImage(),
-                ActiveAlgorithm?.Id);
-            if (result.RefreshSelectedId != null)
-            {
-                RefreshInspectionTree(result.RefreshSelectedId);
-            }
-
-            ViewModel.ApplyInspectionRun(result);
-        }
-        catch (Exception ex)
-        {
-            DiagnosticsLog.Write($"Part inspection failed: {ex}");
-            ViewModel.ApplyInspectionFailure(ex);
-        }
-        finally
-        {
-            ViewModel.IsInspectionRunning = false;
-        }
-    }
-
-    private PartRuntimeImage? CreatePartRuntimeImage()
-    {
-        return _imageRuntimeStateService.CreatePartRuntimeImage(_model.Threshold2D);
     }
 
     private void AlgorithmCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)

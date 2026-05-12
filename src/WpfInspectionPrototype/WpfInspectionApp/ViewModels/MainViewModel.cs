@@ -34,13 +34,19 @@ public sealed class MainViewModel : ViewModelBase
     private readonly IFileDialogService _fileDialogService;
     private readonly IModelWorkflowService _modelWorkflowService;
     private readonly IApplicationPathService _applicationPathService;
+    private readonly RoiCanvasViewModel _roi;
+    private readonly IImageRuntimeStateService _imageRuntimeStateService;
+    private readonly IInspectionWorkflowService _inspectionWorkflowService;
 
     public MainViewModel(
         InspectionModel model,
         IDialogOwner dialogOwner,
         IFileDialogService fileDialogService,
         IModelWorkflowService modelWorkflowService,
-        IApplicationPathService applicationPathService)
+        IApplicationPathService applicationPathService,
+        RoiCanvasViewModel roi,
+        IImageRuntimeStateService imageRuntimeStateService,
+        IInspectionWorkflowService inspectionWorkflowService)
     {
         _model = model;
         _model.EnsureStructure();
@@ -49,6 +55,9 @@ public sealed class MainViewModel : ViewModelBase
         _fileDialogService = fileDialogService;
         _modelWorkflowService = modelWorkflowService;
         _applicationPathService = applicationPathService;
+        _roi = roi;
+        _imageRuntimeStateService = imageRuntimeStateService;
+        _inspectionWorkflowService = inspectionWorkflowService;
         AlgorithmTypes = new ObservableCollection<string>(AlgorithmCatalog.All.Select(item => item.Type));
         InspectionTreeNodes = [];
 
@@ -58,9 +67,38 @@ public sealed class MainViewModel : ViewModelBase
         LoadModelCommand = new RelayCommand(BrowseAndLoadModel);
         ImportPartCommand = new RelayCommand(BrowseAndImportPart);
         AddAlgorithmCommand = new RelayCommand(AddAlgorithm);
-        RunInspectionCommand = DisabledCommand();
+        RunInspectionCommand = new AsyncRelayCommand(RunInspectionAsync, () => CanRunInspection);
         ZoomOneCommand = DisabledCommand();
         ZoomFitCommand = DisabledCommand();
+    }
+
+    private async Task RunInspectionAsync()
+    {
+        ModelSyncFromUiRequested?.Invoke();
+        BeginInspectionRun();
+
+        try
+        {
+            var result = await _inspectionWorkflowService.RunPartAsync(
+                _model,
+                _imageRuntimeStateService.CreatePartRuntimeImage(_model.Threshold2D),
+                ActiveAlgorithm?.Id);
+            if (result.RefreshSelectedId != null)
+            {
+                TreeRefreshRequested?.Invoke(result.RefreshSelectedId);
+            }
+
+            ApplyInspectionRun(result);
+        }
+        catch (Exception ex)
+        {
+            DiagnosticsLog.Write($"Part inspection failed: {ex}");
+            ApplyInspectionFailure(ex);
+        }
+        finally
+        {
+            IsInspectionRunning = false;
+        }
     }
 
     public event Action<string>? ImageLoadRequested;
@@ -396,15 +434,12 @@ public sealed class MainViewModel : ViewModelBase
     public event Action? SelectionChanged;
 
     public void ConfigureCommands(
-        Func<Task> runInspection,
         Action zoomOne,
         Action zoomFit)
     {
-        RunInspectionCommand = new AsyncRelayCommand(runInspection, () => CanRunInspection);
         ZoomOneCommand = new RelayCommand(zoomOne);
         ZoomFitCommand = new RelayCommand(zoomFit);
 
-        OnPropertyChanged(nameof(RunInspectionCommand));
         OnPropertyChanged(nameof(ZoomOneCommand));
         OnPropertyChanged(nameof(ZoomFitCommand));
     }
