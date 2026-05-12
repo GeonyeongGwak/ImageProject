@@ -32,7 +32,6 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly IAlignPartTeachingService _alignPartTeachingService;
     private readonly IAlignConditionService _alignConditionService;
     private readonly MainViewModel _viewModel;
-    private IAlgorithmPanel? _activeAlgorithmPanel;
     private InspectionModel _model = new();
     private bool _uiReady;
     private bool _applyingModel;
@@ -68,13 +67,16 @@ public partial class MainWindow : Window, IDialogOwner
         DataContext = _viewModel;
         _viewModel.ConfigureCommands(ZoomOne, ZoomFit);
         _viewModel.TreeRefreshRequested += RefreshInspectionView;
-        _viewModel.AlgorithmPanelRefreshRequested += UpdateAlgorithmPanels;
         _viewModel.SelectionChanged += OnViewModelSelectionChanged;
         _viewModel.ImageLoadRequested += LoadImage;
         _viewModel.PttLoadRequested += path => LoadPtt(path);
         _viewModel.PartImportRequested += ImportPartFromPath;
         _viewModel.ModelLoaded += OnModelLoaded;
         _viewModel.ModelSyncFromUiRequested += UpdateModelFromUi;
+        _viewModel.ThresholdScheduleRequested += ScheduleThreshold;
+        _viewModel.WindowRoiDrawingRequested += EnableWindowRoiDrawing;
+        _viewModel.AlgorithmRoiDrawingRequested += EnableAlgorithmRoiDrawing;
+        _viewModel.RoiDrawingDisableRequested += DisableRoiDrawing;
         InitializeAlgorithmPanels();
 
         _thresholdTimer = new DispatcherTimer
@@ -133,7 +135,7 @@ public partial class MainWindow : Window, IDialogOwner
 
         if (update.HasFlag(AlignPanelUpdateEffect.AlgorithmPanels))
         {
-            UpdateAlgorithmPanels();
+            _viewModel.UpdateAlgorithmPanels();
         }
 
         if (update.HasFlag(AlignPanelUpdateEffect.RoiDrawButton))
@@ -214,7 +216,7 @@ public partial class MainWindow : Window, IDialogOwner
     private void OnViewModelSelectionChanged()
     {
         UpdateActiveRoiUi();
-        UpdateAlgorithmPanels();
+        _viewModel.UpdateAlgorithmPanels();
         RefreshRoiOverlaysAndThreshold();
     }
 
@@ -236,6 +238,7 @@ public partial class MainWindow : Window, IDialogOwner
         }
 
         DiagnosticsLog.Write($"Algorithm panels registered: {string.Join(", ", _algorithmPanelFactory.RegisteredAlgorithmTypes.OrderBy(type => type, StringComparer.OrdinalIgnoreCase))}");
+        _viewModel.SetAlgorithmPanelFactory(_algorithmPanelFactory);
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -632,7 +635,7 @@ public partial class MainWindow : Window, IDialogOwner
         ViewModel.ImageZoom = _model.ImageZoom;
 
         _applyingModel = false;
-        UpdateAlgorithmPanels();
+        _viewModel.UpdateAlgorithmPanels();
         UpdateMaskDensity();
         UpdateActiveRoiUi();
         UpdateRoiText();
@@ -779,76 +782,6 @@ public partial class MainWindow : Window, IDialogOwner
         {
             _refreshingInspectionTree = false;
         }
-    }
-
-    private void UpdateAlgorithmPanels()
-    {
-        var panel = ResolveAlgorithmPanel(SelectedAlgorithm());
-        if (!ReferenceEquals(_activeAlgorithmPanel, panel))
-        {
-            _activeAlgorithmPanel?.Unbind();
-            _activeAlgorithmPanel = panel;
-            ViewModel.ActiveAlgorithmPanelContent = panel.View;
-        }
-
-        var window = ActiveWindow;
-        var algorithm = ActiveAlgorithm;
-        if (window != null && algorithm != null)
-        {
-            panel.Bind(new AlgorithmPanelContext
-            {
-                Model = _model,
-                Window = window,
-                Algorithm = algorithm,
-                Request = request => HandleAlgorithmPanelRequest(algorithm, request)
-            });
-        }
-        else
-        {
-            panel.Unbind();
-        }
-
-        if (!string.Equals(panel.AlgorithmType, "AlgoAlign", StringComparison.OrdinalIgnoreCase))
-        {
-            DisableRoiDrawing();
-        }
-    }
-
-    private IAlgorithmPanel ResolveAlgorithmPanel(string algorithmType)
-    {
-        return _algorithmPanelFactory.Resolve(algorithmType);
-    }
-
-    private void HandleAlgorithmPanelRequest(InspectionAlgorithmData algorithm, AlgorithmPanelRequest request)
-    {
-        switch (request.Kind)
-        {
-            case AlgorithmPanelRequestKind.PreviewUpdate:
-                ScheduleThreshold();
-                break;
-            case AlgorithmPanelRequestKind.TreeRefresh:
-                RefreshInspectionTree(algorithm.Id);
-                break;
-            case AlgorithmPanelRequestKind.WindowRoiDrawing:
-                EnableWindowRoiDrawing();
-                break;
-            case AlgorithmPanelRequestKind.AlgorithmRoiDrawing:
-                EnableAlgorithmRoiDrawing();
-                break;
-            case AlgorithmPanelRequestKind.SetParameter:
-                if (request.ParameterName != null && request.ParameterValue != null)
-                {
-                    SetAlgorithmParameter(algorithm, request.ParameterName, request.ParameterValue);
-                }
-                break;
-        }
-    }
-
-    private void SetAlgorithmParameter(InspectionAlgorithmData algorithm, string name, string value)
-    {
-        algorithm.ApplyCatalogDefaults();
-        algorithm.Parameters[name] = value;
-        ScheduleThreshold();
     }
 
     private void SetImageZoom(double zoom)

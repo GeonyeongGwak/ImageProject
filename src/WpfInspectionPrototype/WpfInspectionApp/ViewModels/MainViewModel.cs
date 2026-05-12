@@ -37,6 +37,8 @@ public sealed class MainViewModel : ViewModelBase
     private readonly RoiCanvasViewModel _roi;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
+    private AlgorithmPanelFactory? _algorithmPanelFactory;
+    private IAlgorithmPanel? _activeAlgorithmPanel;
 
     public MainViewModel(
         InspectionModel model,
@@ -106,6 +108,80 @@ public sealed class MainViewModel : ViewModelBase
     public event Action<string>? PartImportRequested;
     public event Action<InspectionModel, string>? ModelLoaded;
     public event Action? ModelSyncFromUiRequested;
+    public event Action? ThresholdScheduleRequested;
+    public event Action? WindowRoiDrawingRequested;
+    public event Action? AlgorithmRoiDrawingRequested;
+    public event Action? RoiDrawingDisableRequested;
+
+    public void SetAlgorithmPanelFactory(AlgorithmPanelFactory factory)
+    {
+        _algorithmPanelFactory = factory;
+    }
+
+    public void UpdateAlgorithmPanels()
+    {
+        if (_algorithmPanelFactory == null)
+        {
+            return;
+        }
+
+        var panel = _algorithmPanelFactory.Resolve(SelectedAlgorithm);
+        if (!ReferenceEquals(_activeAlgorithmPanel, panel))
+        {
+            _activeAlgorithmPanel?.Unbind();
+            _activeAlgorithmPanel = panel;
+            ActiveAlgorithmPanelContent = panel.View;
+        }
+
+        var window = ActiveWindow;
+        var algorithm = ActiveAlgorithm;
+        if (window != null && algorithm != null)
+        {
+            panel.Bind(new AlgorithmPanelContext
+            {
+                Model = _model,
+                Window = window,
+                Algorithm = algorithm,
+                Request = request => HandleAlgorithmPanelRequest(algorithm, request)
+            });
+        }
+        else
+        {
+            panel.Unbind();
+        }
+
+        if (!string.Equals(panel.AlgorithmType, "AlgoAlign", StringComparison.OrdinalIgnoreCase))
+        {
+            RoiDrawingDisableRequested?.Invoke();
+        }
+    }
+
+    private void HandleAlgorithmPanelRequest(InspectionAlgorithmData algorithm, AlgorithmPanelRequest request)
+    {
+        switch (request.Kind)
+        {
+            case AlgorithmPanelRequestKind.PreviewUpdate:
+                ThresholdScheduleRequested?.Invoke();
+                break;
+            case AlgorithmPanelRequestKind.TreeRefresh:
+                TreeRefreshRequested?.Invoke(algorithm.Id);
+                break;
+            case AlgorithmPanelRequestKind.WindowRoiDrawing:
+                WindowRoiDrawingRequested?.Invoke();
+                break;
+            case AlgorithmPanelRequestKind.AlgorithmRoiDrawing:
+                AlgorithmRoiDrawingRequested?.Invoke();
+                break;
+            case AlgorithmPanelRequestKind.SetParameter:
+                if (request.ParameterName != null && request.ParameterValue != null)
+                {
+                    algorithm.ApplyCatalogDefaults();
+                    algorithm.Parameters[request.ParameterName] = request.ParameterValue;
+                    ThresholdScheduleRequested?.Invoke();
+                }
+                break;
+        }
+    }
 
     private void BrowseAndLoadImage()
     {
@@ -430,7 +506,6 @@ public sealed class MainViewModel : ViewModelBase
     }
 
     public event Action<string?>? TreeRefreshRequested;
-    public event Action? AlgorithmPanelRefreshRequested;
     public event Action? SelectionChanged;
 
     public void ConfigureCommands(
@@ -675,7 +750,7 @@ public sealed class MainViewModel : ViewModelBase
 
         StatusMessage = $"{algorithm.Type} added to {window.Name}.";
         TreeRefreshRequested?.Invoke(algorithm.Id);
-        AlgorithmPanelRefreshRequested?.Invoke();
+        UpdateAlgorithmPanels();
         RefreshModelBindings();
     }
 
