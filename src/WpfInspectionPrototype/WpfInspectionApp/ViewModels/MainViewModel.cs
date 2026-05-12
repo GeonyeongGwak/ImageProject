@@ -805,6 +805,18 @@ public sealed class MainViewModel : ViewModelBase
                     Payload = result,
                     IsEnabled = false
                 });
+
+                foreach (var summary in FormatBridgeSummaries(algorithm))
+                {
+                    algorithmNode.Children.Add(new InspectionTreeNodeViewModel
+                    {
+                        Header = summary,
+                        Kind = InspectionTreeNodeKind.InspectionResult,
+                        Payload = algorithm,
+                        Foreground = new SolidColorBrush(Color.FromRgb(180, 240, 200)),
+                        IsEnabled = false
+                    });
+                }
             }
         }
 
@@ -889,6 +901,65 @@ public sealed class MainViewModel : ViewModelBase
         TreeRefreshRequested?.Invoke(algorithm.Id);
         UpdateAlgorithmPanels();
         RefreshModelBindings();
+    }
+
+    private static IEnumerable<string> FormatBridgeSummaries(InspectionAlgorithmData algorithm)
+    {
+        var alignBridge = Lookup(algorithm.Parameters, "Runtime.AlignBridge");
+        if (!string.IsNullOrEmpty(alignBridge))
+        {
+            if (string.Equals(alignBridge, "native", StringComparison.OrdinalIgnoreCase))
+            {
+                var okCount = Lookup(algorithm.Parameters, "Runtime.AlignOkCount", "0");
+                var alignRes = Lookup(algorithm.Parameters, "Runtime.AlignResult", "-");
+                var okShiftX = Lookup(algorithm.Parameters, "Runtime.AlignOkShiftX", "?");
+                var okShiftY = Lookup(algorithm.Parameters, "Runtime.AlignOkShiftY", "?");
+                var okAngle = Lookup(algorithm.Parameters, "Runtime.AlignOkAngle", "?");
+                yield return $"Align bridge: native | OK {okCount} | ShiftX={okShiftX} ShiftY={okShiftY} Angle={okAngle}";
+                yield return $"Align result: {alignRes}";
+            }
+            else
+            {
+                yield return $"Align bridge: fallback ({Lookup(algorithm.Parameters, "Runtime.AlignBridgeMessage", "unavailable")})";
+            }
+        }
+
+        var shapeBridge = Lookup(algorithm.Parameters, "Runtime.ShapeXBridge");
+        if (!string.IsNullOrEmpty(shapeBridge))
+        {
+            if (string.Equals(shapeBridge, "native", StringComparison.OrdinalIgnoreCase))
+            {
+                var ok = Lookup(algorithm.Parameters, "Runtime.ShapeXIsOK", "?");
+                var areaRatio = Lookup(algorithm.Parameters, "Runtime.ShapeXAreaRatio", "?");
+                var shift = Lookup(algorithm.Parameters, "Runtime.ShapeXShift", "?");
+                yield return $"ShapeX bridge: native | OK={ok} | Area ratio={areaRatio} | Shift {shift}";
+            }
+            else
+            {
+                yield return $"ShapeX bridge: fallback ({Lookup(algorithm.Parameters, "Runtime.ShapeXBridgeMessage", "unavailable")})";
+            }
+        }
+
+        var padBridge = Lookup(algorithm.Parameters, "Runtime.PadBWBridge");
+        if (!string.IsNullOrEmpty(padBridge))
+        {
+            if (string.Equals(padBridge, "native", StringComparison.OrdinalIgnoreCase))
+            {
+                var ok = Lookup(algorithm.Parameters, "Runtime.PadBWIsOK", "?");
+                var rate = Lookup(algorithm.Parameters, "Runtime.PadBWAreaRate", "?");
+                var shift = Lookup(algorithm.Parameters, "Runtime.PadBWShift", "?");
+                yield return $"PadBW bridge: native | OK={ok} | Area rate={rate}% | Shift {shift}";
+            }
+            else
+            {
+                yield return $"PadBW bridge: fallback ({Lookup(algorithm.Parameters, "Runtime.PadBWBridgeMessage", "unavailable")})";
+            }
+        }
+    }
+
+    private static string Lookup(Dictionary<string, string> parameters, string key, string fallback = "")
+    {
+        return parameters.TryGetValue(key, out var value) ? value : fallback;
     }
 
     private string FormatRoi(RoiRect? roi)
