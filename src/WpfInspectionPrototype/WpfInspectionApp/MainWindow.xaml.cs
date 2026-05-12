@@ -579,11 +579,8 @@ public partial class MainWindow : Window, IDialogOwner
     private void UpdateModelFromUi()
     {
         ViewModel.Model.EnsureStructure();
-        ViewModel.Model.ModelName = string.IsNullOrWhiteSpace(ViewModel.ModelName) ? "UnnamedModel" : ViewModel.ModelName.Trim();
         ViewModel.Model.Part.Name = ViewModel.Model.ModelName;
         AlignPanel.ApplyToModel(ViewModel.Model, SelectedAlgorithm(), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
-        ViewModel.Model.WheelZoomEnabled = ViewModel.WheelZoomEnabled;
-        ViewModel.Model.ImageZoom = ViewModel.ImageZoom;
     }
 
     private void ApplyModelToUi()
