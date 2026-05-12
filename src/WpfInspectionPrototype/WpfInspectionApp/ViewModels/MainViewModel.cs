@@ -436,7 +436,7 @@ public sealed class MainViewModel : ViewModelBase
     {
         if (!string.IsNullOrWhiteSpace(result.TimingText))
         {
-            TimingText = result.TimingText;
+            TimingText = result.TimingText!;
         }
 
         StatusMessage = result.StatusMessage;

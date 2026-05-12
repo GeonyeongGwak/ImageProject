@@ -314,7 +314,7 @@ public partial class MainWindow : Window
         var path = _fileDialogService.BrowseImage(this);
         if (!string.IsNullOrWhiteSpace(path))
         {
-            LoadImage(path);
+            LoadImage(path!);
         }
     }
 
@@ -323,7 +323,7 @@ public partial class MainWindow : Window
         var path = _fileDialogService.BrowsePtt(this);
         if (!string.IsNullOrWhiteSpace(path))
         {
-            LoadPtt(path);
+            LoadPtt(path!);
         }
     }
 
@@ -342,7 +342,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        var result = _modelWorkflowService.Load(path);
+        var result = _modelWorkflowService.Load(path!);
         if (!result.Success || result.Model == null)
         {
             ViewModel.StatusMessage = result.StatusMessage;
@@ -363,7 +363,7 @@ public partial class MainWindow : Window
             return;
         }
 
-        ImportPartFromPath(path);
+        ImportPartFromPath(path!);
     }
 
     private void ImportPartFromPath(string path)
@@ -412,7 +412,7 @@ public partial class MainWindow : Window
         ApplyModelAndRefreshView(result.SelectedWindowId, scheduleThreshold: false);
         if (!string.IsNullOrWhiteSpace(result.Summary))
         {
-            ViewModel.InspectionResultText = result.Summary;
+            ViewModel.InspectionResultText = result.Summary!;
         }
     }
 
@@ -845,7 +845,7 @@ public partial class MainWindow : Window
 
         if (!string.IsNullOrWhiteSpace(result.StatusMessage))
         {
-            ViewModel.StatusMessage = result.StatusMessage;
+            ViewModel.StatusMessage = result.StatusMessage!;
         }
     }
 
