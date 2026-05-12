@@ -90,4 +90,72 @@ internal static class AlignBridgeAdapter
 
         return fallback;
     }
+
+    public static MptiBridgeShapeXParams BuildShapeXParams(InspectionModel model, RoiRect inspectionRoi, AlgorithmRuntimePacket algorithm)
+    {
+        var threshold = Net48Compat.Clamp(model.Threshold2D, 0, 255);
+        return new MptiBridgeShapeXParams
+        {
+            BinaryMin = Net48Compat.Clamp(ReadInt(algorithm.Parameters, "ShapeX.BinaryMin", threshold), 0, 255),
+            BinaryMax = Net48Compat.Clamp(ReadInt(algorithm.Parameters, "ShapeX.BinaryMax", 255), 0, 255),
+            UseInsp2D = 1,
+            InvertCheck = 0,
+            UseShape = 1,
+            UseInner = 0,
+            UseExist = 1,
+            UseShift = 1,
+            ShapeAreaMin = ReadFloat(algorithm.Parameters, "ShapeX.AreaMin", 0.05f),
+            ShapeAreaMax = ReadFloat(algorithm.Parameters, "ShapeX.AreaMax", 0.95f),
+            ShiftXTolerance = ReadFloat(algorithm.Parameters, "ShapeX.ShiftXTol", 10f),
+            ShiftYTolerance = ReadFloat(algorithm.Parameters, "ShapeX.ShiftYTol", 10f),
+            ExpectedCenterX = inspectionRoi.X + inspectionRoi.Width / 2,
+            ExpectedCenterY = inspectionRoi.Y + inspectionRoi.Height / 2,
+            MinBlobArea = Math.Max(1, ReadInt(algorithm.Parameters, "ShapeX.MinBlobArea", 10))
+        };
+    }
+
+    public static MptiBridgePadBWParams BuildPadBWParams(InspectionModel model, RoiRect inspectionRoi, AlgorithmRuntimePacket algorithm)
+    {
+        var threshold = Net48Compat.Clamp(model.Threshold2D, 0, 255);
+        var expectedArea = ReadDouble(algorithm.Parameters, "PadBW.TeachArea", inspectionRoi.Width * inspectionRoi.Height * 0.5);
+        return new MptiBridgePadBWParams
+        {
+            BinaryMin = Net48Compat.Clamp(ReadInt(algorithm.Parameters, "PadBW.BinaryMin", threshold), 0, 255),
+            BinaryMax = Net48Compat.Clamp(ReadInt(algorithm.Parameters, "PadBW.BinaryMax", 255), 0, 255),
+            UseInsp2D = 1,
+            InvertCheck = 0,
+            UseTeachArea = 1,
+            TeachArea = expectedArea,
+            TeachAreaRateMin = ReadDouble(algorithm.Parameters, "PadBW.AreaRateMin", 80.0),
+            TeachAreaRateMax = ReadDouble(algorithm.Parameters, "PadBW.AreaRateMax", 120.0),
+            UseShift = 1,
+            TeachShiftX = ReadDouble(algorithm.Parameters, "PadBW.ShiftX", 10.0),
+            TeachShiftY = ReadDouble(algorithm.Parameters, "PadBW.ShiftY", 10.0),
+            ExpectedCenterX = inspectionRoi.X + inspectionRoi.Width / 2,
+            ExpectedCenterY = inspectionRoi.Y + inspectionRoi.Height / 2,
+            UseBlobArea = 1,
+            BlobAreaMin = ReadDouble(algorithm.Parameters, "PadBW.BlobAreaMin", 50.0),
+            UseFillHole = 0,
+            FilterLevel = 0,
+            MinBlobArea = Math.Max(1, ReadInt(algorithm.Parameters, "PadBW.MinBlobArea", 10))
+        };
+    }
+
+    private static float ReadFloat(Dictionary<string, string> parameters, string key, float fallback)
+    {
+        if (parameters.TryGetValue(key, out var raw) && float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+        return fallback;
+    }
+
+    private static double ReadDouble(Dictionary<string, string> parameters, string key, double fallback)
+    {
+        if (parameters.TryGetValue(key, out var raw) && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+        return fallback;
+    }
 }

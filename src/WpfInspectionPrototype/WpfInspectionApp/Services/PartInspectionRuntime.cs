@@ -301,38 +301,15 @@ public sealed class PartInspectionRuntime
         {
             if (string.Equals(algorithm.Type, "AlgoAlign", StringComparison.OrdinalIgnoreCase))
             {
-                var alignParams = AlignBridgeAdapter.BuildParams(model, window.Roi, algorithm);
-                var alignResponse = MptiAlignNativeBridge.Run(
-                    image.SourcePixels,
-                    image.Width,
-                    image.Height,
-                    image.SourceStride,
-                    window.Roi,
-                    alignParams);
-
-                result.UsedImage = true;
-                result.NativeAlignAvailable = alignResponse.Available;
-                if (alignResponse.Available && alignResponse.Success)
-                {
-                    result.ElapsedMs = alignResponse.ElapsedMs;
-                    result.ForegroundPixels = alignResponse.ForegroundPixels;
-                    result.BlobCount = alignResponse.BlobCount;
-                    result.Bounds = ComputeAlignBounds(alignParams, alignResponse);
-                    result.AlignOkCount = alignResponse.OkCount;
-                    result.AlignOffsetX = alignResponse.OffsetX;
-                    result.AlignOffsetY = alignResponse.OffsetY;
-                    result.AlignTheta = alignResponse.Theta;
-                    result.AlignOkShiftX = alignResponse.OkShiftX;
-                    result.AlignOkShiftY = alignResponse.OkShiftY;
-                    result.AlignOkAngle = alignResponse.OkAngle;
-                    result.NativeAlignMessage = alignResponse.Message;
-                }
-                else
-                {
-                    // Bridge missing or failed — fall back to threshold path
-                    RunThresholdFallback(image, model, algorithm, result);
-                    result.NativeAlignMessage = alignResponse.Message;
-                }
+                RunAlignViaBridge(image, model, window, algorithm, result);
+            }
+            else if (string.Equals(algorithm.Type, "AlgoShapeX", StringComparison.OrdinalIgnoreCase))
+            {
+                RunShapeXViaBridge(image, model, algorithm, result);
+            }
+            else if (string.Equals(algorithm.Type, "AlgoPadBW", StringComparison.OrdinalIgnoreCase))
+            {
+                RunPadBWViaBridge(image, model, algorithm, result);
             }
             else
             {
@@ -398,6 +375,95 @@ public sealed class PartInspectionRuntime
             CenterX = roiCenterX,
             CenterY = roiCenterY
         };
+    }
+
+    private static void RunAlignViaBridge(PartRuntimeImage image, InspectionModel model, WindowRuntimePacket window, AlgorithmRuntimePacket algorithm, AlgorithmRunResult result)
+    {
+        var alignParams = AlignBridgeAdapter.BuildParams(model, window.Roi, algorithm);
+        var response = MptiAlignNativeBridge.Run(
+            image.SourcePixels, image.Width, image.Height, image.SourceStride,
+            window.Roi, alignParams);
+
+        result.UsedImage = true;
+        result.NativeAlignAvailable = response.Available;
+        if (response.Available && response.Success)
+        {
+            result.ElapsedMs = response.ElapsedMs;
+            result.ForegroundPixels = response.ForegroundPixels;
+            result.BlobCount = response.BlobCount;
+            result.Bounds = ComputeAlignBounds(alignParams, response);
+            result.AlignOkCount = response.OkCount;
+            result.AlignOffsetX = response.OffsetX;
+            result.AlignOffsetY = response.OffsetY;
+            result.AlignTheta = response.Theta;
+            result.AlignOkShiftX = response.OkShiftX;
+            result.AlignOkShiftY = response.OkShiftY;
+            result.AlignOkAngle = response.OkAngle;
+            result.NativeAlignMessage = response.Message;
+        }
+        else
+        {
+            RunThresholdFallback(image, model, algorithm, result);
+            result.NativeAlignMessage = response.Message;
+        }
+    }
+
+    private static void RunShapeXViaBridge(PartRuntimeImage image, InspectionModel model, AlgorithmRuntimePacket algorithm, AlgorithmRunResult result)
+    {
+        var roi = algorithm.InspectionRoi;
+        var parameters = AlignBridgeAdapter.BuildShapeXParams(model, roi, algorithm);
+        var response = MptiAlgorithmNativeBridge.RunShapeX(
+            image.SourcePixels, image.Width, image.Height, image.SourceStride,
+            roi, parameters);
+
+        result.UsedImage = true;
+        if (response.Available && response.Success)
+        {
+            result.ElapsedMs = response.ElapsedMs;
+            result.ForegroundPixels = response.ForegroundPixels;
+            result.BlobCount = response.BlobCount;
+            result.Bounds = response.ForegroundPixels > 0 ? roi : (RoiRect?)null;
+            algorithm.Source.Parameters["Runtime.ShapeXBridge"] = "native";
+            algorithm.Source.Parameters["Runtime.ShapeXIsOK"] = response.IsOK.ToString();
+            algorithm.Source.Parameters["Runtime.ShapeXAreaRatio"] = response.AreaRate.ToString("F4");
+            algorithm.Source.Parameters["Runtime.ShapeXShift"] = $"{response.ShiftX:F2},{response.ShiftY:F2}";
+            algorithm.Source.Parameters["Runtime.ShapeXOkFlags"] = response.OkFlagsMask.ToString();
+        }
+        else
+        {
+            algorithm.Source.Parameters["Runtime.ShapeXBridge"] = "fallback";
+            algorithm.Source.Parameters["Runtime.ShapeXBridgeMessage"] = response.Message;
+            RunThresholdFallback(image, model, algorithm, result);
+        }
+    }
+
+    private static void RunPadBWViaBridge(PartRuntimeImage image, InspectionModel model, AlgorithmRuntimePacket algorithm, AlgorithmRunResult result)
+    {
+        var roi = algorithm.InspectionRoi;
+        var parameters = AlignBridgeAdapter.BuildPadBWParams(model, roi, algorithm);
+        var response = MptiAlgorithmNativeBridge.RunPadBW(
+            image.SourcePixels, image.Width, image.Height, image.SourceStride,
+            roi, parameters);
+
+        result.UsedImage = true;
+        if (response.Available && response.Success)
+        {
+            result.ElapsedMs = response.ElapsedMs;
+            result.ForegroundPixels = response.ForegroundPixels;
+            result.BlobCount = response.BlobCount;
+            result.Bounds = response.ForegroundPixels > 0 ? roi : (RoiRect?)null;
+            algorithm.Source.Parameters["Runtime.PadBWBridge"] = "native";
+            algorithm.Source.Parameters["Runtime.PadBWIsOK"] = response.IsOK.ToString();
+            algorithm.Source.Parameters["Runtime.PadBWAreaRate"] = response.AreaRate.ToString("F2");
+            algorithm.Source.Parameters["Runtime.PadBWShift"] = $"{response.ShiftX:F2},{response.ShiftY:F2}";
+            algorithm.Source.Parameters["Runtime.PadBWOkFlags"] = response.OkFlagsMask.ToString();
+        }
+        else
+        {
+            algorithm.Source.Parameters["Runtime.PadBWBridge"] = "fallback";
+            algorithm.Source.Parameters["Runtime.PadBWBridgeMessage"] = response.Message;
+            RunThresholdFallback(image, model, algorithm, result);
+        }
     }
 
     private static void RunThresholdFallback(PartRuntimeImage image, InspectionModel model, AlgorithmRuntimePacket algorithm, AlgorithmRunResult result)

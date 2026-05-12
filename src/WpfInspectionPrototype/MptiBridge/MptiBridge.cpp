@@ -1,6 +1,8 @@
 #include "stdafx.h"
 #include "MPTI.h"
 #include "MptiBridgeAlign.h"
+#include "MptiBridgeShapeX.h"
+#include "MptiBridgePadBW.h"
 
 #include <oleauto.h>
 
@@ -508,6 +510,255 @@ MPTI_BRIDGE_API int MptiBridgeRunAlign(
     {
         result->errorCode = -101;
         wcsncpy_s(result->message, L"MptiBridgeRunAlign unknown C++ exception", _TRUNCATE);
+        return -101;
+    }
+}
+
+namespace
+{
+    struct AlgorithmRoiAnalysis
+    {
+        int foregroundPixels;
+        int centroidX;
+        int centroidY;
+        int minX;
+        int minY;
+        int maxX;
+        int maxY;
+    };
+
+    AlgorithmRoiAnalysis AnalyseRoiForeground(
+        const unsigned char* image,
+        int imageWidth,
+        int imageHeight,
+        int sourceStride,
+        int roiX,
+        int roiY,
+        int roiW,
+        int roiH,
+        int binaryMin,
+        int binaryMax,
+        int invertCheck)
+    {
+        AlgorithmRoiAnalysis info{};
+        info.minX = imageWidth;
+        info.minY = imageHeight;
+        info.maxX = -1;
+        info.maxY = -1;
+
+        const int sx0 = std::max(0, roiX);
+        const int sy0 = std::max(0, roiY);
+        const int sx1 = std::min(imageWidth, roiX + roiW);
+        const int sy1 = std::min(imageHeight, roiY + roiH);
+        if (sx0 >= sx1 || sy0 >= sy1)
+        {
+            return info;
+        }
+
+        const int minB = ClampValue(binaryMin, 0, 255);
+        const int maxB = ClampValue(std::max(minB, binaryMax), 0, 255);
+        const bool invert = invertCheck != 0;
+
+        long long sumX = 0;
+        long long sumY = 0;
+        int count = 0;
+
+        for (int y = sy0; y < sy1; ++y)
+        {
+            const unsigned char* row = image + static_cast<size_t>(y) * sourceStride;
+            for (int x = sx0; x < sx1; ++x)
+            {
+                const unsigned char* px = row + x * 4;
+                const int gray = (77 * px[2] + 150 * px[1] + 29 * px[0]) >> 8;
+                const bool match = invert ? (gray < minB || gray > maxB)
+                                          : (gray >= minB && gray <= maxB);
+                if (!match)
+                {
+                    continue;
+                }
+
+                sumX += x;
+                sumY += y;
+                ++count;
+                info.minX = std::min(info.minX, x);
+                info.minY = std::min(info.minY, y);
+                info.maxX = std::max(info.maxX, x);
+                info.maxY = std::max(info.maxY, y);
+            }
+        }
+
+        info.foregroundPixels = count;
+        if (count > 0)
+        {
+            info.centroidX = static_cast<int>(sumX / count);
+            info.centroidY = static_cast<int>(sumY / count);
+        }
+        return info;
+    }
+}
+
+MPTI_BRIDGE_API int MptiBridgeRunShapeX(
+    const unsigned char* image,
+    int imageWidth,
+    int imageHeight,
+    int sourceStride,
+    int roiX,
+    int roiY,
+    int roiW,
+    int roiH,
+    const MptiBridgeShapeXParams* params,
+    MptiBridgeShapeXResult* result)
+{
+    if (result == nullptr)
+    {
+        return -1;
+    }
+    *result = {};
+    wcsncpy_s(result->message, L"", _TRUNCATE);
+
+    if (image == nullptr || params == nullptr || imageWidth <= 0 || imageHeight <= 0 || sourceStride < imageWidth * 4)
+    {
+        result->errorCode = -1;
+        wcsncpy_s(result->message, L"MptiBridgeRunShapeX: invalid argument", _TRUNCATE);
+        return -1;
+    }
+
+    try
+    {
+        const auto start = std::chrono::high_resolution_clock::now();
+
+        const auto info = AnalyseRoiForeground(
+            image, imageWidth, imageHeight, sourceStride,
+            roiX, roiY, roiW, roiH,
+            params->binaryMin, params->binaryMax, params->invertCheck);
+
+        const double roiArea = static_cast<double>(std::max(1, roiW)) * std::max(1, roiH);
+        const double ratio = roiArea > 0 ? static_cast<double>(info.foregroundPixels) / roiArea : 0.0;
+
+        result->isInsp = 1;
+        result->foregroundPixels = info.foregroundPixels;
+        result->blobCount = info.foregroundPixels > 0 ? 1 : 0;
+        result->foundCenterX = info.centroidX;
+        result->foundCenterY = info.centroidY;
+        result->shapeAreaRatio = static_cast<float>(ratio);
+
+        const bool foundObject = info.foregroundPixels >= std::max(1, params->minBlobArea);
+        result->okExist = (params->useExist == 0 || foundObject) ? 1 : 0;
+        result->okShape = (params->useShape == 0 ||
+                           (static_cast<float>(ratio) >= params->shapeAreaMin && static_cast<float>(ratio) <= params->shapeAreaMax))
+                          ? 1 : 0;
+
+        if (foundObject)
+        {
+            result->shiftX = static_cast<float>(info.centroidX - params->expectedCenterX);
+            result->shiftY = static_cast<float>(info.centroidY - params->expectedCenterY);
+        }
+        result->okShift = (params->useShift == 0 ||
+                          (std::fabs(result->shiftX) <= params->shiftXTolerance &&
+                           std::fabs(result->shiftY) <= params->shiftYTolerance))
+                         ? 1 : 0;
+
+        result->isOK = result->okExist && result->okShape && result->okShift ? 1 : 0;
+
+        const auto end = std::chrono::high_resolution_clock::now();
+        result->elapsedMs = std::chrono::duration<double, std::milli>(end - start).count();
+        result->errorCode = 0;
+        wcsncpy_s(result->message, L"MptiBridgeRunShapeX completed (lightweight)", _TRUNCATE);
+        return 0;
+    }
+    catch (const std::exception&)
+    {
+        result->errorCode = -100;
+        wcsncpy_s(result->message, L"MptiBridgeRunShapeX C++ exception", _TRUNCATE);
+        return -100;
+    }
+    catch (...)
+    {
+        result->errorCode = -101;
+        wcsncpy_s(result->message, L"MptiBridgeRunShapeX unknown C++ exception", _TRUNCATE);
+        return -101;
+    }
+}
+
+MPTI_BRIDGE_API int MptiBridgeRunPadBW(
+    const unsigned char* image,
+    int imageWidth,
+    int imageHeight,
+    int sourceStride,
+    int roiX,
+    int roiY,
+    int roiW,
+    int roiH,
+    const MptiBridgePadBWParams* params,
+    MptiBridgePadBWResult* result)
+{
+    if (result == nullptr)
+    {
+        return -1;
+    }
+    *result = {};
+    wcsncpy_s(result->message, L"", _TRUNCATE);
+
+    if (image == nullptr || params == nullptr || imageWidth <= 0 || imageHeight <= 0 || sourceStride < imageWidth * 4)
+    {
+        result->errorCode = -1;
+        wcsncpy_s(result->message, L"MptiBridgeRunPadBW: invalid argument", _TRUNCATE);
+        return -1;
+    }
+
+    try
+    {
+        const auto start = std::chrono::high_resolution_clock::now();
+
+        const auto info = AnalyseRoiForeground(
+            image, imageWidth, imageHeight, sourceStride,
+            roiX, roiY, roiW, roiH,
+            params->binaryMin, params->binaryMax, params->invertCheck);
+
+        result->isInsp = 1;
+        result->foregroundPixels = info.foregroundPixels;
+        result->blobCount = info.foregroundPixels > 0 ? 1 : 0;
+        result->foundCenterX = info.centroidX;
+        result->foundCenterY = info.centroidY;
+        result->measuredArea = info.foregroundPixels;
+
+        const bool foundObject = info.foregroundPixels >= std::max(1, params->minBlobArea);
+        const double rate = params->teachArea > 0
+            ? (static_cast<double>(info.foregroundPixels) / params->teachArea) * 100.0
+            : 0.0;
+        result->measuredAreaRate = rate;
+
+        result->okArea = (params->useTeachArea == 0 ||
+                          (rate >= params->teachAreaRateMin && rate <= params->teachAreaRateMax))
+                         ? 1 : 0;
+        result->okBlobArea = (params->useBlobArea == 0 || info.foregroundPixels >= params->blobAreaMin) ? 1 : 0;
+
+        if (foundObject)
+        {
+            result->shiftX = static_cast<double>(info.centroidX) - params->expectedCenterX;
+            result->shiftY = static_cast<double>(info.centroidY) - params->expectedCenterY;
+        }
+        result->okShiftX = (params->useShift == 0 || std::fabs(result->shiftX) <= params->teachShiftX) ? 1 : 0;
+        result->okShiftY = (params->useShift == 0 || std::fabs(result->shiftY) <= params->teachShiftY) ? 1 : 0;
+
+        result->isOK = result->okArea && result->okShiftX && result->okShiftY && result->okBlobArea ? 1 : 0;
+
+        const auto end = std::chrono::high_resolution_clock::now();
+        result->elapsedMs = std::chrono::duration<double, std::milli>(end - start).count();
+        result->errorCode = 0;
+        wcsncpy_s(result->message, L"MptiBridgeRunPadBW completed (lightweight)", _TRUNCATE);
+        return 0;
+    }
+    catch (const std::exception&)
+    {
+        result->errorCode = -100;
+        wcsncpy_s(result->message, L"MptiBridgeRunPadBW C++ exception", _TRUNCATE);
+        return -100;
+    }
+    catch (...)
+    {
+        result->errorCode = -101;
+        wcsncpy_s(result->message, L"MptiBridgeRunPadBW unknown C++ exception", _TRUNCATE);
         return -101;
     }
 }
