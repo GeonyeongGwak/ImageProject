@@ -7,10 +7,10 @@ namespace WpfInspectionApp.ViewModels;
 
 public sealed class RoiCanvasViewModel
 {
-    private readonly RoiInteractionService _roiInteractionService;
+    private readonly IRoiInteractionService _roiInteractionService;
     private readonly IRoiModelService _roiModelService;
 
-    public RoiCanvasViewModel(RoiInteractionService roiInteractionService, IRoiModelService roiModelService)
+    public RoiCanvasViewModel(IRoiInteractionService roiInteractionService, IRoiModelService roiModelService)
     {
         _roiInteractionService = roiInteractionService;
         _roiModelService = roiModelService;

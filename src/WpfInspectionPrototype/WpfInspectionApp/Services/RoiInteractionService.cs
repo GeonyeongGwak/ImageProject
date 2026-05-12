@@ -12,7 +12,7 @@ public enum RoiDrawTarget
 
 public sealed record RoiCommitResult(RoiDrawTarget Target, RoiRect? Roi);
 
-public sealed class RoiInteractionService
+public sealed class RoiInteractionService : IRoiInteractionService
 {
     private readonly RoiDrawingSession _drawingSession;
 

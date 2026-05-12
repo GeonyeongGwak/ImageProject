@@ -48,7 +48,7 @@ public sealed class AppServices
 
     public IRoiModelService RoiModel { get; } = new RoiModelService();
 
-    public RoiInteractionService RoiInteraction { get; }
+    public IRoiInteractionService RoiInteraction { get; }
 
     public IRoiUiStateService RoiUiState { get; }
 
