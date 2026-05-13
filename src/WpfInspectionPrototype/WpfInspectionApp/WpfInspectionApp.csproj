@@ -19,10 +19,12 @@
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
+    <XamlDebuggingInformation>false</XamlDebuggingInformation>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
+    <XamlDebuggingInformation>false</XamlDebuggingInformation>
   </PropertyGroup>
 
   <ItemGroup>
