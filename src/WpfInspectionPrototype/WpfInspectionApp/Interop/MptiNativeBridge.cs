@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using System.Text;
 using WpfInspectionApp.Models;
 
@@ -38,15 +38,12 @@ public static class MptiNativeBridge
 {
     private const int MessageCapacity = 512;
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeGetVersion(StringBuilder output, int outputLength);
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeSetMachineMode(int mode, int teach, StringBuilder message, int messageLength);
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeLoadPtt(
         [MarshalAs(UnmanagedType.LPWStr)] string pttPath,
@@ -57,7 +54,6 @@ public static class MptiNativeBridge
         StringBuilder message,
         int messageLength);
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeLoadPot(
         [MarshalAs(UnmanagedType.LPWStr)] string potPath,
@@ -68,7 +64,6 @@ public static class MptiNativeBridge
         StringBuilder message,
         int messageLength);
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeSetRawDataFovInfo(
         [MarshalAs(UnmanagedType.LPWStr)] string pttPath,
@@ -82,7 +77,6 @@ public static class MptiNativeBridge
         StringBuilder message,
         int messageLength);
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeGetRawDataZmapInfo(
         out int width,
@@ -115,6 +109,7 @@ public static class MptiNativeBridge
     {
         try
         {
+            NativeDependencyPath.EnsureInitialized();
             var message = CreateMessageBuffer();
             var code = MptiBridgeLoadPtt(pttPath, out var width, out var height, callSpi ? 1 : 0, useFactor ? 1 : 0, message, message.Capacity);
             return new MptiPttLoadResult(true, code == 0, code, message.ToString(), width, height);
@@ -129,6 +124,7 @@ public static class MptiNativeBridge
     {
         try
         {
+            NativeDependencyPath.EnsureInitialized();
             var message = CreateMessageBuffer();
             var code = MptiBridgeSetRawDataFovInfo(
                 pttPath,
@@ -153,6 +149,7 @@ public static class MptiNativeBridge
     {
         try
         {
+            NativeDependencyPath.EnsureInitialized();
             var message = CreateMessageBuffer();
             var code = MptiBridgeGetRawDataZmapInfo(out var width, out var height, out var hasPointer, message, message.Capacity);
             return new MptiZmapInfoResult(true, code == 0, code, message.ToString(), width, height, hasPointer != 0);
@@ -167,6 +164,7 @@ public static class MptiNativeBridge
     {
         try
         {
+            NativeDependencyPath.EnsureInitialized();
             return call();
         }
         catch (Exception ex) when (IsBridgeLoadException(ex))

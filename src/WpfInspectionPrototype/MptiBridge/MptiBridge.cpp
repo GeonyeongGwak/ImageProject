@@ -1,9 +1,9 @@
 #include "stdafx.h"
 #include "MPTI.h"
-#include "MptiBridgeAlign.h"
 #include "MptiBridgeShapeX.h"
 #include "MptiBridgePadBW.h"
 #include "MptiBridgeGeneric.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/Align/PInsp_AlgoAlign.h"
 
 #include <oleauto.h>
 
@@ -14,6 +14,47 @@
 #include <exception>
 
 #define MPTI_BRIDGE_API extern "C" __declspec(dllexport)
+
+#pragma pack(push, 8)
+struct MptiBridgeAlignParams
+{
+    int     searchNum;
+    int     searchPointsX[4];
+    int     searchPointsY[4];
+    int     searchSizeW[4];
+    int     searchSizeH[4];
+    int     searchMargin;
+    int     minBinary;
+    int     maxBinary;
+    int     useInsp2D;
+    int     invertCheck;
+    int     useShift;
+    double  maxShiftX;
+    double  maxShiftY;
+    int     useAngle;
+    double  maxAngle;
+    int     sameSize;
+    int     minBlobArea;
+};
+
+struct MptiBridgeAlignResult
+{
+    int     okCount;
+    double  offsetX;
+    double  offsetY;
+    double  theta;
+    int     okShiftX;
+    int     okShiftY;
+    int     okAngle;
+    int     detectedCentersX[4];
+    int     detectedCentersY[4];
+    int     foregroundPixels;
+    int     blobCount;
+    double  elapsedMs;
+    int     errorCode;
+    wchar_t message[256];
+};
+#pragma pack(pop)
 
 int MPTI_SetFovPixelNumber(int numX, int numY);
 int MPTI_SetFovPixelResolution(double resolX, double resolY);
@@ -373,7 +414,7 @@ namespace
     }
 }
 
-MPTI_BRIDGE_API int MptiBridgeRunAlign(
+static int MptiBridgeRunAlignLightweight(
     const unsigned char* image,
     int imageWidth,
     int imageHeight,
@@ -500,6 +541,186 @@ MPTI_BRIDGE_API int MptiBridgeRunAlign(
         result->errorCode = 0;
         wcsncpy_s(result->message, L"MptiBridgeRunAlign completed (lightweight)", _TRUNCATE);
         return 0;
+    }
+    catch (const std::exception&)
+    {
+        result->errorCode = -100;
+        wcsncpy_s(result->message, L"MptiBridgeRunAlign C++ exception", _TRUNCATE);
+        return -100;
+    }
+    catch (...)
+    {
+        result->errorCode = -101;
+        wcsncpy_s(result->message, L"MptiBridgeRunAlign unknown C++ exception", _TRUNCATE);
+        return -101;
+    }
+}
+
+MPTI_BRIDGE_API int MptiBridgeRunAlign(
+    const unsigned char* image,
+    int imageWidth,
+    int imageHeight,
+    int sourceStride,
+    int windowX,
+    int windowY,
+    int windowW,
+    int windowH,
+    const MptiBridgeAlignParams* params,
+    MptiBridgeAlignResult* result)
+{
+    UNREFERENCED_PARAMETER(windowX);
+    UNREFERENCED_PARAMETER(windowY);
+    UNREFERENCED_PARAMETER(windowW);
+    UNREFERENCED_PARAMETER(windowH);
+
+    if (result == nullptr)
+    {
+        return -1;
+    }
+
+    *result = {};
+    wcsncpy_s(result->message, L"", _TRUNCATE);
+
+    if (image == nullptr || params == nullptr)
+    {
+        result->errorCode = -1;
+        wcsncpy_s(result->message, L"MptiBridgeRunAlign: null pointer", _TRUNCATE);
+        return -1;
+    }
+
+    if (imageWidth <= 0 || imageHeight <= 0 || sourceStride < imageWidth * 4)
+    {
+        result->errorCode = -2;
+        wcsncpy_s(result->message, L"MptiBridgeRunAlign: invalid image dimensions", _TRUNCATE);
+        return -2;
+    }
+
+    try
+    {
+        if (!EnsureInitialized(result->message, static_cast<int>(std::size(result->message))))
+        {
+            result->errorCode = -200;
+            return -200;
+        }
+
+        const auto start = std::chrono::high_resolution_clock::now();
+        const int searchNum = ClampValue(params->searchNum, 1, 4);
+
+        std::vector<unsigned char> gray(static_cast<size_t>(imageWidth) * imageHeight);
+        for (int y = 0; y < imageHeight; ++y)
+        {
+            const auto* src = image + static_cast<size_t>(y) * sourceStride;
+            auto* dst = gray.data() + static_cast<size_t>(y) * imageWidth;
+            for (int x = 0; x < imageWidth; ++x)
+            {
+                const auto b = src[x * 4 + 0];
+                const auto g = src[x * 4 + 1];
+                const auto r = src[x * 4 + 2];
+                dst[x] = static_cast<unsigned char>((static_cast<int>(r) + g + b) / 3);
+            }
+        }
+
+        AlgoAlign align{};
+        align.m_nSearchNum = searchNum;
+        align.m_nSearchMargin = std::max(0, params->searchMargin);
+        align.m_nMinBinary = ClampValue(params->minBinary, 0, 255);
+        align.m_nMaxBinary = ClampValue(params->maxBinary, 0, 255);
+        align.m_bInsp2D = params->useInsp2D != 0;
+        align.m_bInsp3D = FALSE;
+        align.m_InvertCheck = params->invertCheck != 0;
+        align.m_bUseShift = params->useShift != 0;
+        align.m_dShiftX = params->maxShiftX;
+        align.m_dShiftY = params->maxShiftY;
+        align.m_bUseAngle = params->useAngle != 0;
+        align.m_dAngle = params->maxAngle;
+        align.m_bSameSize = params->sameSize != 0;
+        align.m_nMinBlobArea = std::max(1, params->minBlobArea);
+
+        for (int i = 0; i < searchNum; ++i)
+        {
+            align.m_sArrSearchPoint[i].x = static_cast<float>(params->searchPointsX[i] - imageWidth / 2.0);
+            align.m_sArrSearchPoint[i].y = static_cast<float>(params->searchPointsY[i] - imageHeight / 2.0);
+            align.m_sArrSearchSize[i].cx = std::max(1, params->searchSizeW[i]);
+            align.m_sArrSearchSize[i].cy = std::max(1, params->searchSizeH[i]);
+        }
+
+        InspAlgo inspAlgo{};
+        inspAlgo.m_eAlgoType = eAlgoAlign;
+        inspAlgo.m_bAlgoEnable = TRUE;
+        inspAlgo.m_ptrInspAlgoParam = &align;
+
+        CRect bodyRect(0, 0, 0, 0);
+        InspAlgoParam algoParam{};
+        algoParam.m_bInspection = TRUE;
+        algoParam.m_bUSeLeadAlign = FALSE;
+        algoParam.m_rcBlobBody = &bodyRect;
+
+        if (g_pMPTI != nullptr &&
+            g_pInspMng != nullptr &&
+            g_pInspMng->GetPtrInspAlgo() != nullptr &&
+            g_pInspMng->GetPtrInspAlgo()->GetProcMil() == nullptr)
+        {
+            g_pInspMng->GetPtrInspAlgo()->InitDevice(
+                g_pMPTI->m_milApp,
+                g_pMPTI->m_milSys,
+                imageWidth,
+                imageHeight,
+                1.0,
+                1.0,
+                g_pMPTI->isUseImagePilLib());
+        }
+
+        WndAlgoImg wndAlgoImg;
+        wndAlgoImg.m_bIs2dCV = TRUE;
+        wndAlgoImg.m_nWidth = imageWidth;
+        wndAlgoImg.m_nHeight = imageHeight;
+        wndAlgoImg.m_nWidth3D = imageWidth;
+        wndAlgoImg.m_nHeight3D = imageHeight;
+        wndAlgoImg.m_nChannel = 1;
+        wndAlgoImg.m_nLight_index = eM2C_TR;
+        Make_1DArray((PCHAR)__FUNCTION__, __LINE__, &wndAlgoImg.m_ucArr2D, imageWidth * imageHeight);
+        memcpy(wndAlgoImg.m_ucArr2D, gray.data(), static_cast<size_t>(imageWidth) * imageHeight);
+
+        InspRoiImgBuf roiImg{};
+        roiImg.nImageSizeX = imageWidth;
+        roiImg.nImageSizeY = imageHeight;
+        roiImg.imgTop_R = wndAlgoImg.m_ucArr2D;
+
+        TotalInspExceptArea tieArea{};
+        RstAlgoAlign alignResult{};
+
+        CPInsp_AlgoAlign alignRunner;
+        alignRunner.InitAlgo();
+        const BOOL nativeOk = alignRunner.InspAlgorithm(
+            inspAlgo,
+            wndAlgoImg,
+            &roiImg,
+            &alignResult,
+            tieArea,
+            algoParam,
+            nullptr);
+
+        result->okCount = alignResult.m_nOKAreaCnt;
+        result->offsetX = alignResult.m_dOffset_x;
+        result->offsetY = alignResult.m_dOffset_y;
+        result->theta = alignResult.m_dTheta;
+        result->okShiftX = alignResult.m_bOKShiftX ? 1 : 0;
+        result->okShiftY = alignResult.m_bOKShiftY ? 1 : 0;
+        result->okAngle = alignResult.m_bOKAngle ? 1 : 0;
+        result->blobCount = alignResult.m_nOKAreaCnt;
+
+        for (int i = 0; i < searchNum; ++i)
+        {
+            result->detectedCentersX[i] = (alignResult.m_rcRect_I[i].left + alignResult.m_rcRect_I[i].right) / 2;
+            result->detectedCentersY[i] = (alignResult.m_rcRect_I[i].top + alignResult.m_rcRect_I[i].bottom) / 2;
+        }
+
+        const auto end = std::chrono::high_resolution_clock::now();
+        const std::chrono::duration<double, std::milli> elapsed = end - start;
+        result->elapsedMs = elapsed.count();
+        result->errorCode = nativeOk ? 0 : -10;
+        wcsncpy_s(result->message, nativeOk ? L"MptiBridgeRunAlign completed via PInsp_Algo/Align" : L"MptiBridgeRunAlign PInsp_Algo/Align returned NG", _TRUNCATE);
+        return nativeOk ? 0 : -10;
     }
     catch (const std::exception&)
     {

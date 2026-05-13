@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using WpfInspectionApp.Models;
 
 namespace WpfInspectionApp.Interop;
@@ -64,7 +64,6 @@ public sealed record AlignBridgeResponse(
 
 public static class MptiAlignNativeBridge
 {
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeRunAlign(
         IntPtr image,
@@ -90,6 +89,7 @@ public static class MptiAlignNativeBridge
 
         try
         {
+            NativeDependencyPath.EnsureInitialized();
             var handle = GCHandle.Alloc(image, GCHandleType.Pinned);
             try
             {

@@ -1682,6 +1682,8 @@ int MPTI_Init()
 
 	if (g_pMPTI == NULL)	return 0;
 
+	return 1;
+
 }
 
  

@@ -1,4 +1,4 @@
-using System.Runtime.InteropServices;
+﻿using System.Runtime.InteropServices;
 using WpfInspectionApp.Models;
 
 namespace WpfInspectionApp.Interop;
@@ -152,7 +152,6 @@ public sealed record AlgorithmBridgeResponse(
 
 public static class MptiAlgorithmNativeBridge
 {
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeRunShapeX(
         IntPtr image, int imageWidth, int imageHeight, int sourceStride,
@@ -160,7 +159,6 @@ public static class MptiAlgorithmNativeBridge
         ref MptiBridgeShapeXParams parameters,
         ref MptiBridgeShapeXResult result);
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeRunGeneric(
         IntPtr image, int imageWidth, int imageHeight, int sourceStride,
@@ -168,7 +166,6 @@ public static class MptiAlgorithmNativeBridge
         ref MptiBridgeGenericParams parameters,
         ref MptiBridgeGenericResult result);
 
-    [DefaultDllImportSearchPaths(DllImportSearchPath.AssemblyDirectory)]
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeRunPadBW(
         IntPtr image, int imageWidth, int imageHeight, int sourceStride,
@@ -258,6 +255,7 @@ public static class MptiAlgorithmNativeBridge
     {
         try
         {
+            NativeDependencyPath.EnsureInitialized();
             return action();
         }
         catch (DllNotFoundException ex) { return BridgeUnavailable(-900, ex.Message); }

@@ -45,6 +45,10 @@
     <IntelIppBinRoot>C:\Program Files (x86)\IntelSWTools\compilers_and_libraries_2020.2.254\windows\redist\intel64_win\ipp</IntelIppBinRoot>
     <EnableUnitySupport>true</EnableUnitySupport>
   </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <IncludePath>$(IntelIppIncludeRoot);$(OpenCvIncludeRoot);$(IncludePath)</IncludePath>
+    <LibraryPath>$(IntelIppLibRoot);$(OpenCvLibRoot);$(LibraryPath)</LibraryPath>
+  </PropertyGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <WarningLevel>Level3</WarningLevel>
@@ -63,7 +67,8 @@
       <SubSystem>Windows</SubSystem>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>NativeSources\MPTILib_Algo;NativeSources\jpeg_Dll;NativeSources\PInspAlgo\Release;$(OpenCvLibRoot);$(IntelIppLibRoot);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>onecore.lib;OleAut32.lib;JPGIPPLibrary.lib;CSML_x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>onecore.lib;OleAut32.lib;JPGIPPLibrary.lib;CSML_x64.lib;delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>CSML_x64.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <PostBuildEvent>
       <Command>powershell -NoProfile -ExecutionPolicy Bypass -Command "Copy-Item -LiteralPath '$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PInspAlgo.dll','$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PemHL.dll','$(MSBuildThisFileDirectory)NativeSources\jpeg_Dll\JPGIPPLibrary.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\CSML_x64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\OCR_Dll\OCR_Dllx64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\New_Barcode\Release\Barcode_x64.dll' -Destination '$(OutDir)' -Force"
@@ -74,10 +79,6 @@ if exist "$(OpenCvBinRoot)\opencv_features2d440.dll" xcopy /Y /D "$(OpenCvBinRoo
 if exist "$(OpenCvBinRoot)\opencv_highgui440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_highgui440.dll" "$(OutDir)" &gt;nul
 if exist "$(OpenCvBinRoot)\opencv_photo440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_photo440.dll" "$(OutDir)" &gt;nul
 if exist "$(OpenCvBinRoot)\opencv_video440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_video440.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ippi.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippi.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ipps.dll" xcopy /Y /D "$(IntelIppBinRoot)\ipps.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ippcc.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcc.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ippcv.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcv.dll" "$(OutDir)" &gt;nul
 if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcore.dll" "$(OutDir)" &gt;nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
@@ -103,7 +104,8 @@ if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcor
       <OptimizeReferences>true</OptimizeReferences>
       <GenerateDebugInformation>true</GenerateDebugInformation>
       <AdditionalLibraryDirectories>NativeSources\MPTILib_Algo;NativeSources\jpeg_Dll;NativeSources\PInspAlgo\Release;$(OpenCvLibRoot);$(IntelIppLibRoot);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
-      <AdditionalDependencies>onecore.lib;OleAut32.lib;JPGIPPLibrary.lib;CSML_x64.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>onecore.lib;OleAut32.lib;JPGIPPLibrary.lib;CSML_x64.lib;delayimp.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <DelayLoadDLLs>CSML_x64.dll;%(DelayLoadDLLs)</DelayLoadDLLs>
     </Link>
     <PostBuildEvent>
       <Command>powershell -NoProfile -ExecutionPolicy Bypass -Command "Copy-Item -LiteralPath '$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PInspAlgo.dll','$(MSBuildThisFileDirectory)NativeSources\PInspAlgo\Release\PemHL.dll','$(MSBuildThisFileDirectory)NativeSources\jpeg_Dll\JPGIPPLibrary.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\CSML_x64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\OCR_Dll\OCR_Dllx64.dll','$(MSBuildThisFileDirectory)NativeSources\MPTILib_Algo\New_Barcode\Release\Barcode_x64.dll' -Destination '$(OutDir)' -Force"
@@ -114,10 +116,6 @@ if exist "$(OpenCvBinRoot)\opencv_features2d440.dll" xcopy /Y /D "$(OpenCvBinRoo
 if exist "$(OpenCvBinRoot)\opencv_highgui440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_highgui440.dll" "$(OutDir)" &gt;nul
 if exist "$(OpenCvBinRoot)\opencv_photo440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_photo440.dll" "$(OutDir)" &gt;nul
 if exist "$(OpenCvBinRoot)\opencv_video440.dll" xcopy /Y /D "$(OpenCvBinRoot)\opencv_video440.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ippi.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippi.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ipps.dll" xcopy /Y /D "$(IntelIppBinRoot)\ipps.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ippcc.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcc.dll" "$(OutDir)" &gt;nul
-if exist "$(IntelIppBinRoot)\ippcv.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcv.dll" "$(OutDir)" &gt;nul
 if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcore.dll" "$(OutDir)" &gt;nul</Command>
     </PostBuildEvent>
   </ItemDefinitionGroup>
