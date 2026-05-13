@@ -1,6 +1,5 @@
 using System.Configuration;
 using System.Data;
-using System.Diagnostics;
 using System.Windows;
 using WpfInspectionApp.Diagnostics;
 using WpfInspectionApp.Infrastructure;
@@ -64,13 +63,13 @@ public partial class App : Application
 
     private static void PreloadNativeBridgeForDebugger(string[] cmdArgs)
     {
-        if (!Debugger.IsAttached
-            && !cmdArgs.Any(arg => string.Equals(arg, "--preload-native", StringComparison.OrdinalIgnoreCase)))
+        var preloadNative = cmdArgs.Any(arg => string.Equals(arg, "--preload-native", StringComparison.OrdinalIgnoreCase));
+        var breakIntoDebugger = cmdArgs.Any(arg => string.Equals(arg, "--native-debug-break", StringComparison.OrdinalIgnoreCase));
+        if (!preloadNative && !breakIntoDebugger)
         {
             return;
         }
 
-        var breakIntoDebugger = cmdArgs.Any(arg => string.Equals(arg, "--native-debug-break", StringComparison.OrdinalIgnoreCase));
         var result = MptiNativeBridge.DebugProbe(breakIntoDebugger);
         DiagnosticsLog.Write(
             $"Native preload: available={result.Available} success={result.Success} code={result.Code} message={result.Message}");

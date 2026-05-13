@@ -8,9 +8,14 @@
       "commandName": "Project",
       "nativeDebugging": true
     },
+    "WpfInspectionApp Native Preload": {
+      "commandName": "Project",
+      "commandLineArgs": "--preload-native",
+      "nativeDebugging": true
+    },
     "WpfInspectionApp Native Break": {
       "commandName": "Project",
-      "commandLineArgs": "--native-debug-break",
+      "commandLineArgs": "--preload-native --native-debug-break",
       "nativeDebugging": true
     }
   }
