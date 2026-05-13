@@ -29,6 +29,7 @@
     <ConfigurationType>DynamicLibrary</ConfigurationType>
     <UseDebugLibraries>false</UseDebugLibraries>
     <PlatformToolset>v141</PlatformToolset>
+    <!-- LTCG kept on: fully-unoptimized build fails DllMain (latent static-init UB). -->
     <WholeProgramOptimization>true</WholeProgramOptimization>
     <CharacterSet>Unicode</CharacterSet>
     <UseOfMfc>Dynamic</UseOfMfc>
@@ -97,6 +98,7 @@ if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcor
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
+      <Optimization>Disabled</Optimization>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>

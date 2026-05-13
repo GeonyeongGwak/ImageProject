@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "MptiBridgeHarness": {
+      "commandName": "Project",
+      "nativeDebugging": true
+    }
+  }
+}

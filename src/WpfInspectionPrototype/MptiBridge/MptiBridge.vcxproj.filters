@@ -592,5 +592,8 @@
     <ClCompile Include="NativeSources\MPTILib_Algo\tstring.cpp">
       <Filter>NativeSources\MPTILib_Algo</Filter>
     </ClCompile>
+    <ClCompile Include="MptiBridgeFlow.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
 </Project>
