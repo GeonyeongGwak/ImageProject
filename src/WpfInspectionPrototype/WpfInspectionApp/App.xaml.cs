@@ -46,10 +46,13 @@ public partial class App : Application
         PreloadNativeBridgeForDebugger(cmdArgs);
         FpExceptionGuard.TryMask();
 
-        // Catch-all: re-mask immediately before each WPF render frame so any later
-        // P/Invoke that unmasks fp exceptions cannot leak into Matrix/RotateTransform
-        // math. _controlfp_s is ~1us, so the per-frame cost is negligible.
+        // Catch-all #1: re-mask immediately before each WPF render frame.
         System.Windows.Media.CompositionTarget.Rendering += (_, _) => FpExceptionGuard.TryMask();
+        // Catch-all #2: re-mask before EVERY dispatcher operation runs. Measure/Arrange/
+        // input/etc. all go through the dispatcher - this catches anything that the
+        // per-frame hook misses (e.g. layout passes happening between frames).
+        Dispatcher.Hooks.OperationStarted += (_, _) => FpExceptionGuard.TryMask();
+        Dispatcher.Hooks.OperationPosted  += (_, _) => FpExceptionGuard.TryMask();
         if (cmdArgs.Any(arg => string.Equals(arg, "--smoke-test", StringComparison.OrdinalIgnoreCase)))
         {
             // MainWindow is intentionally allowed to be created so that MptiBridge.dll
