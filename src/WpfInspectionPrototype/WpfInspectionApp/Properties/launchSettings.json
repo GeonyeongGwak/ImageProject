@@ -3,6 +3,10 @@
     "WpfInspectionApp": {
       "commandName": "Project",
       "nativeDebugging": false
+    },
+    "WpfInspectionApp Native": {
+      "commandName": "Project",
+      "nativeDebugging": true
     }
   }
 }
