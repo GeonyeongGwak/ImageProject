@@ -2,7 +2,7 @@
   "profiles": {
     "WpfInspectionApp": {
       "commandName": "Project",
-      "nativeDebugging": false
+      "nativeDebugging": true
     }
   }
 }
