@@ -14,6 +14,15 @@
     <PlatformTarget>x64</PlatformTarget>
     <Prefer32Bit>false</Prefer32Bit>
     <ApplicationManifest>app.manifest</ApplicationManifest>
+    <AllowUnsafeBlocks>True</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <EnableUnmanagedDebugging>true</EnableUnmanagedDebugging>
   </PropertyGroup>
 
   <ItemGroup>
@@ -59,6 +68,9 @@
       <NativePrototypeDll Include="..\bin\$(Configuration)\x64\CSML_x64.dll" Condition="Exists('..\bin\$(Configuration)\x64\CSML_x64.dll')" />
       <NativePrototypeDll Include="..\bin\$(Configuration)\x64\OCR_Dllx64.dll" Condition="Exists('..\bin\$(Configuration)\x64\OCR_Dllx64.dll')" />
       <NativePrototypeDll Include="..\bin\$(Configuration)\x64\Barcode_x64.dll" Condition="Exists('..\bin\$(Configuration)\x64\Barcode_x64.dll')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\MptiBridge.pdb" Condition="Exists('..\bin\$(Configuration)\x64\MptiBridge.pdb')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\BridgeLayer.pdb" Condition="Exists('..\bin\$(Configuration)\x64\BridgeLayer.pdb')" />
+      <NativePrototypeDll Include="..\bin\$(Configuration)\x64\InspectionCore.pdb" Condition="Exists('..\bin\$(Configuration)\x64\InspectionCore.pdb')" />
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx')" />
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest')" />
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.dll" Exclude="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.resources.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PInspAlgo*.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ippi.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ipps.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ippcc.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ippcv.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Microsoft.Bcl.AsyncInterfaces.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Buffers.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Memory.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Numerics.Vectors.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Runtime.CompilerServices.Unsafe.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Text.Encodings.Web.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Text.Json.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Threading.Tasks.Extensions.dll" />
