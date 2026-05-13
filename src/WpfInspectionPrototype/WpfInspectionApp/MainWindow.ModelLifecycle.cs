@@ -78,6 +78,7 @@ public partial class MainWindow
     private void LoadPtt(string path, bool prepareMpti = true)
     {
         var result = _pttViewerWorkflowService.LoadIntoControl(path, PttViewerPanel, prepareMpti);
+        PttViewerHost.Visibility = result.Success ? System.Windows.Visibility.Visible : System.Windows.Visibility.Collapsed;
         ViewModel.ApplyPttLoad(result.Success, result.Path, result.StatusMessage);
     }
 

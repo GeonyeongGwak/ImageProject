@@ -335,7 +335,8 @@
                     </Grid>
                     <Grid Background="#02050A" ClipToBounds="True">
                         <wfi:WindowsFormsHost x:Name="PttViewerHost"
-                                              Background="#02050A">
+                                              Background="#02050A"
+                                              Visibility="Collapsed">
                             <wf:Panel x:Name="PttViewerPanel" BackColor="#02050A" />
                         </wfi:WindowsFormsHost>
                         <TextBlock x:Name="PttEmptyText"

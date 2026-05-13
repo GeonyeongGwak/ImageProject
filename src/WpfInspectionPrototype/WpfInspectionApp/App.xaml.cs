@@ -18,6 +18,11 @@ public partial class App : Application
         DispatcherUnhandledException += (_, args) =>
         {
             DiagnosticsLog.Write($"DispatcherUnhandledException: {args.Exception}");
+            if (IsRecoverableWpfRenderException(args.Exception))
+            {
+                DiagnosticsLog.Write("DispatcherUnhandledException handled: recoverable WPF render overflow.");
+                args.Handled = true;
+            }
         };
 
         AppDomain.CurrentDomain.UnhandledException += (_, args) =>
@@ -53,7 +58,19 @@ public partial class App : Application
 
         base.OnStartup(e);
     }
-}
 
+    private static bool IsRecoverableWpfRenderException(Exception exception)
+    {
+        if (exception is not ArithmeticException)
+        {
+            return false;
+        }
+
+        var stack = exception.StackTrace ?? string.Empty;
+        return stack.Contains("System.Windows.Media.Matrix.CreateRotationRadians", StringComparison.Ordinal)
+            || stack.Contains("System.Windows.Media.RotateTransform.get_Value", StringComparison.Ordinal)
+            || stack.Contains("System.Windows.Media.TransformGroup.get_Value", StringComparison.Ordinal);
+    }
+}
 
 
