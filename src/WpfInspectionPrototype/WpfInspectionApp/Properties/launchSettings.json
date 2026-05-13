@@ -7,6 +7,11 @@
     "WpfInspectionApp Native": {
       "commandName": "Project",
       "nativeDebugging": true
+    },
+    "WpfInspectionApp Native Break": {
+      "commandName": "Project",
+      "commandLineArgs": "--native-debug-break",
+      "nativeDebugging": true
     }
   }
 }

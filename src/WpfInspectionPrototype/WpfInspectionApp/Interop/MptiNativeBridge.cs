@@ -42,6 +42,9 @@ public static class MptiNativeBridge
     private static extern int MptiBridgeGetVersion(StringBuilder output, int outputLength);
 
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+    private static extern int MptiBridgeDebugProbe(int breakIntoDebugger, StringBuilder output, int outputLength);
+
+    [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeSetMachineMode(int mode, int teach, StringBuilder message, int messageLength);
 
     [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
@@ -92,6 +95,16 @@ public static class MptiNativeBridge
             var message = CreateMessageBuffer();
             var code = MptiBridgeGetVersion(message, message.Capacity);
             return new MptiBridgeCallResult(true, code == 0, code, message.ToString());
+        });
+    }
+
+    public static MptiBridgeCallResult DebugProbe(bool breakIntoDebugger)
+    {
+        return Guard(() =>
+        {
+            var message = CreateMessageBuffer();
+            var code = MptiBridgeDebugProbe(breakIntoDebugger ? 1 : 0, message, message.Capacity);
+            return new MptiBridgeCallResult(true, code >= 0, code, message.ToString());
         });
     }
 

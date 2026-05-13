@@ -15,6 +15,8 @@
 
 #define MPTI_BRIDGE_API extern "C" __declspec(dllexport)
 
+extern "C" IMAGE_DOS_HEADER __ImageBase;
+
 #pragma pack(push, 8)
 struct MptiBridgeAlignParams
 {
@@ -130,6 +132,27 @@ MPTI_BRIDGE_API int MptiBridgeGetVersion(wchar_t* output, int outputLength)
 {
     CopyMessage(output, outputLength, L"MPTI bridge 0.3 | backend MPTILib_Algo source-linked");
     return 0;
+}
+
+MPTI_BRIDGE_API int MptiBridgeDebugProbe(int breakIntoDebugger, wchar_t* output, int outputLength)
+{
+    wchar_t modulePath[MAX_PATH]{};
+    GetModuleFileNameW(reinterpret_cast<HMODULE>(&__ImageBase), modulePath, MAX_PATH);
+
+    wchar_t message[1024]{};
+    swprintf_s(
+        message,
+        L"MptiBridgeDebugProbe | debugger=%d | module=%s",
+        IsDebuggerPresent() ? 1 : 0,
+        modulePath);
+    CopyMessage(output, outputLength, message);
+
+    if (breakIntoDebugger != 0 && IsDebuggerPresent())
+    {
+        DebugBreak();
+    }
+
+    return IsDebuggerPresent() ? 1 : 0;
 }
 
 MPTI_BRIDGE_API int MptiBridgeSetMachineMode(int mode, int teach, wchar_t* message, int messageLength)

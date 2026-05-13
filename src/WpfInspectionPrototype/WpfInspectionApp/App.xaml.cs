@@ -70,7 +70,8 @@ public partial class App : Application
             return;
         }
 
-        var result = MptiNativeBridge.GetVersion();
+        var breakIntoDebugger = cmdArgs.Any(arg => string.Equals(arg, "--native-debug-break", StringComparison.OrdinalIgnoreCase));
+        var result = MptiNativeBridge.DebugProbe(breakIntoDebugger);
         DiagnosticsLog.Write(
             $"Native preload: available={result.Available} success={result.Success} code={result.Code} message={result.Message}");
     }
@@ -88,4 +89,3 @@ public partial class App : Application
             || stack.Contains("System.Windows.Media.TransformGroup.get_Value", StringComparison.Ordinal);
     }
 }
-
