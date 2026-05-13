@@ -92,4 +92,34 @@
     <Copy SourceFiles="@(NativePrototypeDll)" DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
   </Target>
 
+  <!--
+    net48 provides every System.* namespace in-box (mscorlib / System.dll / System.Core.dll / etc.
+    plus the 4.7.1+ shim). When .NET Standard 2.0 facade DLLs (System.AppContext.dll,
+    System.Diagnostics.TraceSource.dll, System.Runtime.dll, ...) end up in the output via a
+    transitive Reference, the fusion loader binds against the facade instead of the in-box
+    BCL. That breaks Type.GetType resolution inside System.Configuration / PresentationTraceSources
+    and crashes WPF Application init - especially when VS native debugger is active (it
+    eagerly loads reference source + symbols, exposing the conflict). Strip them; keep only
+    the real libraries we explicitly binding-redirect in App.config.
+  -->
+  <!-- Must run AFTER CopyNativePrototypeDlls (which globs pemtoFramework\*.dll and
+       re-introduces every facade except the few it explicitly Excludes). -->
+  <Target Name="RemoveNetStandardFacadesFromOutput" AfterTargets="CopyNativePrototypeDlls">
+    <ItemGroup>
+      <_NetStdFacadeKeep Include="$(OutDir)System.Buffers.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.Memory.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.Numerics.Vectors.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.Runtime.CompilerServices.Unsafe.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.Text.Encodings.Web.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.Text.Json.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.Threading.Tasks.Extensions.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.ValueTuple.dll" />
+      <_NetStdFacadeKeep Include="$(OutDir)System.Windows.Interactivity.dll" />
+      <_NetStdFacadeAll Include="$(OutDir)System.*.dll" />
+      <_NetStdFacadeDelete Include="@(_NetStdFacadeAll)" Exclude="@(_NetStdFacadeKeep)" />
+    </ItemGroup>
+    <Delete Files="@(_NetStdFacadeDelete)" ContinueOnError="true" />
+    <Message Importance="high" Text="Stripped %(_NetStdFacadeDelete.Filename)%(_NetStdFacadeDelete.Extension) (netstandard facade, net48 provides in-box)" Condition="'@(_NetStdFacadeDelete)' != ''" />
+  </Target>
+
 </Project>
