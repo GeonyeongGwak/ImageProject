@@ -1,5 +1,6 @@
 using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using System.Windows;
 using WpfInspectionApp.Diagnostics;
 using WpfInspectionApp.Infrastructure;
@@ -16,6 +17,9 @@ public partial class App : Application
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        var cmdArgs = Environment.GetCommandLineArgs();
+        ApplyDebuggerRenderGuard(cmdArgs);
+
         DispatcherUnhandledException += (_, args) =>
         {
             DiagnosticsLog.Write($"DispatcherUnhandledException: {args.Exception}");
@@ -33,7 +37,6 @@ public partial class App : Application
 
         DiagnosticsLog.Write("Application startup.");
 
-        var cmdArgs = Environment.GetCommandLineArgs();
         DiagnosticsLog.Write($"Command line args count: {cmdArgs.Length}");
         PreloadNativeBridgeForDebugger(cmdArgs);
         if (cmdArgs.Any(arg => string.Equals(arg, "--smoke-test", StringComparison.OrdinalIgnoreCase)))
@@ -59,6 +62,18 @@ public partial class App : Application
         }
 
         base.OnStartup(e);
+    }
+
+    private static void ApplyDebuggerRenderGuard(string[] cmdArgs)
+    {
+        if (!Debugger.IsAttached
+            && !cmdArgs.Any(arg => string.Equals(arg, "--software-rendering", StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
+        DiagnosticsLog.Write("WPF software rendering enabled for debugger stability.");
     }
 
     private static void PreloadNativeBridgeForDebugger(string[] cmdArgs)

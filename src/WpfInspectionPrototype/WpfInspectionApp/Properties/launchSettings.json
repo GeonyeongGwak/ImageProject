@@ -6,16 +6,17 @@
     },
     "WpfInspectionApp Native": {
       "commandName": "Project",
+      "commandLineArgs": "--software-rendering",
       "nativeDebugging": true
     },
     "WpfInspectionApp Native Preload": {
       "commandName": "Project",
-      "commandLineArgs": "--preload-native",
+      "commandLineArgs": "--software-rendering --preload-native",
       "nativeDebugging": true
     },
     "WpfInspectionApp Native Break": {
       "commandName": "Project",
-      "commandLineArgs": "--preload-native --native-debug-break",
+      "commandLineArgs": "--software-rendering --preload-native --native-debug-break",
       "nativeDebugging": true
     }
   }
