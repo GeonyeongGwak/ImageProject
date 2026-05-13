@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "WpfInspectionApp": {
+      "commandName": "Project",
+      "nativeDebugging": false
+    }
+  }
+}
