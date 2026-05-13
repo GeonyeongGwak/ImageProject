@@ -397,12 +397,12 @@ void InspManager::SetInspParam(InspPartInfo* boardInfo, InspPartParam *pParamArr
 // 		if (m_pManager[i] != NULL)
 // 		{
 
-	//EXT Define 필요 Algotool 
-	m_NgManager->SetPartParam(boardInfo, pParamArray, nParamArraySize);
+	//EXT Define 필요 Algotool
+	if (m_NgManager) m_NgManager->SetPartParam(boardInfo, pParamArray, nParamArraySize);
 			SetInspItemInfo(m_inspItemCnts, m_inspItemID, m_inspWndOrder);
-	m_NgManager->SetInspItemInfo(m_inspItemCnts, m_inspItemID, m_inspWndOrder);
+	if (m_NgManager) m_NgManager->SetInspItemInfo(m_inspItemCnts, m_inspItemID, m_inspWndOrder);
 			SetInspGroupInfo(m_groupIndexCnts, m_groupIndex, m_groupID, m_groupWndCnts, m_groupWndID);
-	m_NgManager->SetInspGroupInfo(m_groupIndexCnts, m_groupIndex, m_groupID, m_groupWndCnts, m_groupWndID);
+	if (m_NgManager) m_NgManager->SetInspGroupInfo(m_groupIndexCnts, m_groupIndex, m_groupID, m_groupWndCnts, m_groupWndID);
 			SetPartParam(m_pInspBoardInfo, m_pParamArray, m_ParamArraySize);
 // 		}
 // 	}

@@ -122,6 +122,7 @@ if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcor
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ItemGroup>
     <ClCompile Include="MptiBridge.cpp" />
+    <ClCompile Include="MptiBridgeFlow.cpp" />
     <ClCompile Include="NativeSources\MPTILib_Algo\stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
