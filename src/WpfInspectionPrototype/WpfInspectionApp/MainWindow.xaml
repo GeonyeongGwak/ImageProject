@@ -1,8 +1,6 @@
 ﻿<Window x:Class="WpfInspectionApp.MainWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:wfi="clr-namespace:System.Windows.Forms.Integration;assembly=WindowsFormsIntegration"
-        xmlns:wf="clr-namespace:System.Windows.Forms;assembly=System.Windows.Forms"
         xmlns:vm="clr-namespace:WpfInspectionApp.ViewModels"
         xmlns:views="clr-namespace:WpfInspectionApp.Views"
         Title="WPF Vision Inspector Prototype"
@@ -333,12 +331,7 @@
                                    FontWeight="Bold"
                                    Text="{Binding PttInfoText}" />
                     </Grid>
-                    <Grid Background="#02050A" ClipToBounds="True">
-                        <wfi:WindowsFormsHost x:Name="PttViewerHost"
-                                              Background="#02050A"
-                                              Visibility="Collapsed">
-                            <wf:Panel x:Name="PttViewerPanel" BackColor="#02050A" />
-                        </wfi:WindowsFormsHost>
+                    <Grid x:Name="PttViewerSurface" Background="#02050A" ClipToBounds="True">
                         <TextBlock x:Name="PttEmptyText"
                                    HorizontalAlignment="Center"
                                    VerticalAlignment="Center"

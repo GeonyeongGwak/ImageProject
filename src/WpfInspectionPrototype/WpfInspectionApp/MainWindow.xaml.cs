@@ -31,6 +31,8 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly IAlignPartTeachingService _alignPartTeachingService;
     private readonly IAlignConditionService _alignConditionService;
     private readonly MainViewModel _viewModel;
+    private System.Windows.Forms.Integration.WindowsFormsHost? _pttViewerHost;
+    private System.Windows.Forms.Panel? _pttViewerPanel;
     private bool _uiReady;
     private bool _applyingModel;
     private bool _syncingSearchSize;
@@ -89,9 +91,32 @@ public partial class MainWindow : Window, IDialogOwner
         };
 
         ApplyModelAndRefreshView(scheduleThreshold: false);
-        PttViewerPanel.Resize += (_, _) => _pem3DViewerHostService.ResizeExternalViewer(PttViewerPanel);
         _viewModel.SetAlignSearchTabActive(AlignPanel.IsSearchTabActive);
         _uiReady = true;
+    }
+
+    private System.Windows.Forms.Panel EnsurePttViewerPanel()
+    {
+        if (_pttViewerPanel != null && _pttViewerHost != null)
+        {
+            return _pttViewerPanel;
+        }
+
+        _pttViewerPanel = new System.Windows.Forms.Panel
+        {
+            BackColor = System.Drawing.Color.FromArgb(2, 5, 10)
+        };
+        _pttViewerPanel.Resize += (_, _) => _pem3DViewerHostService.ResizeExternalViewer(_pttViewerPanel);
+
+        _pttViewerHost = new System.Windows.Forms.Integration.WindowsFormsHost
+        {
+            Background = System.Windows.Media.Brushes.Transparent,
+            Child = _pttViewerPanel,
+            Visibility = Visibility.Collapsed
+        };
+
+        PttViewerSurface.Children.Insert(0, _pttViewerHost);
+        return _pttViewerPanel;
     }
 
     private void SubscribeAlignPanelEvents()
