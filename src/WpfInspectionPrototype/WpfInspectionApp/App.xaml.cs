@@ -1,8 +1,10 @@
 using System.Configuration;
 using System.Data;
+using System.Diagnostics;
 using System.Windows;
 using WpfInspectionApp.Diagnostics;
 using WpfInspectionApp.Infrastructure;
+using WpfInspectionApp.Interop;
 
 namespace WpfInspectionApp;
 
@@ -34,6 +36,7 @@ public partial class App : Application
 
         var cmdArgs = Environment.GetCommandLineArgs();
         DiagnosticsLog.Write($"Command line args count: {cmdArgs.Length}");
+        PreloadNativeBridgeForDebugger(cmdArgs);
         if (cmdArgs.Any(arg => string.Equals(arg, "--smoke-test", StringComparison.OrdinalIgnoreCase)))
         {
             // MainWindow is intentionally allowed to be created so that MptiBridge.dll
@@ -59,6 +62,19 @@ public partial class App : Application
         base.OnStartup(e);
     }
 
+    private static void PreloadNativeBridgeForDebugger(string[] cmdArgs)
+    {
+        if (!Debugger.IsAttached
+            && !cmdArgs.Any(arg => string.Equals(arg, "--preload-native", StringComparison.OrdinalIgnoreCase)))
+        {
+            return;
+        }
+
+        var result = MptiNativeBridge.GetVersion();
+        DiagnosticsLog.Write(
+            $"Native preload: available={result.Available} success={result.Success} code={result.Code} message={result.Message}");
+    }
+
     private static bool IsRecoverableWpfRenderException(Exception exception)
     {
         if (exception is not ArithmeticException)
@@ -72,5 +88,4 @@ public partial class App : Application
             || stack.Contains("System.Windows.Media.TransformGroup.get_Value", StringComparison.Ordinal);
     }
 }
-
 
