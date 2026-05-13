@@ -9,10 +9,14 @@ namespace MptiBridgeHarness;
 internal static class Program
 {
     private const string Dll = "MptiBridge.dll";
+    private const string PemtronSystemPath = @"C:\Program Files\Pemtron System";
 
     // --- existing bridge ---
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeGetVersion(StringBuilder output, int outputLength);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+    private static extern int MptiBridgeDebugProbe(int breakIntoDebugger, StringBuilder output, int outputLength);
 
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     private static extern int MptiBridgeLoadPtt(
@@ -97,17 +101,40 @@ internal static class Program
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
     private static extern int MptiBridgeResultAlign(int i, ref FlowAlignResult outResult);
 
+    [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+    private static extern bool SetDllDirectory(string lpPathName);
+
     // eINSP_ALIGN = 1, eAlgoAlign = 2 (see InspParamDef.h / InspParamDef_Algo.h)
     private const int EINSP_ALIGN = 1;
     private const int EALGO_ALIGN = 2;
 
     private static int Main(string[] args)
     {
-        var pttPath = args.Length > 0 ? args[0] : @"D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\.ptt";
+        var debugProbeOnly = HasArg(args, "--debug-probe-only");
+        var breakIntoDebugger = HasArg(args, "--native-debug-break");
+        var pttPath = args.FirstOrDefault(arg => !arg.StartsWith("--", StringComparison.Ordinal))
+            ?? @"D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\.ptt";
         Console.WriteLine($"[harness] CWD={Environment.CurrentDirectory}");
         Console.WriteLine($"[harness] PTT={pttPath} exists={System.IO.File.Exists(pttPath)}");
+        if (System.IO.Directory.Exists(PemtronSystemPath))
+        {
+            Console.WriteLine($"[harness] SetDllDirectory={PemtronSystemPath} ok={SetDllDirectory(PemtronSystemPath)}");
+        }
 
         var sb = new StringBuilder(512);
+
+        Step("DebugProbe", () =>
+        {
+            sb.Clear();
+            var c = MptiBridgeDebugProbe(breakIntoDebugger ? 1 : 0, sb, sb.Capacity);
+            return $"code={c} '{sb}'";
+        });
+
+        if (debugProbeOnly)
+        {
+            Console.WriteLine("[harness] debug probe only.");
+            return 0;
+        }
 
         Step("GetVersion", () => { var c = MptiBridgeGetVersion(sb, sb.Capacity); return $"code={c} '{sb}'"; });
 
@@ -221,5 +248,10 @@ internal static class Program
             Console.WriteLine($"[harness] {name}: FAILED {ex.GetType().Name}: {ex.Message}");
             return false;
         }
+    }
+
+    private static bool HasArg(string[] args, string value)
+    {
+        return args.Any(arg => string.Equals(arg, value, StringComparison.OrdinalIgnoreCase));
     }
 }

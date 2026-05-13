@@ -17,6 +17,11 @@ Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "InspectionCore", "Inspectio
 EndProject
 Project("{BC8A1FFA-BEE3-4634-8014-F334798102B3}") = "MptiBridge", "MptiBridge\MptiBridge.vcxproj", "{0F127DDC-FC3A-4A63-B9D7-70BFF0E77B3A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MptiBridgeHarness", "MptiBridgeHarness\MptiBridgeHarness.csproj", "{F9D5B4C6-FFE8-4FE0-BD78-D3106C9A134F}"
+	ProjectSection(ProjectDependencies) = postProject
+		{0F127DDC-FC3A-4A63-B9D7-70BFF0E77B3A} = {0F127DDC-FC3A-4A63-B9D7-70BFF0E77B3A}
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
@@ -39,6 +44,10 @@ Global
 		{0F127DDC-FC3A-4A63-B9D7-70BFF0E77B3A}.Debug|x64.Build.0 = Debug|x64
 		{0F127DDC-FC3A-4A63-B9D7-70BFF0E77B3A}.Release|x64.ActiveCfg = Release|x64
 		{0F127DDC-FC3A-4A63-B9D7-70BFF0E77B3A}.Release|x64.Build.0 = Release|x64
+		{F9D5B4C6-FFE8-4FE0-BD78-D3106C9A134F}.Debug|x64.ActiveCfg = Debug|x64
+		{F9D5B4C6-FFE8-4FE0-BD78-D3106C9A134F}.Debug|x64.Build.0 = Debug|x64
+		{F9D5B4C6-FFE8-4FE0-BD78-D3106C9A134F}.Release|x64.ActiveCfg = Release|x64
+		{F9D5B4C6-FFE8-4FE0-BD78-D3106C9A134F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

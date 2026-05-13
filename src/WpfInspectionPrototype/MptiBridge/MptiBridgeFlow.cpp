@@ -28,6 +28,7 @@ namespace
     std::vector<WindowStorage>  s_windowStore;
     bool                        s_committed = false;
     bool                        s_inspected = false;
+    DWORD                       s_lastInspProcSehCode = 0;
 
     int s_sourceWidth = 0;
     int s_sourceHeight = 0;
@@ -53,6 +54,19 @@ namespace
     {
         WriteMsg(message, len, text);
         return code;
+    }
+
+    int CallMptiInspProcGuarded()
+    {
+        s_lastInspProcSehCode = 0;
+        __try
+        {
+            return MPTI_InspProc();
+        }
+        __except ((s_lastInspProcSehCode = GetExceptionCode()), EXCEPTION_EXECUTE_HANDLER)
+        {
+            return -300;
+        }
     }
 }
 
@@ -253,7 +267,15 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeInspProc(wchar_t* message, int messageLength)
         if (!s_committed)
             return Fail(message, messageLength, -10, L"MptiBridgeInspProc: call MptiBridgeCommitInspParam first");
 
-        const int ret = MPTI_InspProc();
+        const int ret = CallMptiInspProcGuarded();
+        if (ret == -300 && s_lastInspProcSehCode != 0)
+        {
+            s_inspected = false;
+            wchar_t buf[256];
+            swprintf_s(buf, L"MPTI_InspProc SEH exception 0x%08X", s_lastInspProcSehCode);
+            return Fail(message, messageLength, ret, buf);
+        }
+
         s_inspected = true;
         wchar_t buf[256];
         swprintf_s(buf, L"MPTI_InspProc returned %d", ret);

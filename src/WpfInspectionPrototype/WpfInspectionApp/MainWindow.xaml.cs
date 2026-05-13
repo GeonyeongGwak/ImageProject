@@ -5,6 +5,7 @@ using System.Windows.Input;
 using System.Windows.Threading;
 using WpfInspectionApp.AlgorithmPanels;
 using WpfInspectionApp.Infrastructure;
+using WpfInspectionApp.Interop;
 using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
 using WpfInspectionApp.ViewModels;
@@ -208,6 +209,13 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.F12 && Keyboard.Modifiers.HasFlag(ModifierKeys.Control) && Keyboard.Modifiers.HasFlag(ModifierKeys.Shift))
+        {
+            e.Handled = true;
+            PreloadNativeBridgeFromUi(Keyboard.Modifiers.HasFlag(ModifierKeys.Alt));
+            return;
+        }
+
         if (!_viewModel.IsAlignSearchActive || Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         {
             return;
@@ -234,6 +242,17 @@ public partial class MainWindow : Window, IDialogOwner
             e.Handled = true;
             _viewModel.DeleteActiveAlignRoi();
         }
+    }
+
+    private void PreloadNativeBridgeFromUi(bool breakIntoDebugger)
+    {
+        var result = MptiNativeBridge.DebugProbe(breakIntoDebugger);
+        var status = result.Success
+            ? $"Native bridge loaded: {result.Message}"
+            : $"Native bridge load failed: {result.Message}";
+        DiagnosticsLog.Write(
+            $"Manual native preload: break={breakIntoDebugger}, available={result.Available}, success={result.Success}, code={result.Code}, message={result.Message}");
+        ViewModel.StatusMessage = status;
     }
 
     protected override void OnClosed(EventArgs e)

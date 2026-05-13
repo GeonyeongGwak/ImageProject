@@ -3,6 +3,11 @@
     "MptiBridgeHarness": {
       "commandName": "Project",
       "nativeDebugging": true
+    },
+    "MptiBridgeHarness Native Break": {
+      "commandName": "Project",
+      "commandLineArgs": "--debug-probe-only --native-debug-break",
+      "nativeDebugging": true
     }
   }
 }
