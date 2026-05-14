@@ -8,16 +8,11 @@
       </requestedPrivileges>
     </security>
   </trustInfo>
-  <dependency>
-    <dependentAssembly asmv2:dependencyType="install" asmv2:codebase="Native.PEM3DControlWrapper.manifest" asmv2:size="1383">
-      <assemblyIdentity name="Native.PEM3DControlWrapper" version="1.4.3.12" type="win32" />
-      <hash xmlns="urn:schemas-microsoft-com:asm.v2">
-        <dsig:Transforms>
-          <dsig:Transform Algorithm="urn:schemas-microsoft-com:HashTransforms.Identity" />
-        </dsig:Transforms>
-        <dsig:DigestMethod Algorithm="http://www.w3.org/2000/09/xmldsig#sha1" />
-        <dsig:DigestValue>sU51R8vHlCCn13Gh7nsq97WK9ZE=</dsig:DigestValue>
-      </hash>
-    </dependentAssembly>
-  </dependency>
+  <!--
+    Native.PEM3DControlWrapper SxS dependency removed. The Windows loader processes
+    this BEFORE any managed code (before ModuleInitializer), and the COM/OCX activation
+    is suspected of triggering the FPU exception unmask that crashes WPF startup under
+    VS native debugging. Restore the <dependency>...</dependency> block once the
+    PEM3D viewer is needed again.
+  -->
 </assembly>

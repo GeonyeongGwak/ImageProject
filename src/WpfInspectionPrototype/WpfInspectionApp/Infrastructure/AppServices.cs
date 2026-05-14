@@ -52,7 +52,11 @@ public sealed class AppServices
 
     public IRoiUiStateService RoiUiState { get; }
 
-    public IPem3DViewerHostService Pem3DViewerHost { get; } = new Pem3DViewerHostService();
+    // Pem3DViewerHostService (real) is disabled - the PEM3DControl OCX/COM init path
+    // is suspected of triggering FPU exception unmask / native D3D probes that crash
+    // WPF startup under VS native debugging. Re-enable by swapping back to
+    // `new Pem3DViewerHostService()` once the underlying fp issue is solved.
+    public IPem3DViewerHostService Pem3DViewerHost { get; } = new DisabledPem3DViewerHostService();
 
     public IPttLoadService PttLoad { get; } = new PttLoadService();
 
