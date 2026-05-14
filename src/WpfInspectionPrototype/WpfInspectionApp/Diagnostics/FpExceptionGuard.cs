@@ -55,7 +55,8 @@ namespace WpfInspectionApp.Diagnostics
             {
                 AppDomain.CurrentDomain.AssemblyLoad += (_, a) =>
                 {
-                    TryMaskLogged($"AssemblyLoad: {a.LoadedAssembly.GetName().Name}");
+                    Diag($"AssemblyLoad: {a.LoadedAssembly.GetName().Name}");
+                    TryMaskLogged($"  after AssemblyLoad: {a.LoadedAssembly.GetName().Name}");
                 };
                 Diag("ModuleInit: AssemblyLoad hook registered");
             }
@@ -64,19 +65,32 @@ namespace WpfInspectionApp.Diagnostics
                 Diag($"ModuleInit: AssemblyLoad hook FAILED {ex.GetType().Name}: {ex.Message}");
             }
 
-            // FirstChanceException fires for every managed exception (incl. the
-            // ArithmeticException) - re-mask immediately so the next op doesn't repeat.
             try
             {
                 AppDomain.CurrentDomain.FirstChanceException += (_, e) =>
                 {
-                    TryMaskLogged($"FirstChance: {e.Exception.GetType().Name} :: {e.Exception.Message}");
+                    Diag($"FirstChance: {e.Exception.GetType().FullName} :: {e.Exception.Message}");
+                    TryMaskLogged($"  after FirstChance: {e.Exception.GetType().Name}");
                 };
                 Diag("ModuleInit: FirstChanceException hook registered");
             }
             catch (Exception ex)
             {
                 Diag($"ModuleInit: FirstChanceException hook FAILED {ex.GetType().Name}: {ex.Message}");
+            }
+
+            try
+            {
+                AppDomain.CurrentDomain.UnhandledException += (_, e) =>
+                {
+                    Diag($"UNHANDLED: terminating={e.IsTerminating} exception={(e.ExceptionObject as Exception)?.GetType().FullName} :: {(e.ExceptionObject as Exception)?.Message}");
+                };
+                AppDomain.CurrentDomain.ProcessExit += (_, _) => Diag("ProcessExit");
+                Diag("ModuleInit: UnhandledException/ProcessExit hooks registered");
+            }
+            catch (Exception ex)
+            {
+                Diag($"ModuleInit: UnhandledException hook FAILED {ex.GetType().Name}: {ex.Message}");
             }
 
             TryMaskLogged("ModuleInit: exit");
