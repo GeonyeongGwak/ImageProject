@@ -101,6 +101,9 @@ internal static class Program
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
     private static extern int MptiBridgeResultAlign(int i, ref FlowAlignResult outResult);
 
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
+    private static extern int MptiBridgeDumpAlignDiag(StringBuilder output, int outputLength);
+
     [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
     private static extern bool SetDllDirectory(string lpPathName);
 
@@ -229,6 +232,13 @@ internal static class Program
             return $"code={c} isInsp={r.IsInsp} isOk={r.IsOk} defect={r.DefectCode} okCount={r.OkCount} " +
                    $"offset=({r.OffsetX:F2},{r.OffsetY:F2}) theta={r.Theta:F3} okShift=({r.OkShiftX},{r.OkShiftY}) okAngle={r.OkAngle} " +
                    $"centers=[{string.Join(";", r.DetectedCentersX.Zip(r.DetectedCentersY, (x, y) => $"({x},{y})"))}]";
+        });
+
+        Step("DumpAlignDiag", () =>
+        {
+            var diag = new StringBuilder(4096);
+            var c = MptiBridgeDumpAlignDiag(diag, diag.Capacity);
+            return $"code={c}\n----- begin diag -----\n{diag}----- end diag -----";
         });
 
         Console.WriteLine("[harness] done.");

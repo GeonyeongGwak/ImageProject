@@ -88,3 +88,13 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeResultAlignCount();
 
 // i-th Align result window, first algorithm. Returns 0 on success.
 MPTI_BRIDGE_FLOW_API int MptiBridgeResultAlign(int i, MptiBridgeFlowAlignResult* out);
+
+// Diagnostic: dumps the full InspectionResult.alignResult[0] structure into `output`
+// as a multi-line wide string. Reports why isInsp may be 0:
+//   - alignResult ptr null?
+//   - alignArraySize
+//   - per-window: m_bIsInsp / m_bOk / m_nAlgorithmCnt / m_vArrRstInspAlgo null?
+//   - per-algo: m_bIsInsp / m_bIsRequired / m_eAlgoType / m_vRstInspAlgo null?
+//   - partImgBuf state, m_inspItemCnts/m_groupIndexCnts for eINSP_ALIGN.
+// Returns 0 on success.
+MPTI_BRIDGE_FLOW_API int MptiBridgeDumpAlignDiag(wchar_t* output, int outputLength);

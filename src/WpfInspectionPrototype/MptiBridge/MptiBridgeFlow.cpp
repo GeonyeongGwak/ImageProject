@@ -4,6 +4,8 @@
 #include "NativeSources/MPTILib_Algo/InspManager.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Align/InspParamDef_Align.h"
 
+#include <cstdarg>
+#include <cstdio>
 #include <cwchar>
 #include <exception>
 #include <vector>
@@ -29,6 +31,8 @@ namespace
     bool                        s_committed = false;
     bool                        s_inspected = false;
     DWORD                       s_lastInspProcSehCode = 0;
+    PVOID                       s_lastInspProcSehAddress = nullptr;
+    wchar_t                     s_lastInspProcSehModule[260] = {0};
 
     int s_sourceWidth = 0;
     int s_sourceHeight = 0;
@@ -56,14 +60,40 @@ namespace
         return code;
     }
 
+    // SEH filter that captures code + faulting address + module name. Runs in the
+    // exception context BEFORE the __except handler. Returning EXCEPTION_EXECUTE_HANDLER
+    // tells SEH to unwind to our handler.
+    int CaptureInspProcSehFilter(EXCEPTION_POINTERS* ep)
+    {
+        if (ep && ep->ExceptionRecord)
+        {
+            s_lastInspProcSehCode = ep->ExceptionRecord->ExceptionCode;
+            s_lastInspProcSehAddress = ep->ExceptionRecord->ExceptionAddress;
+            HMODULE hMod = nullptr;
+            if (GetModuleHandleExW(
+                    GET_MODULE_HANDLE_EX_FLAG_FROM_ADDRESS | GET_MODULE_HANDLE_EX_FLAG_UNCHANGED_REFCOUNT,
+                    (LPCWSTR)ep->ExceptionRecord->ExceptionAddress, &hMod) && hMod)
+            {
+                GetModuleFileNameW(hMod, s_lastInspProcSehModule, 260);
+            }
+            else
+            {
+                s_lastInspProcSehModule[0] = L'\0';
+            }
+        }
+        return EXCEPTION_EXECUTE_HANDLER;
+    }
+
     int CallMptiInspProcGuarded()
     {
         s_lastInspProcSehCode = 0;
+        s_lastInspProcSehAddress = nullptr;
+        s_lastInspProcSehModule[0] = L'\0';
         __try
         {
             return MPTI_InspProc();
         }
-        __except ((s_lastInspProcSehCode = GetExceptionCode()), EXCEPTION_EXECUTE_HANDLER)
+        __except (CaptureInspProcSehFilter(GetExceptionInformation()))
         {
             return -300;
         }
@@ -271,8 +301,16 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeInspProc(wchar_t* message, int messageLength)
         if (ret == -300 && s_lastInspProcSehCode != 0)
         {
             s_inspected = false;
-            wchar_t buf[256];
-            swprintf_s(buf, L"MPTI_InspProc SEH exception 0x%08X", s_lastInspProcSehCode);
+            wchar_t buf[1024];
+            // Extract bare module file name from full path for readability.
+            const wchar_t* modName = s_lastInspProcSehModule;
+            for (const wchar_t* p = s_lastInspProcSehModule; *p; ++p)
+                if (*p == L'\\' || *p == L'/') modName = p + 1;
+            swprintf_s(buf,
+                L"MPTI_InspProc SEH 0x%08X @ 0x%p in %s",
+                s_lastInspProcSehCode,
+                s_lastInspProcSehAddress,
+                modName && *modName ? modName : L"<unknown>");
             return Fail(message, messageLength, ret, buf);
         }
 
@@ -376,4 +414,110 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeResultAlign(int i, MptiBridgeFlowAlignResult*
         return 0;
     }
     catch (...) { return -100; }
+}
+
+namespace
+{
+    // Append helper that won't overrun the output buffer. `pos` is the current write
+    // offset in WCHARs. Returns new pos.
+    int Append(wchar_t* output, int cap, int pos, const wchar_t* fmt, ...)
+    {
+        if (output == nullptr || pos >= cap - 1) return pos;
+        va_list ap;
+        va_start(ap, fmt);
+        int written = _vsnwprintf_s(output + pos, static_cast<size_t>(cap - pos),
+                                    _TRUNCATE, fmt, ap);
+        va_end(ap);
+        return written > 0 ? pos + written : pos;
+    }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeDumpAlignDiag(wchar_t* output, int outputLength)
+{
+    if (output == nullptr || outputLength <= 0) return -1;
+    output[0] = L'\0';
+    int p = 0;
+
+    if (g_pMPTI == nullptr)
+    {
+        p = Append(output, outputLength, p, L"g_pMPTI is NULL\n");
+        return 0;
+    }
+    p = Append(output, outputLength, p,
+        L"g_pMPTI ok | m_nSizeXRawData=%d m_nSizeYRawData=%d\n",
+        g_pMPTI->m_nSizeXRawData, g_pMPTI->m_nSizeYRawData);
+
+    if (g_pInspMng == nullptr)
+    {
+        p = Append(output, outputLength, p, L"g_pInspMng is NULL\n");
+        return 0;
+    }
+    p = Append(output, outputLength, p, L"g_pInspMng ok\n");
+
+    // group meta
+    if (g_pInspMng->m_inspItemCnts)
+        p = Append(output, outputLength, p,
+            L"  m_inspItemCnts[eINSP_ALIGN=%d] = %d\n",
+            (int)eINSP_ALIGN, g_pInspMng->m_inspItemCnts[eINSP_ALIGN]);
+    else
+        p = Append(output, outputLength, p, L"  m_inspItemCnts: NULL\n");
+    if (g_pInspMng->m_groupIndexCnts)
+        p = Append(output, outputLength, p,
+            L"  m_groupIndexCnts[eINSP_ALIGN] = %d\n",
+            g_pInspMng->m_groupIndexCnts[eINSP_ALIGN]);
+    else
+        p = Append(output, outputLength, p, L"  m_groupIndexCnts: NULL\n");
+
+    InspPartInfo* bi = g_pInspMng->GetInspPartInfo();
+    if (bi == nullptr)
+        p = Append(output, outputLength, p, L"  GetInspPartInfo: NULL\n");
+    else
+    {
+        p = Append(output, outputLength, p,
+            L"  partImgBuf: size=%dx%d topR=%s topG=%s topB=%s topW=%s\n",
+            bi->partImgBuf.nImageSizeX, bi->partImgBuf.nImageSizeY,
+            bi->partImgBuf.imgTop_R ? L"set" : L"NULL",
+            bi->partImgBuf.imgTop_G ? L"set" : L"NULL",
+            bi->partImgBuf.imgTop_B ? L"set" : L"NULL",
+            bi->partImgBuf.imgTop_W ? L"set" : L"NULL");
+        p = Append(output, outputLength, p,
+            L"  partCx=%.1f partCy=%.1f partW=%.1f partH=%.1f nWindowCount=%d\n",
+            bi->partCx, bi->partCy, bi->partWidth, bi->partHeight, bi->nWindowCount);
+    }
+
+    InspectionResult* r = g_pInspMng->m_inspectionResult;
+    if (r == nullptr)
+    {
+        p = Append(output, outputLength, p, L"m_inspectionResult: NULL\n");
+        return 0;
+    }
+    p = Append(output, outputLength, p,
+        L"InspectionResult: isInspAlign=%d alignArraySize=%d alignResult=%s\n",
+        (int)r->isInspAlign, r->alignArraySize,
+        r->alignResult ? L"set" : L"NULL");
+
+    if (r->alignResult == nullptr || r->alignArraySize <= 0)
+        return 0;
+
+    for (int i = 0; i < r->alignArraySize && p < outputLength - 256; ++i)
+    {
+        const InspWndResult& w = r->alignResult[i];
+        p = Append(output, outputLength, p,
+            L"  alignResult[%d]: m_bIsInsp=%d m_bOk=%d m_nDefectCode=%d "
+            L"m_nAlgorithmCnt=%d m_vArrRstInspAlgo=%s\n",
+            i, (int)w.m_bIsInsp, (int)w.m_bOk, w.m_nDefectCode,
+            w.m_nAlgorithmCnt, w.m_vArrRstInspAlgo ? L"set" : L"NULL");
+        if (w.m_vArrRstInspAlgo == nullptr) continue;
+        for (int j = 0; j < w.m_nAlgorithmCnt && p < outputLength - 128; ++j)
+        {
+            const InspAlgoResult& a = w.m_vArrRstInspAlgo[j];
+            p = Append(output, outputLength, p,
+                L"    algo[%d]: m_bIsInsp=%d m_bIsRequired=%d m_bOk=%d "
+                L"m_eAlgoType=%d m_vRstInspAlgo=%s m_nDefectCode=%d\n",
+                j, (int)a.m_bIsInsp, (int)a.m_bIsRequired, (int)a.m_bOk,
+                (int)a.m_nAlgoType, a.m_vRstInspAlgo ? L"set" : L"NULL",
+                a.m_nDefectCode);
+        }
+    }
+    return 0;
 }

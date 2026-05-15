@@ -1244,9 +1244,22 @@ int InspManager::InspProc()
 //
 //	if (InspDataSet)
 //		delete InspDataSet;
-//	
+//
 //	return ret;
 //}
+
+// Null-guarded read of nUseNGPolygon. ext::irc::get() is lazy-init so always non-null,
+// but in minimal harness flows _CtrlServer._stream is uninitialized and First() returns
+// nullptr, causing 0xC0000005 on the subsequent ->prod access. Default to FALSE on null.
+static BOOL TryReadUseNGPolygonFlag()
+{
+	auto irc = ext::irc::get();
+	if (!irc) return FALSE;
+	auto* ctrl = irc->_CtrlServer.First();
+	if (ctrl == nullptr) return FALSE;
+	return ctrl->prod.nUseNGPolygon;
+}
+
 int InspManager::InspNormal_Ver2(bool bUseDecision)
 {
 	int _nOCRAlgoCnt = 0;// 할때마다 초기화 
@@ -1256,7 +1269,12 @@ int InspManager::InspNormal_Ver2(bool bUseDecision)
 	CString strDSI;
 	CString str(m_pInspBoardInfo->s3DImagePath);
 	
-	if (ext::irc::get()->_CtrlServer.First()->prod.nUseNGPolygon)
+	// SEH-guarded read: in minimal flows where ext::CopyParamToExt did not fully
+	// initialize _CtrlServer, the original access raises 0xC0000005 outside the
+	// function's try block - killing InspProc before InitResultVal runs. Default
+	// to FALSE on any access failure. The guard MUST live in a separate function
+	// because __try/__except cannot coexist with C++ object unwinding.
+	if (TryReadUseNGPolygonFlag())
 	{
 		if (str.IsEmpty())
 		{
