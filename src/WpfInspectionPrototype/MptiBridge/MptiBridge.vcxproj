@@ -101,6 +101,10 @@ if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcor
       <IncludeInUnityFile>false</IncludeInUnityFile>
       <AdditionalOptions>/bigobj %(AdditionalOptions)</AdditionalOptions>
       <Optimization>Disabled</Optimization>
+      <!-- /Zi: emit full line-level debug info per-translation-unit. Without this,
+           PDB line info is only what LTCG happens to reconstruct from IL, which is
+           inconsistent per-file (some functions bind breakpoints, others don't). -->
+      <DebugInformationFormat>ProgramDatabase</DebugInformationFormat>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
