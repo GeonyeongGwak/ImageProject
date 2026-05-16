@@ -167,32 +167,45 @@ public static class LegacyPttImageLoader
         }
     }
 
-    private static void ApplyPotResolution(string pttPath, int width, int height, ref float pixelResolutionX, ref float pixelResolutionY)
+    // Reads pixel resolution (mm/pixel) from the .pot file accompanying the given PTT
+    // path. The .pot is a plain-text file with two positive floats (X, Y) separated by
+    // whitespace/commas. Returns true if both values were found and look plausible
+    // (0 < value < 10 mm/pixel). Used by InspectionFlowService to pass resolution into
+    // the native flow bridge (MptiBridgeSetFlowResolution) — the existing
+    // MPTI_SetFovPixelResolution path only touches CMCoordi and does NOT propagate to
+    // g_pInspMng / PIAL::PInspAlgo_Lib that the InspProc pipeline reads.
+    public static bool TryReadPotResolution(string pttPath, out double pixelResolutionX, out double pixelResolutionY)
     {
+        pixelResolutionX = 0;
+        pixelResolutionY = 0;
+        if (string.IsNullOrWhiteSpace(pttPath)) return false;
         var potPath = Path.ChangeExtension(pttPath, ".pot");
-        if (!File.Exists(potPath))
-        {
-            return;
-        }
+        if (!File.Exists(potPath)) return false;
 
         try
         {
             var pot = File.ReadAllText(potPath);
             var values = pot
                 .Split(new[] { ',', '\r', '\n', '\t', ' ' }, StringSplitOptions.RemoveEmptyEntries)
-                .Select(value => float.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0)
+                .Select(value => double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var parsed) ? parsed : 0)
                 .Where(value => value > 0 && value < 10)
                 .ToList();
-            if (values.Count >= 2)
-            {
-                pixelResolutionX = values[0];
-                pixelResolutionY = values[1];
-                MPTI_SetFovPixelNumber(width, height);
-                MPTI_SetFovPixelResolution(pixelResolutionX, pixelResolutionY);
-            }
+            if (values.Count < 2) return false;
+            pixelResolutionX = values[0];
+            pixelResolutionY = values[1];
+            return true;
         }
-        catch (IOException)
+        catch (IOException) { return false; }
+    }
+
+    private static void ApplyPotResolution(string pttPath, int width, int height, ref float pixelResolutionX, ref float pixelResolutionY)
+    {
+        if (TryReadPotResolution(pttPath, out var rx, out var ry))
         {
+            pixelResolutionX = (float)rx;
+            pixelResolutionY = (float)ry;
+            MPTI_SetFovPixelNumber(width, height);
+            MPTI_SetFovPixelResolution(pixelResolutionX, pixelResolutionY);
         }
     }
 

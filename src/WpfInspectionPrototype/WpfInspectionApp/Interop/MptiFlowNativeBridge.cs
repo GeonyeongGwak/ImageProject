@@ -40,6 +40,9 @@ public static class MptiFlowNativeBridge
     // --- flow builders (native owns memory; each BeginPart resets prior state) ---
 
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeSetFlowResolution(double resolX, double resolY);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int MptiBridgeBeginPart(
         double cx, double cy, double w, double h, double angle,
         int srcW, int srcH);

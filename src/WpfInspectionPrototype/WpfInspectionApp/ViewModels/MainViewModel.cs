@@ -103,10 +103,17 @@ public sealed class MainViewModel : ViewModelBase
 
         try
         {
+            // Pull resolution from Part Import metadata if the model has it. The service
+            // falls back to reading the .pot file when these are 0, and finally to 1.0
+            // mm/pixel inside the native bridge.
+            var resX = _model.Part?.PixelResolutionX ?? 0.0;
+            var resY = _model.Part?.PixelResolutionY ?? 0.0;
             var result = await _inspectionFlowService.RunAlignAsync(new AlignFlowRequest(
                 PttPath: pttPath!,
                 WindowWidth: 0,
-                WindowHeight: 0));
+                WindowHeight: 0,
+                PixelResolutionX: resX,
+                PixelResolutionY: resY));
             ApplyFlowResult(result);
         }
         catch (Exception ex)

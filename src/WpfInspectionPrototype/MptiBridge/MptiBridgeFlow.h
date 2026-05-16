@@ -355,6 +355,13 @@ struct MptiBridgeFlowAlignResult
 
 // --- builders (native owns memory; each Begin resets prior state) ---
 
+// Sets the pixel resolution (mm/pixel) used by the inspection pipeline. Typically the
+// caller reads this from the .pot file accompanying a .ptt (or from Part Import
+// metadata) and calls this before MptiBridgeCommitInspParam. If never called, commit
+// falls back to 1.0 (treats all coordinates as pixel-space). Passing 0 clears the
+// explicit value and re-enables the fallback. Returns 0 on success.
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetFlowResolution(double resolX, double resolY);
+
 // partCx/Cy/W/H/angle are part-space; sourceWidth/Height are the part image dims.
 MPTI_BRIDGE_FLOW_API int MptiBridgeBeginPart(
     double partCx, double partCy, double partWidth, double partHeight, double angle,

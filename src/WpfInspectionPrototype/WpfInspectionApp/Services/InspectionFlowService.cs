@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using WpfInspectionApp.Interop;
+using WpfInspectionApp.Models;
 
 namespace WpfInspectionApp.Services;
 
@@ -36,6 +37,24 @@ public sealed class InspectionFlowService : IInspectionFlowService
             if (code != 0 || partW <= 0 || partH <= 0)
             {
                 return Failure($"LoadPtt failed ({code}): {sb}");
+            }
+
+            // Pixel resolution priority: explicit request override > .pot file >
+            // (none — Commit falls back to 1.0). The .pot ships with every Part
+            // Import bundle in the reference workflow, so this is the normal path.
+            double resolX = request.PixelResolutionX;
+            double resolY = request.PixelResolutionY;
+            if (resolX <= 0 || resolY <= 0)
+            {
+                if (LegacyPttImageLoader.TryReadPotResolution(request.PttPath, out var rx, out var ry))
+                {
+                    resolX = rx;
+                    resolY = ry;
+                }
+            }
+            if (resolX > 0 && resolY > 0)
+            {
+                MptiFlowNativeBridge.MptiBridgeSetFlowResolution(resolX, resolY);
             }
 
             sb.Clear();

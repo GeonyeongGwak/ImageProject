@@ -83,6 +83,12 @@ namespace
     int s_sourceWidth = 0;
     int s_sourceHeight = 0;
 
+    // Resolution explicitly provided by the caller (typically read from .pot during
+    // Part Import or PTT load on the C# side). 0 means "not set — fall back to 1.0".
+    // Set via MptiBridgeSetFlowResolution.
+    double s_explicitResolX = 0.0;
+    double s_explicitResolY = 0.0;
+
     void Reset()
     {
         memset(&s_part, 0, sizeof(s_part));
@@ -91,6 +97,9 @@ namespace
         s_committed = false;
         s_inspected = false;
         s_sourceWidth = s_sourceHeight = 0;
+        // Note: do NOT reset s_explicitResolX/Y here — resolution survives across
+        // BeginPart calls so the WPF UI can set it once after PTT load and reuse it
+        // for multiple Run-Flow invocations.
     }
 
     int WriteMsg(wchar_t* message, int len, const wchar_t* text)
@@ -144,6 +153,24 @@ namespace
             return -300;
         }
     }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetFlowResolution(double resolX, double resolY)
+{
+    try
+    {
+        // Negative resolutions are nonsensical — treat as a reset.
+        if (resolX < 0.0 || resolY < 0.0)
+        {
+            s_explicitResolX = 0.0;
+            s_explicitResolY = 0.0;
+            return 0;
+        }
+        s_explicitResolX = resolX;
+        s_explicitResolY = resolY;
+        return 0;
+    }
+    catch (...) { return -100; }
 }
 
 MPTI_BRIDGE_FLOW_API int MptiBridgeBeginPart(
@@ -631,11 +658,18 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeCommitInspParam(wchar_t* message, int message
             g_pMPTI->m_nSizeYRawData = s_sourceHeight;
         }
 
-        // Force-set FOV resolution if MPTI_SetRawDataFovInfo never ran (minimal flow
-        // without .pot). PInspAlgoWrapper::WndSizeChange divides partWidth by
+        // Set FOV resolution if MPTI_SetRawDataFovInfo never ran (minimal flow without
+        // .pot). PInspAlgoWrapper::WndSizeChange divides partWidth by
         // PIAL::PInspAlgo_Lib::m_resolX, so 0.0 causes wnd_w to become 0 ->
         // InspWindowAlgo3 returns e_NG before the algo body runs (line 8790 of
-        // InspManager.cpp). resolX/Y=1.0 treats our coords as already in pixel-space.
+        // InspManager.cpp).
+        //
+        // Resolution priority:
+        //   1. s_explicitResolX/Y    (set via MptiBridgeSetFlowResolution, normally
+        //                             populated from the .pot file or Part Import metadata)
+        //   2. fallback 1.0          (treats coords as already in pixel-space — only
+        //                             correct when no real-world units are required)
+        //
         // We set the fields directly instead of calling InspManager::SetResolution()
         // because that triggers MIL re-init (m_procMil = new CProcMil + InitMil...)
         // which AVs in a minimal flow where MIL device wasn't fully initialized.
@@ -643,13 +677,15 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeCommitInspParam(wchar_t* message, int message
         {
             const int fovW = s_sourceWidth > 0 ? s_sourceWidth : g_pMPTI->m_nSizeXRawData;
             const int fovH = s_sourceHeight > 0 ? s_sourceHeight : g_pMPTI->m_nSizeYRawData;
+            const double rx = s_explicitResolX > 0.0 ? s_explicitResolX : 1.0;
+            const double ry = s_explicitResolY > 0.0 ? s_explicitResolY : 1.0;
             g_pInspMng->m_fovWidth = fovW;
             g_pInspMng->m_fovLength = fovH;
-            g_pInspMng->m_resolX = 1.0;
-            g_pInspMng->m_resolY = 1.0;
+            g_pInspMng->m_resolX = rx;
+            g_pInspMng->m_resolY = ry;
             g_pInspMng->m_bSetResolution = true;
-            PIAL::PInspAlgo_Lib::m_resolX = 1.0;
-            PIAL::PInspAlgo_Lib::m_resolY = 1.0;
+            PIAL::PInspAlgo_Lib::m_resolX = rx;
+            PIAL::PInspAlgo_Lib::m_resolY = ry;
         }
 
         const int ret = MPTI_SetInspParam(&s_part, s_windows.data(), static_cast<int>(s_windows.size()));

@@ -22,9 +22,13 @@ public sealed record AlignFlowResult(
     string DiagDump,
     double ElapsedMs);
 
-// Inputs for a minimal Align flow run. Coordinates are in pixel-space (the bridge
-// force-sets the MPTI resolution to 1.0 when .pot isn't loaded — see MptiBridgeFlow.cpp
-// MptiBridgeCommitInspParam).
+// Inputs for a minimal Align flow run.
+//
+// Resolution: PixelResolutionX/Y are mm/pixel. When 0 (default), the service tries to
+// read them from the .pot file next to the PTT. If neither is available the native
+// bridge falls back to 1.0 (treats coords as already in pixel-space). Coordinates in
+// this request are always in pixel-space regardless — only the inspection pipeline's
+// internal mm <-> pixel math is affected by the resolution.
 public sealed record AlignFlowRequest(
     string PttPath,
     int WindowWidth,
@@ -36,7 +40,9 @@ public sealed record AlignFlowRequest(
     double MaxShiftX = 20,
     double MaxShiftY = 20,
     double MaxAngle = 5,
-    int MinBlobArea = 10);
+    int MinBlobArea = 10,
+    double PixelResolutionX = 0,
+    double PixelResolutionY = 0);
 
 public interface IInspectionFlowService
 {
