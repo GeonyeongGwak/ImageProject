@@ -33,6 +33,32 @@ struct MptiBridgeFlowAlignParams
     int     minBlobArea;
 };
 
+// Mirrors PInsp_Algo/PadBW/InspParamDef_PadBW.h tagAlgoPadBW (subset). Captures the
+// fields the WPF UI typically wires: binary thresholds (via the default-pad sub-struct),
+// teach-area gating, shift tolerance, blob size gates.
+struct MptiBridgeFlowPadBWParams
+{
+    int     binaryMin;          // sDefaultPad.m_nMinBinary
+    int     binaryMax;          // sDefaultPad.m_nMaxBinary
+    int     useInsp2D;          // sDefaultPad.m_bInsp2D
+    int     invertCheck;        // unused on PadBW side, kept for symmetry with Align
+    int     useTeachArea;       // bTeachAreaUse
+    double  teachArea;          // dTeachArea
+    double  teachAreaRateMin;   // dTeachAreaRateMin
+    double  teachAreaRateMax;   // dTeachAreaRateMax
+    int     useShift;           // bUseShift
+    double  teachShiftX;        // dTeachShiftX
+    double  teachShiftY;        // dTeachShiftY
+    int     useBlobWidth;       // bUseBlobWidth
+    double  blobSizeWidth;      // dBlobSizeWidth
+    int     useBlobLength;      // bUseBlobLength
+    double  blobSizeLength;     // dBlobSizeLength
+    int     useBlobArea;        // bUseBlobArea
+    double  blobArea;           // dBlobArea
+    int     filterLevel;        // nFilterLevel
+    int     useFillHole;        // sDefaultPad.m_bUseFillHole
+};
+
 // Flattened RstAlgoAlign for results.
 struct MptiBridgeFlowAlignResult
 {
@@ -74,6 +100,11 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeAddAlgo(int wndIndex, int algoType, int algoI
 // Fills the AlgoAlign param of an existing (window, algorithm) Align entry.
 MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(
     int wndIndex, int algoIndex, const MptiBridgeFlowAlignParams* params);
+
+// Fills the AlgoPadBW param of an existing (window, algorithm) PadBW entry. The native
+// AlgoPadBW struct has many more fields; the rest keep their default-constructed values.
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPadBW(
+    int wndIndex, int algoIndex, const MptiBridgeFlowPadBWParams* params);
 
 // Finalizes inputs -> MPTI_SetInspParam + InitResultVal. Must call after PTT load.
 MPTI_BRIDGE_FLOW_API int MptiBridgeCommitInspParam(wchar_t* message, int messageLength);

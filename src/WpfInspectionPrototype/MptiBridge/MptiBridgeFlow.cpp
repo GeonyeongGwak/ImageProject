@@ -4,26 +4,66 @@
 #include "NativeSources/MPTILib_Algo/InspManager.h"
 #include "NativeSources/PInspAlgo/PInspAlgo_Lib.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Align/InspParamDef_Align.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/PadBW/InspParamDef_PadBW.h"
 
 #include <cstdarg>
 #include <cstdio>
 #include <cwchar>
 #include <exception>
+#include <memory>
 #include <vector>
 
 namespace
 {
-    // Native-owned input model. Rebuilt on every MptiBridgeBeginPart().
+    // Holder for the native AlgoXxx struct backing one (window, algo) slot. Each native
+    // algo type has its own struct (AlgoAlign, AlgoPadBW, etc.) — some contain CString
+    // members so we cannot reuse a single raw byte buffer for all of them. Instead we
+    // hold a void* + an "operator vtable" (deleter, allocator) that knows the runtime
+    // type. The deleter takes void* and re-casts to the right type before delete.
     struct AlgoStorage
     {
-        int       type = -1;     // InspAlgoType
-        AlgoAlign alignParam{};   // valid when type == eAlgoAlign
+        int   type = -1;     // InspAlgoType
+        void* params = nullptr;
+        void (*deleter)(void*) = nullptr;
+
+        AlgoStorage() = default;
+        AlgoStorage(const AlgoStorage&) = delete;
+        AlgoStorage& operator=(const AlgoStorage&) = delete;
+        AlgoStorage(AlgoStorage&& other) noexcept
+            : type(other.type), params(other.params), deleter(other.deleter)
+        {
+            other.type = -1; other.params = nullptr; other.deleter = nullptr;
+        }
+        AlgoStorage& operator=(AlgoStorage&& other) noexcept
+        {
+            if (this != &other)
+            {
+                if (deleter && params) deleter(params);
+                type = other.type; params = other.params; deleter = other.deleter;
+                other.type = -1; other.params = nullptr; other.deleter = nullptr;
+            }
+            return *this;
+        }
+        ~AlgoStorage() { if (deleter && params) deleter(params); }
+
+        // Allocate a default-constructed native param struct of type T and remember how
+        // to delete it. T must match the algo's native AlgoXxx struct exactly.
+        template <typename T>
+        T* Alloc(int algoType)
+        {
+            if (deleter && params) deleter(params);
+            T* p = new T();
+            params = p;
+            deleter = [](void* raw) { delete static_cast<T*>(raw); };
+            type = algoType;
+            return p;
+        }
     };
 
     struct WindowStorage
     {
-        std::vector<InspAlgo>    algos;
-        std::vector<AlgoStorage> algoStore;
+        std::vector<InspAlgo>                    algos;
+        std::vector<std::unique_ptr<AlgoStorage>> algoStore;
     };
 
     InspPartInfo                s_part{};
@@ -204,9 +244,23 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeAddAlgo(int wndIndex, int algoType, int algoI
 
         auto& store = s_windowStore[wndIndex];
         store.algos.push_back(algo);
-        AlgoStorage as;
-        as.type = algoType;   // default-constructed AlgoAlign carries reasonable defaults
-        store.algoStore.push_back(as);
+        auto as = std::make_unique<AlgoStorage>();
+        // Allocate the matching native param struct so it's ready before any
+        // MptiBridgeSetAlgoParamsXxx call. Unknown types still get a slot (type=-1) and
+        // are skipped at commit-time wiring.
+        switch (algoType)
+        {
+        case eAlgoAlign:   as->Alloc<AlgoAlign>(algoType); break;
+        case eAlgoPadBW:   as->Alloc<AlgoPadBW>(algoType); break;
+        // Add more algo types here as the WPF UI grows. Pattern:
+        //   case eAlgoXxx: as->Alloc<AlgoXxx>(algoType); break;
+        default:
+            // Unknown algo type — leave params=nullptr; commit will skip m_ptrInspAlgoParam
+            // and InspWindowAlgo3's param-null check will return -1 before InspProc.
+            as->type = algoType;
+            break;
+        }
+        store.algoStore.push_back(std::move(as));
         return static_cast<int>(store.algos.size()) - 1;
     }
     catch (...) { return -100; }
@@ -227,10 +281,12 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(
         auto& store = s_windowStore[wndIndex];
         if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size()))
             return -12;
-        if (store.algoStore[algoIndex].type != eAlgoAlign)
+        if (store.algoStore[algoIndex]->type != eAlgoAlign)
             return -13;
+        auto* algoPtr = static_cast<AlgoAlign*>(store.algoStore[algoIndex]->params);
+        if (algoPtr == nullptr) return -14;
 
-        AlgoAlign& a = store.algoStore[algoIndex].alignParam;
+        AlgoAlign& a = *algoPtr;
         const int sn = params->searchNum < 1 ? 1 : (params->searchNum > 4 ? 4 : params->searchNum);
         a.m_nSearchNum = sn;
         a.m_nSearchMargin = params->searchMargin < 0 ? 0 : params->searchMargin;
@@ -259,6 +315,60 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(
     catch (...) { return -100; }
 }
 
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPadBW(
+    int wndIndex, int algoIndex, const MptiBridgeFlowPadBWParams* params)
+{
+    try
+    {
+        if (s_committed)
+            return -10;
+        if (wndIndex < 0 || wndIndex >= static_cast<int>(s_windows.size()))
+            return -11;
+        if (params == nullptr)
+            return -1;
+
+        auto& store = s_windowStore[wndIndex];
+        if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size()))
+            return -12;
+        if (store.algoStore[algoIndex]->type != eAlgoPadBW)
+            return -13;
+        auto* algoPtr = static_cast<AlgoPadBW*>(store.algoStore[algoIndex]->params);
+        if (algoPtr == nullptr) return -14;
+
+        AlgoPadBW& a = *algoPtr;
+        // sDefaultPad holds the actual binarization params (Bin struct). Both this
+        // struct and the per-light sArrInspPad[0] are used downstream depending on
+        // m_nTotLightCnt — the default of 1 routes through sArrInspPad[0].stBin which
+        // mirrors sDefaultPad, so we keep them in sync.
+        a.sDefaultPad.m_bInsp2D    = params->useInsp2D != 0;
+        a.sDefaultPad.m_nMinBinary = params->binaryMin;
+        a.sDefaultPad.m_nMaxBinary = params->binaryMax;
+        a.sDefaultPad.m_bUseFillHole = params->useFillHole != 0;
+        a.sArrInspPad[0].stBin     = a.sDefaultPad;
+        a.m_nTotLightCnt           = 1;
+
+        a.bTeachAreaUse     = params->useTeachArea != 0;
+        a.dTeachArea        = params->teachArea;
+        a.dTeachAreaRateMin = params->teachAreaRateMin;
+        a.dTeachAreaRateMax = params->teachAreaRateMax;
+
+        a.bUseShift         = params->useShift != 0;
+        a.dTeachShiftX      = params->teachShiftX;
+        a.dTeachShiftY      = params->teachShiftY;
+
+        a.bUseBlobWidth     = params->useBlobWidth != 0;
+        a.dBlobSizeWidth    = params->blobSizeWidth;
+        a.bUseBlobLength    = params->useBlobLength != 0;
+        a.dBlobSizeLength   = params->blobSizeLength;
+        a.bUseBlobArea      = params->useBlobArea != 0;
+        a.dBlobArea         = params->blobArea;
+
+        a.nFilterLevel      = params->filterLevel;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
 MPTI_BRIDGE_FLOW_API int MptiBridgeCommitInspParam(wchar_t* message, int messageLength)
 {
     try
@@ -268,14 +378,16 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeCommitInspParam(wchar_t* message, int message
         if (s_windows.empty())
             return Fail(message, messageLength, -1, L"MptiBridgeCommitInspParam: no windows added");
 
-        // Wire algorithm arrays + algo-param pointers now that all adds are done.
+        // Wire algorithm arrays + algo-param pointers now that all adds are done. Any
+        // algo that didn't get a typed allocation (Alloc<T>) ends up with params=nullptr
+        // and is left out — InspNormal_Ver2's null-param check at line 1313 will return
+        // -1 before InspProc, surfacing the missing setter as an obvious failure.
         for (size_t w = 0; w < s_windows.size(); ++w)
         {
             auto& store = s_windowStore[w];
             for (size_t a = 0; a < store.algos.size(); ++a)
             {
-                if (store.algoStore[a].type == eAlgoAlign)
-                    store.algos[a].m_ptrInspAlgoParam = &store.algoStore[a].alignParam;
+                store.algos[a].m_ptrInspAlgoParam = store.algoStore[a]->params;
             }
             s_windows[w].nAlgorithmCnt = static_cast<int>(store.algos.size());
             s_windows[w].vArrAlgoParam = store.algos.empty() ? nullptr : store.algos.data();

@@ -56,6 +56,10 @@ public static class MptiFlowNativeBridge
     public static extern int MptiBridgeSetAlgoParamsAlign(
         int wndIndex, int algoIndex, ref MptiBridgeFlowAlignParams parameters);
 
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeSetAlgoParamsPadBW(
+        int wndIndex, int algoIndex, ref MptiBridgeFlowPadBWParams parameters);
+
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     public static extern int MptiBridgeCommitInspParam(StringBuilder message, int messageLength);
 
@@ -82,8 +86,10 @@ public static class MptiFlowNativeBridge
     // Inspection type enum (subset used here).
     public const int EINSP_ALIGN = 1;
 
-    // Algorithm type enum (subset used here).
+    // Algorithm type enum (subset used here). Indices match the InspAlgoType enum in
+    // NativeSources/MPTILib_Algo/PInsp_Algo/InspParamDef_Algo.h.
     public const int EALGO_ALIGN = 2;
+    public const int EALGO_PADBW = 40;
 }
 
 // Flat mirror of tagAlgoAlign (InspParamDef_Align.h). Pack=8 required on x64 to match
@@ -125,4 +131,31 @@ public struct MptiBridgeFlowAlignResult
     public int IsInsp;
     public int IsOk;
     public int DefectCode;
+}
+
+// Mirrors MptiBridgeFlowPadBWParams in MptiBridgeFlow.h. The bridge fills only the
+// subset of AlgoPadBW fields the UI typically tunes; the rest keep their native
+// default-constructed values (tagAlgoPadBW ctor).
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowPadBWParams
+{
+    public int BinaryMin;
+    public int BinaryMax;
+    public int UseInsp2D;
+    public int InvertCheck;
+    public int UseTeachArea;
+    public double TeachArea;
+    public double TeachAreaRateMin;
+    public double TeachAreaRateMax;
+    public int UseShift;
+    public double TeachShiftX;
+    public double TeachShiftY;
+    public int UseBlobWidth;
+    public double BlobSizeWidth;
+    public int UseBlobLength;
+    public double BlobSizeLength;
+    public int UseBlobArea;
+    public double BlobArea;
+    public int FilterLevel;
+    public int UseFillHole;
 }
