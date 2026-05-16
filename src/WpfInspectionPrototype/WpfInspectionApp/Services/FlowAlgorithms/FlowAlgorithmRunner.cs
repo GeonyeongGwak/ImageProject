@@ -21,6 +21,7 @@ public sealed class FlowAlgorithmRunner : ObservableObject
     private bool _isRunning;
     private string _summary = "Not run yet.";
     private bool _lastSuccess;
+    private FlowAlgorithmResult? _lastResult;
 
     public FlowAlgorithmRunner(
         IFlowAlgorithm algorithm,
@@ -66,6 +67,15 @@ public sealed class FlowAlgorithmRunner : ObservableObject
         private set => SetProperty(ref _lastSuccess, value);
     }
 
+    // Full last-run envelope so the XAML can bind to Fields for key/value display.
+    // null until the first Run completes. Setting this also fires Fields-change so
+    // the ItemsControl rebinds; using a record means the whole instance swaps each run.
+    public FlowAlgorithmResult? LastResult
+    {
+        get => _lastResult;
+        private set => SetProperty(ref _lastResult, value);
+    }
+
     private async Task RunAsync()
     {
         var ptt = _resolvePttPath();
@@ -82,12 +92,14 @@ public sealed class FlowAlgorithmRunner : ObservableObject
             var result = await Task.Run(() => RunOnce(ptt!));
             Summary = $"[{(result.Success ? "OK" : "NG")}] {result.Summary} (defect={result.DefectCode})";
             LastSuccess = result.Success;
+            LastResult = result;
         }
         catch (Exception ex)
         {
             DiagnosticsLog.Write($"[{_algorithm.DisplayName}] flow failed: {ex}");
             Summary = $"FAILED: {ex.GetType().Name}: {ex.Message}";
             LastSuccess = false;
+            LastResult = null;
         }
         finally
         {
