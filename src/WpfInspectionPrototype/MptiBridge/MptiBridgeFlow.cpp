@@ -5,6 +5,11 @@
 #include "NativeSources/PInspAlgo/PInspAlgo_Lib.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Align/InspParamDef_Align.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/PadBW/InspParamDef_PadBW.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/Blob/InspParamDef_Blob.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/BGA/InspParamDef_BGA.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/Edge/InspParamDef_Edge.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/Pattern/InspParamDef_Pattern.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/ShapeX/InspParamDef_ShapeX.h"
 
 #include <cstdarg>
 #include <cstdio>
@@ -252,6 +257,11 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeAddAlgo(int wndIndex, int algoType, int algoI
         {
         case eAlgoAlign:   as->Alloc<AlgoAlign>(algoType); break;
         case eAlgoPadBW:   as->Alloc<AlgoPadBW>(algoType); break;
+        case eAlgoBlob:    as->Alloc<AlgoBlob>(algoType); break;
+        case eAlgoBGA:     as->Alloc<AlgoBGA>(algoType); break;
+        case eAlgoEdge:    as->Alloc<AlgoEdge>(algoType); break;
+        case eAlgoPattern: as->Alloc<AlgoPattern>(algoType); break;
+        case eAlgoShapeX:  as->Alloc<AlgoShapeX>(algoType); break;
         // Add more algo types here as the WPF UI grows. Pattern:
         //   case eAlgoXxx: as->Alloc<AlgoXxx>(algoType); break;
         default:
@@ -364,6 +374,223 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPadBW(
         a.dBlobArea         = params->blobArea;
 
         a.nFilterLevel      = params->filterLevel;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsBlob(
+    int wndIndex, int algoIndex, const MptiBridgeFlowBlobParams* params)
+{
+    try
+    {
+        if (s_committed) return -10;
+        if (wndIndex < 0 || wndIndex >= static_cast<int>(s_windows.size())) return -11;
+        if (params == nullptr) return -1;
+        auto& store = s_windowStore[wndIndex];
+        if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
+        if (store.algoStore[algoIndex]->type != eAlgoBlob) return -13;
+        auto* algoPtr = static_cast<AlgoBlob*>(store.algoStore[algoIndex]->params);
+        if (algoPtr == nullptr) return -14;
+
+        AlgoBlob& a = *algoPtr;
+        a.m_bInsp2D          = params->useInsp2D != 0;
+        a.m_nMinBinary       = params->minBinary;
+        a.m_nMaxBinary       = params->maxBinary;
+        a.m_nTypeRange2D     = params->typeRange2D;
+        a.m_bInvertCheck     = params->invertCheck != 0;
+        a.m_nTypeSelectBlob  = params->typeSelectBlob;
+        a.m_bFillHole        = params->fillHole != 0;
+        a.m_bAreaIsUse       = params->useArea != 0;
+        a.m_dAreaMin         = params->areaMin;
+        a.m_dAreaMax         = params->areaMax;
+        a.m_bShiftIsUse      = params->useShift != 0;
+        a.m_dShiftX          = params->shiftX;
+        a.m_dShiftY          = params->shiftY;
+        a.m_bTeachWidthUse   = params->useTeachWidth != 0;
+        a.m_dTeachWidth      = params->teachWidth;
+        a.m_dTeachWidthRateMin = params->teachWidthRateMin;
+        a.m_dTeachWidthRateMax = params->teachWidthRateMax;
+        a.m_bTeachLengthUse  = params->useTeachLength != 0;
+        a.m_dTeachLength     = params->teachLength;
+        a.m_dTeachLengthRateMin = params->teachLengthRateMin;
+        a.m_dTeachLengthRateMax = params->teachLengthRateMax;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsBGA(
+    int wndIndex, int algoIndex, const MptiBridgeFlowBGAParams* params)
+{
+    try
+    {
+        if (s_committed) return -10;
+        if (wndIndex < 0 || wndIndex >= static_cast<int>(s_windows.size())) return -11;
+        if (params == nullptr) return -1;
+        auto& store = s_windowStore[wndIndex];
+        if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
+        if (store.algoStore[algoIndex]->type != eAlgoBGA) return -13;
+        auto* algoPtr = static_cast<AlgoBGA*>(store.algoStore[algoIndex]->params);
+        if (algoPtr == nullptr) return -14;
+
+        AlgoBGA& a = *algoPtr;
+        a.m_bInsp2D          = params->useInsp2D != 0;
+        a.m_nMinBinary       = params->minBinary;
+        a.m_nMaxBinary       = params->maxBinary;
+        a.m_nTypeRange2D     = params->typeRange2D;
+        a.m_bInvertCheck     = params->invertCheck != 0;
+        a.m_nTypeSelectBlob  = params->typeSelectBlob;
+        a.m_bFillHole        = params->fillHole != 0;
+        a.m_bAreaIsUse       = params->useArea != 0;
+        a.m_dAreaMin         = params->areaMin;
+        a.m_dAreaMax         = params->areaMax;
+        a.m_dTeachArea       = params->teachArea;
+        a.m_dTeachVolume     = params->teachVolume;
+        a.m_bShiftIsUse      = params->useShift != 0;
+        a.m_dShiftX          = params->shiftX;
+        a.m_dShiftY          = params->shiftY;
+        a.m_bTeachWidthUse   = params->useTeachWidth != 0;
+        a.m_dTeachWidth      = params->teachWidth;
+        a.m_dTeachWidthRateMin = params->teachWidthRateMin;
+        a.m_dTeachWidthRateMax = params->teachWidthRateMax;
+        a.m_bTeachLengthUse  = params->useTeachLength != 0;
+        a.m_dTeachLength     = params->teachLength;
+        a.m_dTeachLengthRateMin = params->teachLengthRateMin;
+        a.m_dTeachLengthRateMax = params->teachLengthRateMax;
+        a.m_bUseCircleRate   = params->useCircleRate != 0;
+        a.m_dTeachCircleRate = params->teachCircleRate;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsEdge(
+    int wndIndex, int algoIndex, const MptiBridgeFlowEdgeParams* params)
+{
+    try
+    {
+        if (s_committed) return -10;
+        if (wndIndex < 0 || wndIndex >= static_cast<int>(s_windows.size())) return -11;
+        if (params == nullptr) return -1;
+        auto& store = s_windowStore[wndIndex];
+        if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
+        if (store.algoStore[algoIndex]->type != eAlgoEdge) return -13;
+        auto* algoPtr = static_cast<AlgoEdge*>(store.algoStore[algoIndex]->params);
+        if (algoPtr == nullptr) return -14;
+
+        AlgoEdge& a = *algoPtr;
+        a.m_bInsp2D          = params->useInsp2D != 0;
+        a.m_nMinBinary       = params->minBinary;
+        a.m_nMaxBinary       = params->maxBinary;
+        a.m_nTypeRange2D     = params->typeRange2D;
+        a.m_bInvertCheck     = params->invertCheck != 0;
+        a.m_bShiftIsUse      = params->useShift != 0;
+        a.m_dShiftX          = params->shiftX;
+        a.m_dShiftY          = params->shiftY;
+        a.m_bAreaIsUse       = params->useArea != 0;
+        a.m_dAreaMin         = params->areaMin;
+        a.m_dAreaMax         = params->areaMax;
+        // EdgeLineTotalCnt cap (defined in AlgoBase). Clamp to keep
+        // m_bArrIsHorizon[] index safe.
+        const int lineCntMax = sizeof(a.m_bArrIsHorizon) / sizeof(a.m_bArrIsHorizon[0]);
+        a.m_nSetLineCnt      = (params->setLineCnt < 1) ? 1 :
+                                (params->setLineCnt > lineCntMax ? lineCntMax : params->setLineCnt);
+        a.m_bGroup           = params->useGroup != 0;
+        a.m_nLineFindType    = params->lineFindType;
+        a.m_dLineFindRate    = params->lineFindRate;
+        a.m_bUseAngle        = params->useAngle != 0;
+        a.m_dTeachRotate     = params->teachRotate;
+        a.m_bDistanceX       = params->useDistanceX != 0;
+        a.m_dTeachDistanceX  = params->teachDistanceX;
+        a.m_bDistanceY       = params->useDistanceY != 0;
+        a.m_dTeachDistanceY  = params->teachDistanceY;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPattern(
+    int wndIndex, int algoIndex, const MptiBridgeFlowPatternParams* params)
+{
+    try
+    {
+        if (s_committed) return -10;
+        if (wndIndex < 0 || wndIndex >= static_cast<int>(s_windows.size())) return -11;
+        if (params == nullptr) return -1;
+        auto& store = s_windowStore[wndIndex];
+        if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
+        if (store.algoStore[algoIndex]->type != eAlgoPattern) return -13;
+        auto* algoPtr = static_cast<AlgoPattern*>(store.algoStore[algoIndex]->params);
+        if (algoPtr == nullptr) return -14;
+
+        AlgoPattern& a = *algoPtr;
+        a.m_bUsePolarity            = params->usePolarity != 0;
+        a.m_dAcceptScore            = params->acceptScore;
+        a.m_bShiftIsUse             = params->useShift != 0;
+        a.m_dShiftX                 = params->shiftX;
+        a.m_dShiftY                 = params->shiftY;
+        a.m_dRangeAngle             = params->rangeAngle;
+        a.m_dWndAngle               = params->wndAngle;
+        a.m_dSearchAngleRange_Min   = params->searchAngleRangeMin;
+        a.m_dSearchAngleRange_Max   = params->searchAngleRangeMax;
+        a.m_SamplingAngle           = params->samplingAngle;
+        a.m_bUseNGOpt               = params->useNgOpt != 0;
+        a.m_bUseCharacter           = params->useCharacter != 0;
+        a.m_nModelFilter            = params->modelFilter;
+        a.m_nCntPatternPath         = params->cntPatternPath < 1 ? 1 : params->cntPatternPath;
+        a.m_factor_red              = params->factorRed;
+        a.m_factor_green            = params->factorGreen;
+        a.m_factor_blue             = params->factorBlue;
+
+        // Copy model paths only when non-empty (first wchar != 0). 260 == MAX_STRLEN.
+        if (params->modelPathInspect1[0] != L'\0')
+            wcsncpy_s(a.m_sArrPathModelInspect1, MAX_STRLEN, params->modelPathInspect1, _TRUNCATE);
+        if (params->modelPathTeach[0] != L'\0')
+            wcsncpy_s(a.m_sPathModelTeach, MAX_STRLEN, params->modelPathTeach, _TRUNCATE);
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsShapeX(
+    int wndIndex, int algoIndex, const MptiBridgeFlowShapeXParams* params)
+{
+    try
+    {
+        if (s_committed) return -10;
+        if (wndIndex < 0 || wndIndex >= static_cast<int>(s_windows.size())) return -11;
+        if (params == nullptr) return -1;
+        auto& store = s_windowStore[wndIndex];
+        if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
+        if (store.algoStore[algoIndex]->type != eAlgoShapeX) return -13;
+        auto* algoPtr = static_cast<AlgoShapeX*>(store.algoStore[algoIndex]->params);
+        if (algoPtr == nullptr) return -14;
+
+        AlgoShapeX& a = *algoPtr;
+        a.dPartangle          = params->partAngle;
+        a.m_nLeadTipDirection = params->leadTipDirection;
+        // Clamp ROICnt to nShapeXCnt (200) — per-ROI setter would be a separate API.
+        a.ROICnt              = (params->roiCnt < 0) ? 0 :
+                                (params->roiCnt > nShapeXCnt ? nShapeXCnt : params->roiCnt);
+        a.MatchSc             = params->matchScore;
+        a.nHist1              = params->hist1;
+        a.nHistLow1           = params->hist1Low;
+        a.nHistUp1            = params->hist1Up;
+        a.nHist2              = params->hist2;
+        a.nHistLow2           = params->hist2Low;
+        a.nHistUp2            = params->hist2Up;
+        a.nInspOption         = params->inspOption;
+        a.Aspectratio         = params->aspectRatio;
+        a.MinScarThickness    = params->minScarThickness;
+        a.Verticalmaxlength   = params->verticalMaxLength;
+        a.Horizontalmaxlength = params->horizontalMaxLength;
+        a.MaxNGArea           = params->maxNgArea;
+        a.CriticalArea        = params->criticalArea;
+        a.MaxChippingLength   = params->maxChippingLength;
+        a.nStartIdx           = params->startIdx;
+        a.fTieBarRate         = params->tieBarRate;
+        a.ContrastValue       = params->contrastValue;
         return 0;
     }
     catch (...) { return -100; }

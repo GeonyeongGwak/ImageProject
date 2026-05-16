@@ -33,6 +33,146 @@ struct MptiBridgeFlowAlignParams
     int     minBlobArea;
 };
 
+// Mirrors PInsp_Algo/Blob/InspParamDef_Blob.h stAlgoBlob (subset).
+struct MptiBridgeFlowBlobParams
+{
+    int     useInsp2D;          // m_bInsp2D
+    int     minBinary;          // m_nMinBinary
+    int     maxBinary;          // m_nMaxBinary
+    int     typeRange2D;        // m_nTypeRange2D (0=in, 1=out, 2=upper, 3=lower)
+    int     invertCheck;        // m_bInvertCheck
+    int     typeSelectBlob;     // m_nTypeSelectBlob
+    int     fillHole;           // m_bFillHole
+    int     useArea;            // m_bAreaIsUse
+    double  areaMin;            // m_dAreaMin
+    double  areaMax;            // m_dAreaMax
+    int     useShift;           // m_bShiftIsUse
+    double  shiftX;             // m_dShiftX
+    double  shiftY;             // m_dShiftY
+    int     useTeachWidth;      // m_bTeachWidthUse
+    double  teachWidth;         // m_dTeachWidth
+    double  teachWidthRateMin;  // m_dTeachWidthRateMin
+    double  teachWidthRateMax;  // m_dTeachWidthRateMax
+    int     useTeachLength;     // m_bTeachLengthUse
+    double  teachLength;        // m_dTeachLength
+    double  teachLengthRateMin; // m_dTeachLengthRateMin
+    double  teachLengthRateMax; // m_dTeachLengthRateMax
+};
+
+// Mirrors PInsp_Algo/BGA/InspParamDef_BGA.h stAlgoBGA (subset).
+struct MptiBridgeFlowBGAParams
+{
+    int     useInsp2D;          // m_bInsp2D
+    int     minBinary;          // m_nMinBinary
+    int     maxBinary;          // m_nMaxBinary
+    int     typeRange2D;        // m_nTypeRange2D
+    int     invertCheck;        // m_bInvertCheck
+    int     typeSelectBlob;     // m_nTypeSelectBlob
+    int     fillHole;           // m_bFillHole
+    int     useArea;            // m_bAreaIsUse
+    double  areaMin;            // m_dAreaMin
+    double  areaMax;            // m_dAreaMax
+    double  teachArea;          // m_dTeachArea
+    double  teachVolume;        // m_dTeachVolume
+    int     useShift;           // m_bShiftIsUse
+    double  shiftX;             // m_dShiftX
+    double  shiftY;             // m_dShiftY
+    int     useTeachWidth;      // m_bTeachWidthUse
+    double  teachWidth;         // m_dTeachWidth
+    double  teachWidthRateMin;  // m_dTeachWidthRateMin
+    double  teachWidthRateMax;  // m_dTeachWidthRateMax
+    int     useTeachLength;     // m_bTeachLengthUse
+    double  teachLength;        // m_dTeachLength
+    double  teachLengthRateMin; // m_dTeachLengthRateMin
+    double  teachLengthRateMax; // m_dTeachLengthRateMax
+    int     useCircleRate;      // m_bUseCircleRate
+    double  teachCircleRate;    // m_dTeachCircleRate
+};
+
+// Mirrors PInsp_Algo/Edge/InspParamDef_Edge.h stAlgoEdge (subset). The Edge algorithm
+// also has m_bArrIsHorizon[]/m_poArrSetTeachCenter[] per-line arrays which a future
+// per-line setter would expose; this struct covers the global gating + first-line.
+struct MptiBridgeFlowEdgeParams
+{
+    int     useInsp2D;          // m_bInsp2D
+    int     minBinary;          // m_nMinBinary
+    int     maxBinary;          // m_nMaxBinary
+    int     typeRange2D;        // m_nTypeRange2D
+    int     invertCheck;        // m_bInvertCheck
+    int     useShift;           // m_bShiftIsUse
+    double  shiftX;             // m_dShiftX
+    double  shiftY;             // m_dShiftY
+    int     useArea;            // m_bAreaIsUse
+    double  areaMin;            // m_dAreaMin
+    double  areaMax;            // m_dAreaMax
+    int     setLineCnt;         // m_nSetLineCnt (1..EdgeLineTotalCnt)
+    int     useGroup;           // m_bGroup
+    int     lineFindType;       // m_nLineFindType
+    double  lineFindRate;       // m_dLineFindRate
+    int     useAngle;           // m_bUseAngle
+    double  teachRotate;        // m_dTeachRotate
+    int     useDistanceX;       // m_bDistanceX
+    double  teachDistanceX;     // m_dTeachDistanceX
+    int     useDistanceY;       // m_bDistanceY
+    double  teachDistanceY;     // m_dTeachDistanceY
+};
+
+// Mirrors PInsp_Algo/Pattern/InspParamDef_Pattern.h tagAlgoPattern (subset). Model
+// paths use a single MAX_STRLEN wide-char buffer; bridge copies into m_sArrPathModelInspect1
+// and m_sPathModelTeach. ModelPath is optional (nullptr/empty leaves defaults).
+struct MptiBridgeFlowPatternParams
+{
+    int       usePolarity;            // m_bUsePolarity
+    double    acceptScore;            // m_dAcceptScore
+    int       useShift;               // m_bShiftIsUse
+    double    shiftX;                 // m_dShiftX
+    double    shiftY;                 // m_dShiftY
+    double    rangeAngle;             // m_dRangeAngle
+    double    wndAngle;               // m_dWndAngle
+    double    searchAngleRangeMin;    // m_dSearchAngleRange_Min
+    double    searchAngleRangeMax;    // m_dSearchAngleRange_Max
+    int       samplingAngle;          // m_SamplingAngle
+    int       useNgOpt;               // m_bUseNGOpt
+    int       useCharacter;           // m_bUseCharacter
+    int       modelFilter;            // m_nModelFilter
+    int       cntPatternPath;         // m_nCntPatternPath (1..16)
+    double    factorRed;              // m_factor_red
+    double    factorGreen;            // m_factor_green
+    double    factorBlue;             // m_factor_blue
+    // Wide-char model paths (UTF-16, null-terminated). Empty (first wchar == 0) means
+    // "leave default-constructed value". 260 chars matches MAX_STRLEN in MPTI headers.
+    wchar_t   modelPathInspect1[260];
+    wchar_t   modelPathTeach[260];
+};
+
+// Mirrors PInsp_Algo/ShapeX/InspParamDef_ShapeX.h tagAlgoShapeX (subset). The full
+// AlgoShapeX is huge (200-element ShapeXROI array) — this exposes the global gating;
+// ROICnt=0 is a valid "no per-ROI shape inspection" state.
+struct MptiBridgeFlowShapeXParams
+{
+    double  partAngle;          // dPartangle
+    int     leadTipDirection;   // m_nLeadTipDirection
+    int     roiCnt;             // ROICnt (keep 0 for global-only)
+    short   matchScore;         // MatchSc
+    short   hist1;              // nHist1
+    short   hist1Low;           // nHistLow1
+    short   hist1Up;            // nHistUp1
+    short   hist2;              // nHist2
+    short   hist2Low;           // nHistLow2
+    short   hist2Up;            // nHistUp2
+    int     inspOption;         // nInspOption (bitmask of SHAPEX_OPTION)
+    float   aspectRatio;        // Aspectratio
+    float   minScarThickness;   // MinScarThickness
+    float   verticalMaxLength;  // Verticalmaxlength
+    float   horizontalMaxLength; // Horizontalmaxlength
+    float   maxNgArea;          // MaxNGArea
+    float   criticalArea;       // CriticalArea
+    float   maxChippingLength;  // MaxChippingLength
+    int     startIdx;           // nStartIdx
+    float   tieBarRate;         // fTieBarRate
+    int     contrastValue;      // ContrastValue
+};
+
 // Mirrors PInsp_Algo/PadBW/InspParamDef_PadBW.h tagAlgoPadBW (subset). Captures the
 // fields the WPF UI typically wires: binary thresholds (via the default-pad sub-struct),
 // teach-area gating, shift tolerance, blob size gates.
@@ -105,6 +245,21 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(
 // AlgoPadBW struct has many more fields; the rest keep their default-constructed values.
 MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPadBW(
     int wndIndex, int algoIndex, const MptiBridgeFlowPadBWParams* params);
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsBlob(
+    int wndIndex, int algoIndex, const MptiBridgeFlowBlobParams* params);
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsBGA(
+    int wndIndex, int algoIndex, const MptiBridgeFlowBGAParams* params);
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsEdge(
+    int wndIndex, int algoIndex, const MptiBridgeFlowEdgeParams* params);
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPattern(
+    int wndIndex, int algoIndex, const MptiBridgeFlowPatternParams* params);
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsShapeX(
+    int wndIndex, int algoIndex, const MptiBridgeFlowShapeXParams* params);
 
 // Finalizes inputs -> MPTI_SetInspParam + InitResultVal. Must call after PTT load.
 MPTI_BRIDGE_FLOW_API int MptiBridgeCommitInspParam(wchar_t* message, int messageLength);
