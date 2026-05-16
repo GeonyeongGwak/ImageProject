@@ -94,6 +94,30 @@ public static class MptiFlowNativeBridge
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int MptiBridgeResultAlign(int i, ref MptiBridgeFlowAlignResult outResult);
 
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeResultBlob(int wndType, int wndIdx, int algoIdx,
+        ref MptiBridgeFlowBlobResult outResult);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeResultBGA(int wndType, int wndIdx, int algoIdx,
+        ref MptiBridgeFlowBGAResult outResult);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeResultEdge(int wndType, int wndIdx, int algoIdx,
+        ref MptiBridgeFlowEdgeResult outResult);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeResultPattern(int wndType, int wndIdx, int algoIdx,
+        ref MptiBridgeFlowPatternResult outResult);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeResultShapeX(int wndType, int wndIdx, int algoIdx,
+        ref MptiBridgeFlowShapeXResult outResult);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeResultPadBW(int wndType, int wndIdx, int algoIdx,
+        ref MptiBridgeFlowPadBWResult outResult);
+
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Unicode)]
     public static extern int MptiBridgeDumpAlignDiag(StringBuilder output, int outputLength);
 
@@ -103,8 +127,16 @@ public static class MptiFlowNativeBridge
         ref int partImgSizeX, ref int partImgSizeY, ref int partImgTopRNull,
         ref int alignItemCnt, ref int alignGroupCnt);
 
-    // Inspection type enum (subset used here).
-    public const int EINSP_ALIGN = 1;
+    // Inspection type enum (insp_type in InspParamDef.h).
+    public const int EINSP_MOUNT      = 0;
+    public const int EINSP_ALIGN      = 1;
+    public const int EINSP_OCR        = 2;
+    public const int EINSP_LEADSOLDER = 3;
+    public const int EINSP_SOLDER     = 4;
+    public const int EINSP_TAB        = 5;
+    public const int EINSP_S_BALL     = 6;
+    public const int EINSP_PAD        = 7;
+    public const int EINSP_BGA        = 9;
 
     // Algorithm type enum (subset used here). Indices match the InspAlgoType enum in
     // NativeSources/MPTILib_Algo/PInsp_Algo/InspParamDef_Algo.h.
@@ -324,4 +356,136 @@ public struct MptiBridgeFlowShapeXParams
     public int StartIdx;
     public float TieBarRate;
     public int ContrastValue;
+}
+
+// Common envelope at the top of every typed result struct. Mirrors
+// MptiBridgeFlowWndAlgoHeader in MptiBridgeFlow.h. AlgoAlgoType corresponds to
+// eAlgoXxx (= EALGO_* constant), useful for sanity-checking.
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowWndAlgoHeader
+{
+    public int WndIsInsp;
+    public int WndIsOk;
+    public int WndDefectCode;
+    public int AlgoIsInsp;
+    public int AlgoIsOk;
+    public int AlgoIsRequired;
+    public int AlgoDefectCode;
+    public int AlgoAlgoType;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowBlobResult
+{
+    public MptiBridgeFlowWndAlgoHeader Hdr;
+    public double RstArea;
+    public double RstAreaRate;
+    public double RstShiftX;
+    public double RstShiftY;
+    public double RstWidth;
+    public double RstLength;
+    public double RstHeightMean;
+    public int    OkArea;
+    public int    OkShiftX;
+    public int    OkShiftY;
+    public int    OkWidth;
+    public int    OkLength;
+    public int    OkHeight;
+    public int    RectLeft;
+    public int    RectTop;
+    public int    RectRight;
+    public int    RectBottom;
+    public int    ArrRectCnt;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowBGAResult
+{
+    public MptiBridgeFlowWndAlgoHeader Hdr;
+    public int   OkCoplanarity;
+    public int   OkGridOffsetX;
+    public int   OkGridOffsetY;
+    public int   OkTwist;
+    public float Coplanarity;
+    public float GridOffsetX;
+    public float GridOffsetY;
+    public float Twist;
+    public int   RectLeft;
+    public int   RectTop;
+    public int   RectRight;
+    public int   RectBottom;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowEdgeResult
+{
+    public MptiBridgeFlowWndAlgoHeader Hdr;
+    public double RstShiftX;
+    public double RstShiftY;
+    public double RstRealAngle;
+    public double RstAngle;
+    public double RstDistance;
+    public double RstDistanceX;
+    public double RstDistanceY;
+    public double RstLength0;
+    public int    OkShiftX;
+    public int    OkShiftY;
+    public int    OkAngle;
+    public int    OkLength;
+    public int    OkDistance;
+    public int    OkDistanceX;
+    public int    OkDistanceY;
+    public int    Missing;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowPatternResult
+{
+    public MptiBridgeFlowWndAlgoHeader Hdr;
+    public double Score;
+    public double Angle;
+    public double CogX;
+    public double CogY;
+    public double OffsetX;
+    public double OffsetY;
+    public int    IsReverse;
+    public int    OkFind;
+    public int    OkScore;
+    public int    OkAngle;
+    public int    OkOffsetX;
+    public int    OkOffsetY;
+    public int    OkPolarity;
+    public int    ModelNum;
+    public int    DivisionNum;
+    public int    ModelWidth;
+    public int    ModelHeight;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowShapeXResult
+{
+    public MptiBridgeFlowWndAlgoHeader Hdr;
+    public int   NRoiCnt;
+    public int   NNgAreaRoiCnt;
+    public int   NShapeNgCnt;
+    public int   RstWrForeignCnt;
+    public int   RstOkWrForeignCnt;
+    public int   BAiOk;
+    public float StdAiScore;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowPadBWResult
+{
+    public MptiBridgeFlowWndAlgoHeader Hdr;
+    public int    OkShapeArea;
+    public int    OkShapeShiftX;
+    public int    OkShapeShiftY;
+    public int    OkWidth;
+    public int    OkLength;
+    public int    OkArea;
+    public int    MaskLoadSuccess;
+    public int    ArrShapeRectCnt;
+    public int    ArrRectCnt;
+    public double AlignResultTheta;
 }

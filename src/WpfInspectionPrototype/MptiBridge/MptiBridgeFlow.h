@@ -199,6 +199,139 @@ struct MptiBridgeFlowPadBWParams
     int     useFillHole;        // sDefaultPad.m_bUseFillHole
 };
 
+// Common per-algo result envelope appended at the top of each typed result struct.
+// Lets the caller see isInsp/isOk/defectCode + bounding rect uniformly without parsing
+// the algo-specific payload.
+struct MptiBridgeFlowWndAlgoHeader
+{
+    int wndIsInsp;     // InspWndResult.m_bIsInsp (window-level)
+    int wndIsOk;       // InspWndResult.m_bOk
+    int wndDefectCode; // InspWndResult.m_nDefectCode
+    int algoIsInsp;    // InspAlgoResult.m_bIsInsp (per-algo)
+    int algoIsOk;      // InspAlgoResult.m_bOk
+    int algoIsRequired; // InspAlgoResult.m_bIsRequired
+    int algoDefectCode; // InspAlgoResult.m_nDefectCode
+    int algoAlgoType;   // InspAlgoResult.m_nAlgoType (= eAlgoXxx)
+};
+
+// Flattened RstAlgoBlob (subset).
+struct MptiBridgeFlowBlobResult
+{
+    MptiBridgeFlowWndAlgoHeader hdr;
+    double rstArea;
+    double rstAreaRate;
+    double rstShiftX;
+    double rstShiftY;
+    double rstWidth;
+    double rstLength;
+    double rstHeightMean;
+    int    okArea;
+    int    okShiftX;
+    int    okShiftY;
+    int    okWidth;
+    int    okLength;
+    int    okHeight;
+    int    rectLeft;
+    int    rectTop;
+    int    rectRight;
+    int    rectBottom;
+    int    arrRectCnt;
+};
+
+// Flattened RstAlgoBGA (subset).
+struct MptiBridgeFlowBGAResult
+{
+    MptiBridgeFlowWndAlgoHeader hdr;
+    int    okCoplanarity;
+    int    okGridOffsetX;
+    int    okGridOffsetY;
+    int    okTwist;
+    float  coplanarity;
+    float  gridOffsetX;
+    float  gridOffsetY;
+    float  twist;
+    int    rectLeft;
+    int    rectTop;
+    int    rectRight;
+    int    rectBottom;
+};
+
+// Flattened RstAlgoEdge (subset). Per-line arrays (length per line, etc.) are omitted
+// here — see m_dRstLength[EdgeLineTotalCnt] in tagRstAlgoEdge for full data.
+struct MptiBridgeFlowEdgeResult
+{
+    MptiBridgeFlowWndAlgoHeader hdr;
+    double rstShiftX;
+    double rstShiftY;
+    double rstRealAngle;
+    double rstAngle;
+    double rstDistance;
+    double rstDistanceX;
+    double rstDistanceY;
+    double rstLength0;     // m_dRstLength[0] (first line)
+    int    okShiftX;
+    int    okShiftY;
+    int    okAngle;
+    int    okLength;
+    int    okDistance;
+    int    okDistanceX;
+    int    okDistanceY;
+    int    missing;
+};
+
+// Flattened RstAlgoPattern (subset).
+struct MptiBridgeFlowPatternResult
+{
+    MptiBridgeFlowWndAlgoHeader hdr;
+    double score;
+    double angle;
+    double cogX;
+    double cogY;
+    double offsetX;
+    double offsetY;
+    int    isReverse;
+    int    okFind;
+    int    okScore;
+    int    okAngle;
+    int    okOffsetX;
+    int    okOffsetY;
+    int    okPolarity;
+    int    modelNum;
+    int    divisionNum;
+    int    modelWidth;
+    int    modelHeight;
+};
+
+// Flattened RstAlgoShapeX (top-level only — per-ROI arrays are exposed via the future
+// per-ROI reader API).
+struct MptiBridgeFlowShapeXResult
+{
+    MptiBridgeFlowWndAlgoHeader hdr;
+    int    nRoiCnt;          // nROICnt
+    int    nNgAreaRoiCnt;    // nNGAreaRoiCnt
+    int    nShapeNgCnt;      // nShapeNGCnt
+    int    rstWrForeignCnt;  // RstWrForeignCnt
+    int    rstOkWrForeignCnt; // RstOKWrForeignCnt
+    int    bAiOk;            // bAIOK
+    float  stdAiScore;       // stdAIScore
+};
+
+// Flattened RstAlgoPadBW (subset).
+struct MptiBridgeFlowPadBWResult
+{
+    MptiBridgeFlowWndAlgoHeader hdr;
+    int    okShapeArea;
+    int    okShapeShiftX;
+    int    okShapeShiftY;
+    int    okWidth;
+    int    okLength;
+    int    okArea;
+    int    maskLoadSuccess;
+    int    arrShapeRectCnt;
+    int    arrRectCnt;
+    double alignResultTheta;
+};
+
 // Flattened RstAlgoAlign for results.
 struct MptiBridgeFlowAlignResult
 {
@@ -274,6 +407,23 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeResultAlignCount();
 
 // i-th Align result window, first algorithm. Returns 0 on success.
 MPTI_BRIDGE_FLOW_API int MptiBridgeResultAlign(int i, MptiBridgeFlowAlignResult* out);
+
+// Typed result readers for the non-Align algorithms. They take (wndType, wndIdx, algoIdx)
+// because non-Align algos can live in any window-type result array (mountResult /
+// padResult / BGAResult / etc.). wndType uses the eINSP_* enum from InspParamDef.h
+// (eINSP_MOUNT=0, eINSP_ALIGN=1, eINSP_PAD=7, eINSP_BGA=9, ...). Returns 0 on success.
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultBlob(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowBlobResult* out);
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultBGA(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowBGAResult* out);
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultEdge(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowEdgeResult* out);
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultPattern(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowPatternResult* out);
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultShapeX(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowShapeXResult* out);
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultPadBW(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowPadBWResult* out);
 
 // Diagnostic: dumps the full InspectionResult.alignResult[0] structure into `output`
 // as a multi-line wide string. Reports why isInsp may be 0:

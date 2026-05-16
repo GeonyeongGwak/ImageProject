@@ -798,6 +798,247 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeResultAlign(int i, MptiBridgeFlowAlignResult*
 
 namespace
 {
+    // Returns the (resultArray, arraySize) pair for the given inspection type. The
+    // InspectionResult struct stores per-type window-result arrays; non-Align algorithms
+    // live in mountResult / padResult / BGAResult / etc. based on their parent window's
+    // inspType. Returns (nullptr, 0) for types we don't currently expose readers for.
+    void GetWndResultArray(int wndType, InspWndResult** outArr, int* outSize)
+    {
+        *outArr = nullptr; *outSize = 0;
+        if (g_pInspMng == nullptr || g_pInspMng->m_inspectionResult == nullptr) return;
+        InspectionResult* r = g_pInspMng->m_inspectionResult;
+        switch (wndType)
+        {
+        case eINSP_MOUNT:      *outArr = r->mountResult;       *outSize = r->mountArraySize;      break;
+        case eINSP_ALIGN:      *outArr = r->alignResult;       *outSize = r->alignArraySize;      break;
+        case eINSP_OCR:        *outArr = r->ocrResult;         *outSize = r->ocrArraySize;        break;
+        case eINSP_LEADSOLDER: *outArr = r->leadSolderResult;  *outSize = r->leadSolderArraySize; break;
+        case eINSP_SOLDER:     *outArr = r->solderResult;      *outSize = r->solderArraySize;     break;
+        case eINSP_TAB:        *outArr = r->tabResult;         *outSize = r->tabArraySize;        break;
+        case eINSP_S_BALL:     *outArr = r->S_BallResult;      *outSize = r->S_BallArraySize;     break;
+        case eINSP_PAD:        *outArr = r->PadResult;         *outSize = r->PadArraySize;        break;
+        case eINSP_BGA:        *outArr = r->BGAResult;         *outSize = r->BGAArraySize;        break;
+        default: break;
+        }
+    }
+
+    // Resolves (wndType, wndIdx, algoIdx, expectedAlgoType) -> InspAlgoResult* and
+    // fills the common header on `hdr`. Returns 0 on success. Negative codes:
+    //   -1 inspection result missing  -2 wndType not supported / array null
+    //   -3 wndIdx OOB                  -4 algoIdx OOB or null
+    //   -5 algo's m_eAlgoType != expectedAlgoType
+    //   -6 m_vRstInspAlgo is null (algorithm didn't actually run)
+    int ResolveAlgoResult(int wndType, int wndIdx, int algoIdx, int expectedAlgoType,
+                          MptiBridgeFlowWndAlgoHeader* hdr, InspAlgoResult** outAr)
+    {
+        *outAr = nullptr;
+        if (!s_inspected) return -1;
+        InspWndResult* arr = nullptr; int sz = 0;
+        GetWndResultArray(wndType, &arr, &sz);
+        if (arr == nullptr) return -2;
+        if (wndIdx < 0 || wndIdx >= sz) return -3;
+
+        const InspWndResult& wnd = arr[wndIdx];
+        if (wnd.m_vArrRstInspAlgo == nullptr || algoIdx < 0 || algoIdx >= wnd.m_nAlgorithmCnt)
+            return -4;
+        InspAlgoResult& ar = wnd.m_vArrRstInspAlgo[algoIdx];
+        if (static_cast<int>(ar.m_nAlgoType) != expectedAlgoType) return -5;
+
+        if (hdr)
+        {
+            hdr->wndIsInsp     = wnd.m_bIsInsp ? 1 : 0;
+            hdr->wndIsOk       = wnd.m_bOk ? 1 : 0;
+            hdr->wndDefectCode = wnd.m_nDefectCode;
+            hdr->algoIsInsp    = ar.m_bIsInsp ? 1 : 0;
+            hdr->algoIsOk      = ar.m_bOk ? 1 : 0;
+            hdr->algoIsRequired = ar.m_bIsRequired ? 1 : 0;
+            hdr->algoDefectCode = ar.m_nDefectCode;
+            hdr->algoAlgoType   = static_cast<int>(ar.m_nAlgoType);
+        }
+        *outAr = &ar;
+        if (ar.m_vRstInspAlgo == nullptr) return -6;
+        return 0;
+    }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultBlob(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowBlobResult* out)
+{
+    try
+    {
+        if (out == nullptr) return -1;
+        memset(out, 0, sizeof(*out));
+        InspAlgoResult* ar = nullptr;
+        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoBlob, &out->hdr, &ar);
+        if (rc != 0) return rc;
+        const RstAlgoBlob* r = static_cast<const RstAlgoBlob*>(ar->m_vRstInspAlgo);
+        out->rstArea       = r->m_dRstArea;
+        out->rstAreaRate   = r->m_dRstAreaRate;
+        out->rstShiftX     = r->m_dRstShiftX;
+        out->rstShiftY     = r->m_dRstShiftY;
+        out->rstWidth      = r->m_dRstWidth;
+        out->rstLength     = r->m_dRstLength;
+        out->rstHeightMean = r->m_dRstHeightMean;
+        out->okArea        = r->m_bOKArea   ? 1 : 0;
+        out->okShiftX      = r->m_bOKShiftX ? 1 : 0;
+        out->okShiftY      = r->m_bOKShiftY ? 1 : 0;
+        out->okWidth       = r->m_bOKWidth  ? 1 : 0;
+        out->okLength      = r->m_bOKLength ? 1 : 0;
+        out->okHeight      = r->m_bOKHeight ? 1 : 0;
+        out->rectLeft      = r->m_rcRect_I.left;
+        out->rectTop       = r->m_rcRect_I.top;
+        out->rectRight     = r->m_rcRect_I.right;
+        out->rectBottom    = r->m_rcRect_I.bottom;
+        out->arrRectCnt    = r->m_nArrRectCnt;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultBGA(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowBGAResult* out)
+{
+    try
+    {
+        if (out == nullptr) return -1;
+        memset(out, 0, sizeof(*out));
+        InspAlgoResult* ar = nullptr;
+        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoBGA, &out->hdr, &ar);
+        if (rc != 0) return rc;
+        const RstAlgoBGA* r = static_cast<const RstAlgoBGA*>(ar->m_vRstInspAlgo);
+        out->okCoplanarity = r->m_bCoplanarityOK ? 1 : 0;
+        out->okGridOffsetX = r->m_bOKGridOffsetX ? 1 : 0;
+        out->okGridOffsetY = r->m_bOKGridOffsetY ? 1 : 0;
+        out->okTwist       = r->m_bOKTwist       ? 1 : 0;
+        out->coplanarity   = r->m_fCoplanarity;
+        out->gridOffsetX   = r->m_fRstGridOffsetX;
+        out->gridOffsetY   = r->m_fRstGridOffsetY;
+        out->twist         = r->m_fRstTwist;
+        out->rectLeft      = r->m_rcRect_I.left;
+        out->rectTop       = r->m_rcRect_I.top;
+        out->rectRight     = r->m_rcRect_I.right;
+        out->rectBottom    = r->m_rcRect_I.bottom;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultEdge(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowEdgeResult* out)
+{
+    try
+    {
+        if (out == nullptr) return -1;
+        memset(out, 0, sizeof(*out));
+        InspAlgoResult* ar = nullptr;
+        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoEdge, &out->hdr, &ar);
+        if (rc != 0) return rc;
+        const RstAlgoEdge* r = static_cast<const RstAlgoEdge*>(ar->m_vRstInspAlgo);
+        out->rstShiftX    = r->m_dRstShiftX;
+        out->rstShiftY    = r->m_dRstShiftY;
+        out->rstRealAngle = r->m_dRstRealAngle;
+        out->rstAngle     = r->m_dRstAngle;
+        out->rstDistance  = r->m_dRstDistance;
+        out->rstDistanceX = r->m_dRstDistanceX;
+        out->rstDistanceY = r->m_dRstDistanceY;
+        out->rstLength0   = r->m_dRstLength[0];
+        out->okShiftX     = r->m_bOKShiftX   ? 1 : 0;
+        out->okShiftY     = r->m_bOKShiftY   ? 1 : 0;
+        out->okAngle      = r->m_bOKAngle    ? 1 : 0;
+        out->okLength     = r->m_bOKLength   ? 1 : 0;
+        out->okDistance   = r->m_bDistance   ? 1 : 0;
+        out->okDistanceX  = r->m_bDistanceX  ? 1 : 0;
+        out->okDistanceY  = r->m_bDistanceY  ? 1 : 0;
+        out->missing      = r->m_bMissing    ? 1 : 0;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultPattern(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowPatternResult* out)
+{
+    try
+    {
+        if (out == nullptr) return -1;
+        memset(out, 0, sizeof(*out));
+        InspAlgoResult* ar = nullptr;
+        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoPattern, &out->hdr, &ar);
+        if (rc != 0) return rc;
+        const RstAlgoPattern* r = static_cast<const RstAlgoPattern*>(ar->m_vRstInspAlgo);
+        out->score       = r->score;
+        out->angle       = r->angle;
+        out->cogX        = r->cogX;
+        out->cogY        = r->cogY;
+        out->offsetX     = r->offsetX;
+        out->offsetY     = r->offsetY;
+        out->isReverse   = r->isReverse  ? 1 : 0;
+        out->okFind      = r->m_bOKFind  ? 1 : 0;
+        out->okScore     = r->m_bOKScore ? 1 : 0;
+        out->okAngle     = r->m_bOKAngle ? 1 : 0;
+        out->okOffsetX   = r->m_bOKOffsetX ? 1 : 0;
+        out->okOffsetY   = r->m_bOKOffsetY ? 1 : 0;
+        out->okPolarity  = r->m_bOKPolarity ? 1 : 0;
+        out->modelNum    = r->m_nModelNum;
+        out->divisionNum = r->m_nDivisionNum;
+        out->modelWidth  = r->ModelWidth;
+        out->modelHeight = r->ModelHeight;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultShapeX(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowShapeXResult* out)
+{
+    try
+    {
+        if (out == nullptr) return -1;
+        memset(out, 0, sizeof(*out));
+        InspAlgoResult* ar = nullptr;
+        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoShapeX, &out->hdr, &ar);
+        if (rc != 0) return rc;
+        const RstAlgoShapeX* r = static_cast<const RstAlgoShapeX*>(ar->m_vRstInspAlgo);
+        out->nRoiCnt          = r->nROICnt;
+        out->nNgAreaRoiCnt    = r->nNGAreaRoiCnt;
+        out->nShapeNgCnt      = r->nShapeNGCnt;
+        out->rstWrForeignCnt  = r->RstWrForeignCnt;
+        out->rstOkWrForeignCnt = r->RstOKWrForeignCnt ? 1 : 0;
+        out->bAiOk            = r->bAIOK ? 1 : 0;
+        out->stdAiScore       = r->stdAIScore;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeResultPadBW(
+    int wndType, int wndIdx, int algoIdx, MptiBridgeFlowPadBWResult* out)
+{
+    try
+    {
+        if (out == nullptr) return -1;
+        memset(out, 0, sizeof(*out));
+        InspAlgoResult* ar = nullptr;
+        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoPadBW, &out->hdr, &ar);
+        if (rc != 0) return rc;
+        const RstAlgoPadBW* r = static_cast<const RstAlgoPadBW*>(ar->m_vRstInspAlgo);
+        out->okShapeArea     = r->m_bOKShapeArea ? 1 : 0;
+        out->okShapeShiftX   = r->m_bOKShapeShiftX ? 1 : 0;
+        out->okShapeShiftY   = r->m_bOKShapeShiftY ? 1 : 0;
+        out->okWidth         = r->m_bOKWidth ? 1 : 0;
+        out->okLength        = r->m_bOKLength ? 1 : 0;
+        out->okArea          = r->m_bOKArea ? 1 : 0;
+        out->maskLoadSuccess = r->m_bMaskLoadSuccess ? 1 : 0;
+        out->arrShapeRectCnt = r->m_nArrShapeRectCnt;
+        out->arrRectCnt      = r->m_nArrRectCnt;
+        out->alignResultTheta = r->m_dAlignResultTheta;
+        return 0;
+    }
+    catch (...) { return -100; }
+}
+
+namespace
+{
     // Append helper that won't overrun the output buffer. `pos` is the current write
     // offset in WCHARs. Returns new pos.
     int Append(wchar_t* output, int cap, int pos, const wchar_t* fmt, ...)
