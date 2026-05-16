@@ -521,15 +521,41 @@
                                     IsEnabled="{Binding CanRunInspection}" />
                             <Button x:Name="RunFlowButton"
                                     Margin="0,4,0,0"
-                                    Content="Run MPTI Flow (Align)"
+                                    Content="Run MPTI Flow (Align - legacy)"
                                     Command="{Binding RunFlowCommand}" />
                             <TextBox x:Name="ResultText"
                                      Margin="0,8,0,0"
-                                     Height="170"
+                                     Height="130"
                                      TextWrapping="Wrap"
                                      AcceptsReturn="True"
                                      IsReadOnly="True"
                                      Text="{Binding InspectionResultText}" />
+
+                            <TextBlock Text="MPTI FLOW ALGORITHMS" Style="{StaticResource PanelTitle}" Margin="0,12,0,0" />
+                            <!-- Auto-renders one row per registered IFlowAlgorithm.
+                                 Adding a new algorithm in AppServices grows this list
+                                 without touching MainViewModel or XAML. -->
+                            <ItemsControl ItemsSource="{Binding FlowAlgorithms}">
+                                <ItemsControl.ItemTemplate>
+                                    <DataTemplate>
+                                        <Grid Margin="0,2,0,0">
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="110" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <Button Grid.Column="0"
+                                                    Content="{Binding DisplayName}"
+                                                    Command="{Binding RunCommand}" />
+                                            <TextBlock Grid.Column="1"
+                                                       Margin="6,0,0,0"
+                                                       VerticalAlignment="Center"
+                                                       TextTrimming="CharacterEllipsis"
+                                                       ToolTip="{Binding Summary}"
+                                                       Text="{Binding Summary}" />
+                                        </Grid>
+                                    </DataTemplate>
+                                </ItemsControl.ItemTemplate>
+                            </ItemsControl>
                         </StackPanel>
                     </Border>
                 </StackPanel>

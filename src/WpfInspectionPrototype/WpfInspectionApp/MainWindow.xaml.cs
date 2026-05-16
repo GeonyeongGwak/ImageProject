@@ -64,7 +64,8 @@ public partial class MainWindow : Window, IDialogOwner
             _imageRuntimeStateService,
             App.Services.InspectionWorkflow,
             App.Services.InspectionFlow,
-            App.Services.ThresholdPreviewWorkflow);
+            App.Services.ThresholdPreviewWorkflow,
+            App.Services.FlowAlgorithms);
         DataContext = _viewModel;
         _viewModel.ConfigureCommands(ZoomOne, ZoomFit);
         _viewModel.TreeRefreshRequested += RefreshInspectionView;

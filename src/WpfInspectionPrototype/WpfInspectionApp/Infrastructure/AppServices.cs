@@ -1,4 +1,5 @@
 using WpfInspectionApp.Services;
+using WpfInspectionApp.Services.FlowAlgorithms;
 
 namespace WpfInspectionApp.Infrastructure;
 
@@ -16,6 +17,18 @@ public sealed class AppServices
         PttViewerWorkflow = new PttViewerWorkflowService(Pem3DViewerHost, PttLoad);
         RoiInteraction = new RoiInteractionService(RoiGeometry);
         RoiUiState = new RoiUiStateService(RoiModel);
+
+        // Plugin registry — each IFlowAlgorithm describes one algo end-to-end.
+        // To add a new algorithm: create a new class implementing IFlowAlgorithm and
+        // register it here. The UI auto-renders a Run button + result line for it.
+        FlowAlgorithms = new FlowAlgorithmRegistry();
+        FlowAlgorithms.Register(new AlignFlowAlgorithm());
+        FlowAlgorithms.Register(new PadBWFlowAlgorithm());
+        FlowAlgorithms.Register(new BlobFlowAlgorithm());
+        FlowAlgorithms.Register(new BGAFlowAlgorithm());
+        FlowAlgorithms.Register(new EdgeFlowAlgorithm());
+        FlowAlgorithms.Register(new PatternFlowAlgorithm());
+        FlowAlgorithms.Register(new ShapeXFlowAlgorithm());
     }
 
     public IModelPersistenceService ModelPersistence { get; } = new JsonModelPersistenceService();
@@ -75,4 +88,9 @@ public sealed class AppServices
     // Bridge-flow runner for MPTI_SetInspParam -> MPTI_InspProc -> MPTI_GetInspectionResult.
     // Separate from the single-shot InspectionWorkflow which targets per-algo bridges.
     public IInspectionFlowService InspectionFlow { get; } = new InspectionFlowService();
+
+    // Plugin-style algorithm registry. MainViewModel reads this and exposes one
+    // FlowAlgorithmRunner per registered IFlowAlgorithm; XAML ItemsControl renders
+    // them as Run buttons + result lines without hardcoding per-algorithm UI.
+    public FlowAlgorithmRegistry FlowAlgorithms { get; }
 }

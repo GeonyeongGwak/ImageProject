@@ -7,6 +7,7 @@ using WpfInspectionApp.Commands;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
+using WpfInspectionApp.Services.FlowAlgorithms;
 
 namespace WpfInspectionApp.ViewModels;
 
@@ -55,7 +56,8 @@ public sealed class MainViewModel : ViewModelBase
         IImageRuntimeStateService imageRuntimeStateService,
         IInspectionWorkflowService inspectionWorkflowService,
         IInspectionFlowService inspectionFlowService,
-        IThresholdPreviewWorkflowService thresholdPreviewWorkflowService)
+        IThresholdPreviewWorkflowService thresholdPreviewWorkflowService,
+        FlowAlgorithmRegistry flowAlgorithmRegistry)
     {
         _model = model;
         _model.EnsureStructure();
@@ -71,6 +73,16 @@ public sealed class MainViewModel : ViewModelBase
         _thresholdPreviewWorkflowService = thresholdPreviewWorkflowService;
         AlgorithmTypes = new ObservableCollection<string>(AlgorithmCatalog.All.Select(item => item.Type));
         InspectionTreeNodes = [];
+
+        // One FlowAlgorithmRunner per registered IFlowAlgorithm. Each runner owns its
+        // own Run command + result display state. XAML ItemsControl binds to this
+        // collection — adding a new algorithm to AppServices.RegisterFlowAlgorithms
+        // automatically grows the UI without ViewModel/XAML changes.
+        FlowAlgorithms = new ObservableCollection<FlowAlgorithmRunner>(
+            flowAlgorithmRegistry.All.Select(algo => new FlowAlgorithmRunner(
+                algo,
+                resolvePttPath: () => ResolveLastFlowPttPath(),
+                resolveResolution: () => ResolveModelResolution())));
 
         LoadImageCommand = new RelayCommand(BrowseAndLoadImage);
         LoadPttCommand = new RelayCommand(BrowseAndLoadPtt);
@@ -441,7 +453,31 @@ public sealed class MainViewModel : ViewModelBase
 
     public ObservableCollection<string> AlgorithmTypes { get; }
 
+    // One runner per registered IFlowAlgorithm. XAML ItemsControl renders them.
+    public ObservableCollection<FlowAlgorithmRunner> FlowAlgorithms { get; }
+
     public ObservableCollection<InspectionTreeNodeViewModel> InspectionTreeNodes { get; }
+
+    // PTT path / resolution lookups used by each runner. Centralized here so that all
+    // runners share the same "last-loaded PTT" and the same Part Import resolution.
+    // Returning null prompts the user via the dialog.
+    private string? ResolveLastFlowPttPath()
+    {
+        if (!string.IsNullOrWhiteSpace(_lastFlowPttPath) && System.IO.File.Exists(_lastFlowPttPath))
+            return _lastFlowPttPath;
+        var path = _fileDialogService.BrowsePtt(_dialogOwner.GetDialogOwner());
+        if (!string.IsNullOrWhiteSpace(path))
+            _lastFlowPttPath = path;
+        return _lastFlowPttPath;
+    }
+
+    private (double X, double Y)? ResolveModelResolution()
+    {
+        var rx = _model.Part?.PixelResolutionX ?? 0;
+        var ry = _model.Part?.PixelResolutionY ?? 0;
+        if (rx > 0 && ry > 0) return (rx, ry);
+        return null;
+    }
 
     public string StatusMessage
     {
