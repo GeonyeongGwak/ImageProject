@@ -27,7 +27,7 @@ public sealed class AppServices
         FlowAlgorithms.Register(new BlobFlowAlgorithm());
         FlowAlgorithms.Register(new BGAFlowAlgorithm());
         FlowAlgorithms.Register(new EdgeFlowAlgorithm());
-        FlowAlgorithms.Register(new PatternFlowAlgorithm());
+        FlowAlgorithms.Register(new PatternFlowAlgorithm(FileDialog));
         FlowAlgorithms.Register(new ShapeXFlowAlgorithm());
     }
 

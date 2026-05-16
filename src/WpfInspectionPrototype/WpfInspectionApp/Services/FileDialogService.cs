@@ -33,6 +33,15 @@ public sealed class FileDialogService : IFileDialogService
             initialDirectory);
     }
 
+    public string? BrowsePatternModel(Window owner)
+    {
+        return Browse(
+            owner,
+            "Load Pattern model",
+            "Pattern model|*.mdl;*.dat;*.pat|All Files|*.*",
+            initialDirectory: null);
+    }
+
     private static string? Browse(Window owner, string title, string filter, string? initialDirectory)
     {
         var dialog = new OpenFileDialog

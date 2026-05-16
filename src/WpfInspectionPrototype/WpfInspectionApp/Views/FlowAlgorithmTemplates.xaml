@@ -200,7 +200,23 @@
             <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding SearchAngleRangeMax, UpdateSourceTrigger=PropertyChanged}" />
 
             <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="ModelPath" />
-            <TextBox   Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource ParamInput}" Text="{Binding ModelPathInspect, UpdateSourceTrigger=PropertyChanged}" />
+            <!-- TextBox + "..." picker. Inner Grid splits the remaining 3 columns so
+                 the textbox stretches and the button keeps a fixed width. -->
+            <Grid Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="Auto" />
+                </Grid.ColumnDefinitions>
+                <TextBox Grid.Column="0"
+                         Style="{StaticResource ParamInput}"
+                         Text="{Binding ModelPathInspect, UpdateSourceTrigger=PropertyChanged}" />
+                <Button Grid.Column="1"
+                        Margin="4,2,0,2"
+                        Padding="8,2"
+                        Content="..."
+                        Command="{Binding BrowseModelCommand}"
+                        ToolTip="Browse for a Pattern model file" />
+            </Grid>
         </Grid>
     </DataTemplate>
 

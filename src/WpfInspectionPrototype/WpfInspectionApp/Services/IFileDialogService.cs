@@ -11,4 +11,8 @@ public interface IFileDialogService
     string? BrowseModel(Window owner, string initialDirectory);
 
     string? BrowsePart(Window owner, string initialDirectory);
+
+    // Picks a Pattern algorithm model file (e.g. .mdl/.dat). Filter is broad so the
+    // user can pick whatever the native MPTI model format ships as in their setup.
+    string? BrowsePatternModel(Window owner);
 }

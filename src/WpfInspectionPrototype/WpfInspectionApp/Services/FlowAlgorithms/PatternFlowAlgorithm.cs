@@ -1,3 +1,5 @@
+using System.Windows.Input;
+using WpfInspectionApp.Commands;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
 
@@ -13,6 +15,18 @@ public sealed class PatternParameters : ObservableObject, IFlowAlgorithmParamete
     private double _searchAngleRangeMax = 5;
     private string _modelPathInspect = string.Empty;
 
+    public PatternParameters(Func<string?>? browseModelFile = null)
+    {
+        // BrowseCommand stays available even when the picker isn't wired (null
+        // callback) — it just no-ops. XAML can bind unconditionally.
+        BrowseModelCommand = new RelayCommand(() =>
+        {
+            var picked = browseModelFile?.Invoke();
+            if (!string.IsNullOrWhiteSpace(picked))
+                ModelPathInspect = picked!;
+        });
+    }
+
     public bool UsePolarity { get => _usePolarity; set => SetProperty(ref _usePolarity, value); }
     public double AcceptScore { get => _acceptScore; set => SetProperty(ref _acceptScore, value); }
     public double RangeAngle { get => _rangeAngle; set => SetProperty(ref _rangeAngle, value); }
@@ -20,14 +34,34 @@ public sealed class PatternParameters : ObservableObject, IFlowAlgorithmParamete
     public double SearchAngleRangeMin { get => _searchAngleRangeMin; set => SetProperty(ref _searchAngleRangeMin, value); }
     public double SearchAngleRangeMax { get => _searchAngleRangeMax; set => SetProperty(ref _searchAngleRangeMax, value); }
     public string ModelPathInspect { get => _modelPathInspect; set => SetProperty(ref _modelPathInspect, value ?? string.Empty); }
+    public ICommand BrowseModelCommand { get; }
 }
 
 public sealed class PatternFlowAlgorithm : IFlowAlgorithm
 {
+    private readonly Services.IFileDialogService? _fileDialog;
+
+    // File-dialog service is optional so other call sites (tests, harness) can use the
+    // algorithm without WPF dependencies. When null, the Browse button no-ops.
+    public PatternFlowAlgorithm(Services.IFileDialogService? fileDialog = null)
+    {
+        _fileDialog = fileDialog;
+    }
+
     public string DisplayName => "Pattern";
     public int AlgoType => MptiFlowNativeBridge.EALGO_PATTERN;
     public int InspType => MptiFlowNativeBridge.EINSP_MOUNT;
-    public IFlowAlgorithmParameters CreateParameters() => new PatternParameters();
+
+    public IFlowAlgorithmParameters CreateParameters() =>
+        new PatternParameters(BrowseModelFile);
+
+    private string? BrowseModelFile()
+    {
+        if (_fileDialog == null) return null;
+        // Application.Current.MainWindow is the dialog owner — set in App.xaml.cs.
+        var owner = System.Windows.Application.Current?.MainWindow;
+        return _fileDialog.BrowsePatternModel(owner!);
+    }
 
     public void ApplyParams(FlowAlgorithmSlot slot, IFlowAlgorithmParameters parameters)
     {
