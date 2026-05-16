@@ -1,26 +1,47 @@
+using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
 
 namespace WpfInspectionApp.Services.FlowAlgorithms;
+
+public sealed class PatternParameters : ObservableObject, IFlowAlgorithmParameters
+{
+    private bool _usePolarity;
+    private double _acceptScore = 0.7;
+    private double _rangeAngle = 10;
+    private double _wndAngle;
+    private double _searchAngleRangeMin = -5;
+    private double _searchAngleRangeMax = 5;
+    private string _modelPathInspect = string.Empty;
+
+    public bool UsePolarity { get => _usePolarity; set => SetProperty(ref _usePolarity, value); }
+    public double AcceptScore { get => _acceptScore; set => SetProperty(ref _acceptScore, value); }
+    public double RangeAngle { get => _rangeAngle; set => SetProperty(ref _rangeAngle, value); }
+    public double WndAngle { get => _wndAngle; set => SetProperty(ref _wndAngle, value); }
+    public double SearchAngleRangeMin { get => _searchAngleRangeMin; set => SetProperty(ref _searchAngleRangeMin, value); }
+    public double SearchAngleRangeMax { get => _searchAngleRangeMax; set => SetProperty(ref _searchAngleRangeMax, value); }
+    public string ModelPathInspect { get => _modelPathInspect; set => SetProperty(ref _modelPathInspect, value ?? string.Empty); }
+}
 
 public sealed class PatternFlowAlgorithm : IFlowAlgorithm
 {
     public string DisplayName => "Pattern";
     public int AlgoType => MptiFlowNativeBridge.EALGO_PATTERN;
     public int InspType => MptiFlowNativeBridge.EINSP_MOUNT;
+    public IFlowAlgorithmParameters CreateParameters() => new PatternParameters();
 
-    public void ApplyParams(FlowAlgorithmSlot slot)
+    public void ApplyParams(FlowAlgorithmSlot slot, IFlowAlgorithmParameters parameters)
     {
+        var pp = (PatternParameters)parameters;
         var p = new MptiBridgeFlowPatternParams
         {
-            UsePolarity = 0, AcceptScore = 0.7,
-            UseShift = 1, ShiftX = 10, ShiftY = 10, RangeAngle = 10,
-            WndAngle = 0, SearchAngleRangeMin = -5, SearchAngleRangeMax = 5,
+            UsePolarity = pp.UsePolarity ? 1 : 0, AcceptScore = pp.AcceptScore,
+            UseShift = 1, ShiftX = 10, ShiftY = 10, RangeAngle = pp.RangeAngle,
+            WndAngle = pp.WndAngle,
+            SearchAngleRangeMin = pp.SearchAngleRangeMin, SearchAngleRangeMax = pp.SearchAngleRangeMax,
             SamplingAngle = 1, UseNgOpt = 0, UseCharacter = 0,
             ModelFilter = 0, CntPatternPath = 1,
             FactorRed = 1, FactorGreen = 1, FactorBlue = 1,
-            // Model paths left empty → native keeps the default (no model file).
-            // A real UI would pop a file picker and fill these.
-            ModelPathInspect1 = string.Empty,
+            ModelPathInspect1 = pp.ModelPathInspect ?? string.Empty,
             ModelPathTeach    = string.Empty,
         };
         MptiFlowNativeBridge.MptiBridgeSetAlgoParamsPattern(slot.WndIdx, slot.AlgoIdx, ref p);

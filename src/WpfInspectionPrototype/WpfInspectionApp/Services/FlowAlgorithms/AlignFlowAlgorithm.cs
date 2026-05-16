@@ -1,6 +1,29 @@
+using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
 
 namespace WpfInspectionApp.Services.FlowAlgorithms;
+
+// Per-algorithm parameter VM. Bound by AlignParametersTemplate in
+// FlowAlgorithmTemplates.xaml (matched via DataType={x:Type AlignParameters}). The
+// runner reuses the same instance across Run clicks so user-tuned values persist.
+public sealed class AlignParameters : ObservableObject, IFlowAlgorithmParameters
+{
+    private int _minBinary = 100;
+    private int _maxBinary = 255;
+    private int _searchSize = 80;
+    private double _maxShiftX = 20;
+    private double _maxShiftY = 20;
+    private double _maxAngle = 5;
+    private int _minBlobArea = 10;
+
+    public int MinBinary  { get => _minBinary;  set => SetProperty(ref _minBinary,  value); }
+    public int MaxBinary  { get => _maxBinary;  set => SetProperty(ref _maxBinary,  value); }
+    public int SearchSize { get => _searchSize; set => SetProperty(ref _searchSize, value); }
+    public double MaxShiftX { get => _maxShiftX; set => SetProperty(ref _maxShiftX, value); }
+    public double MaxShiftY { get => _maxShiftY; set => SetProperty(ref _maxShiftY, value); }
+    public double MaxAngle  { get => _maxAngle;  set => SetProperty(ref _maxAngle,  value); }
+    public int MinBlobArea  { get => _minBlobArea; set => SetProperty(ref _minBlobArea, value); }
+}
 
 // Align algorithm — pattern-detected anchor windows used to compute (offsetX, offsetY,
 // theta) for a part. Uses 4 search points by default at the part quadrants; the runner
@@ -10,30 +33,33 @@ public sealed class AlignFlowAlgorithm : IFlowAlgorithm
     public string DisplayName => "Align";
     public int AlgoType => MptiFlowNativeBridge.EALGO_ALIGN;
     public int InspType => MptiFlowNativeBridge.EINSP_ALIGN;
+    public IFlowAlgorithmParameters CreateParameters() => new AlignParameters();
 
-    public void ApplyParams(FlowAlgorithmSlot slot)
+    public void ApplyParams(FlowAlgorithmSlot slot, IFlowAlgorithmParameters parameters)
     {
+        var pp = (AlignParameters)parameters;
         var ctx = FlowAlgorithmContext.Current;
         int qx = ctx.PartWidth / 4;
         int qy = ctx.PartHeight / 4;
+        int sz = Math.Max(8, pp.SearchSize);
         var p = new MptiBridgeFlowAlignParams
         {
             SearchNum = 4,
             SearchPointsX = new[] { qx, ctx.PartWidth - qx, qx, ctx.PartWidth - qx },
             SearchPointsY = new[] { qy, qy, ctx.PartHeight - qy, ctx.PartHeight - qy },
-            SearchSizeW = new[] { 80, 80, 80, 80 },
-            SearchSizeH = new[] { 80, 80, 80, 80 },
+            SearchSizeW = new[] { sz, sz, sz, sz },
+            SearchSizeH = new[] { sz, sz, sz, sz },
             SearchMargin = 10,
-            MinBinary = 100,
-            MaxBinary = 255,
+            MinBinary = pp.MinBinary,
+            MaxBinary = pp.MaxBinary,
             UseInsp2D = 1,
             UseShift = 1,
-            MaxShiftX = 20,
-            MaxShiftY = 20,
+            MaxShiftX = pp.MaxShiftX,
+            MaxShiftY = pp.MaxShiftY,
             UseAngle = 1,
-            MaxAngle = 5,
+            MaxAngle = pp.MaxAngle,
             SameSize = 1,
-            MinBlobArea = 10,
+            MinBlobArea = Math.Max(1, pp.MinBlobArea),
         };
         MptiFlowNativeBridge.MptiBridgeSetAlgoParamsAlign(slot.WndIdx, slot.AlgoIdx, ref p);
     }

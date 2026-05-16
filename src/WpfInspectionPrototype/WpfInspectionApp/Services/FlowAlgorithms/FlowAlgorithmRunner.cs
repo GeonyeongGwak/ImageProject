@@ -30,12 +30,16 @@ public sealed class FlowAlgorithmRunner : ObservableObject
         _algorithm = algorithm;
         _resolvePttPath = resolvePttPath;
         _resolveResolution = resolveResolution;
+        // Created once and reused across Run clicks so user-tuned values persist. The
+        // XAML matches an implicit DataTemplate against the concrete Parameters type.
+        Parameters = algorithm.CreateParameters();
         RunCommand = new AsyncRelayCommand(RunAsync, () => !_isRunning);
     }
 
     public string DisplayName => _algorithm.DisplayName;
     public int AlgoType => _algorithm.AlgoType;
     public int InspType => _algorithm.InspType;
+    public IFlowAlgorithmParameters Parameters { get; }
     public ICommand RunCommand { get; }
 
     public bool IsRunning
@@ -137,7 +141,7 @@ public sealed class FlowAlgorithmRunner : ObservableObject
         var ctx = new FlowAlgorithmContext { PartWidth = partW, PartHeight = partH };
         using (FlowAlgorithmContext.Push(ctx))
         {
-            try { _algorithm.ApplyParams(slot); }
+            try { _algorithm.ApplyParams(slot, Parameters); }
             catch (Exception ex) { return Fail($"ApplyParams threw: {ex.Message}"); }
 
             sb.Clear();

@@ -1,6 +1,26 @@
+using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
 
 namespace WpfInspectionApp.Services.FlowAlgorithms;
+
+public sealed class PadBWParameters : ObservableObject, IFlowAlgorithmParameters
+{
+    private int _binaryMin = 125;
+    private int _binaryMax = 255;
+    private bool _useTeachArea;
+    private double _teachAreaRateMin = 80;
+    private double _teachAreaRateMax = 120;
+    private bool _useFillHole;
+    private int _filterLevel;
+
+    public int BinaryMin { get => _binaryMin; set => SetProperty(ref _binaryMin, value); }
+    public int BinaryMax { get => _binaryMax; set => SetProperty(ref _binaryMax, value); }
+    public bool UseTeachArea { get => _useTeachArea; set => SetProperty(ref _useTeachArea, value); }
+    public double TeachAreaRateMin { get => _teachAreaRateMin; set => SetProperty(ref _teachAreaRateMin, value); }
+    public double TeachAreaRateMax { get => _teachAreaRateMax; set => SetProperty(ref _teachAreaRateMax, value); }
+    public bool UseFillHole { get => _useFillHole; set => SetProperty(ref _useFillHole, value); }
+    public int FilterLevel { get => _filterLevel; set => SetProperty(ref _filterLevel, value); }
+}
 
 public sealed class PadBWFlowAlgorithm : IFlowAlgorithm
 {
@@ -8,16 +28,20 @@ public sealed class PadBWFlowAlgorithm : IFlowAlgorithm
     public int AlgoType => MptiFlowNativeBridge.EALGO_PADBW;
     // PadBW typically lives in eINSP_PAD windows in the reference framework.
     public int InspType => MptiFlowNativeBridge.EINSP_PAD;
+    public IFlowAlgorithmParameters CreateParameters() => new PadBWParameters();
 
-    public void ApplyParams(FlowAlgorithmSlot slot)
+    public void ApplyParams(FlowAlgorithmSlot slot, IFlowAlgorithmParameters parameters)
     {
+        var pp = (PadBWParameters)parameters;
         var p = new MptiBridgeFlowPadBWParams
         {
-            BinaryMin = 125, BinaryMax = 255, UseInsp2D = 1,
-            UseTeachArea = 0, TeachAreaRateMin = 80, TeachAreaRateMax = 120,
+            BinaryMin = pp.BinaryMin, BinaryMax = pp.BinaryMax, UseInsp2D = 1,
+            UseTeachArea = pp.UseTeachArea ? 1 : 0,
+            TeachAreaRateMin = pp.TeachAreaRateMin, TeachAreaRateMax = pp.TeachAreaRateMax,
             UseShift = 1, TeachShiftX = 0, TeachShiftY = 0,
             UseBlobWidth = 1, UseBlobLength = 1, UseBlobArea = 1,
-            FilterLevel = 0, UseFillHole = 0,
+            FilterLevel = pp.FilterLevel,
+            UseFillHole = pp.UseFillHole ? 1 : 0,
         };
         MptiFlowNativeBridge.MptiBridgeSetAlgoParamsPadBW(slot.WndIdx, slot.AlgoIdx, ref p);
     }

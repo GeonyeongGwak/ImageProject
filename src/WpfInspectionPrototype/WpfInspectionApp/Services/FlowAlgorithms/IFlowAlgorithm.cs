@@ -19,13 +19,27 @@ public sealed record FlowAlgorithmResult(
 // for routing the result lookup to the correct InspectionResult sub-array.
 public readonly record struct FlowAlgorithmSlot(int WndType, int WndIdx, int AlgoIdx);
 
-// One MPTI flow algorithm registered with the plugin system. Implementations describe
-// their identity (DisplayName / AlgoType / InspType), the native param-set call, and
-// the typed result reader. The shared FlowAlgorithmRunner handles the rest of the
-// pipeline (PTT load, BeginPart, AddWindow, AddAlgo, Commit, InspProc).
+// Marker interface for a per-algorithm parameter ViewModel. Concrete types
+// (AlignParameters, BlobParameters, ...) live next to their algorithm class and expose
+// INPC-bindable properties for sliders/textboxes. The XAML matches them via implicit
+// DataTemplate (DataType=...) defined in FlowAlgorithmTemplates.xaml.
 //
-// Adding a new algorithm = create one file implementing this interface and register it
-// in AppServices.RegisterFlowAlgorithms — no changes to MainViewModel/XAML needed.
+// Why an interface (vs reflection)? It gives compile-time safety and lets each
+// algorithm cast back to its concrete type inside ApplyParams without runtime tricks.
+public interface IFlowAlgorithmParameters
+{
+}
+
+// One MPTI flow algorithm registered with the plugin system. Implementations describe
+// their identity (DisplayName / AlgoType / InspType), the param ViewModel factory, the
+// native param-set call, and the typed result reader. The shared FlowAlgorithmRunner
+// handles the rest of the pipeline (PTT load, BeginPart, AddWindow, AddAlgo, Commit,
+// InspProc).
+//
+// Adding a new algorithm = create one file containing the algorithm class + its
+// XxxParameters class, then register it in AppServices. The runner auto-instantiates
+// Parameters via CreateParameters(); the XAML auto-renders it via implicit
+// DataTemplate matched on the Parameters type.
 public interface IFlowAlgorithm
 {
     // Human-readable name shown next to the Run button in the UI.
@@ -41,9 +55,15 @@ public interface IFlowAlgorithm
     // whatever wndType the runner should use when adding the window for this algo.
     int InspType { get; }
 
-    // Calls the typed MptiBridgeSetAlgoParamsXxx with reasonable defaults so the
-    // algorithm has enough info to run. UI-tuned params will plug in here later.
-    void ApplyParams(FlowAlgorithmSlot slot);
+    // Factory for a fresh Parameters VM. The runner instantiates this once and
+    // persists it for the lifetime of the runner so user-tuned values survive between
+    // Run clicks.
+    IFlowAlgorithmParameters CreateParameters();
+
+    // Calls the typed MptiBridgeSetAlgoParamsXxx using `parameters` (cast to the
+    // concrete XxxParameters type). The runner has already set up the (window, algo)
+    // slot identified by `slot` — implementations only need to fill the native struct.
+    void ApplyParams(FlowAlgorithmSlot slot, IFlowAlgorithmParameters parameters);
 
     // Calls the typed MptiBridgeResultXxx and converts to a uniform envelope.
     FlowAlgorithmResult ReadResult(FlowAlgorithmSlot slot);

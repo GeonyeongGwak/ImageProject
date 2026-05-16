@@ -538,21 +538,32 @@
                             <ItemsControl ItemsSource="{Binding FlowAlgorithms}">
                                 <ItemsControl.ItemTemplate>
                                     <DataTemplate>
-                                        <Grid Margin="0,2,0,0">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="110" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Button Grid.Column="0"
-                                                    Content="{Binding DisplayName}"
-                                                    Command="{Binding RunCommand}" />
-                                            <TextBlock Grid.Column="1"
-                                                       Margin="6,0,0,0"
-                                                       VerticalAlignment="Center"
-                                                       TextTrimming="CharacterEllipsis"
-                                                       ToolTip="{Binding Summary}"
-                                                       Text="{Binding Summary}" />
-                                        </Grid>
+                                        <!-- One row per registered algorithm. The Expander
+                                             header has the Run button + summary; expanded
+                                             content is an implicit DataTemplate matched
+                                             on the Parameters' concrete type (defined in
+                                             Views/FlowAlgorithmTemplates.xaml). -->
+                                        <Expander Margin="0,2,0,0">
+                                            <Expander.Header>
+                                                <Grid HorizontalAlignment="Stretch" Width="380">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="100" />
+                                                        <ColumnDefinition Width="*" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <Button Grid.Column="0"
+                                                            Content="{Binding DisplayName}"
+                                                            Command="{Binding RunCommand}" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Margin="6,0,0,0"
+                                                               VerticalAlignment="Center"
+                                                               TextTrimming="CharacterEllipsis"
+                                                               ToolTip="{Binding Summary}"
+                                                               Text="{Binding Summary}" />
+                                                </Grid>
+                                            </Expander.Header>
+                                            <ContentPresenter Margin="20,4,0,4"
+                                                              Content="{Binding Parameters}" />
+                                        </Expander>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

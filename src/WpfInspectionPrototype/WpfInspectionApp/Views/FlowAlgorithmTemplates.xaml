@@ -1,0 +1,236 @@
+<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:fa="clr-namespace:WpfInspectionApp.Services.FlowAlgorithms">
+
+    <!--
+        Implicit DataTemplates — WPF matches one of these against the type of an
+        IFlowAlgorithmParameters instance shown via ContentPresenter.Content. Adding a
+        new algorithm = create the XxxParameters class + add a matching template here.
+        Layout uses a uniform 2-column Label/TextBox grid pattern so the templates
+        stay short and visually consistent.
+    -->
+
+    <Style x:Key="ParamLabel" TargetType="TextBlock">
+        <Setter Property="VerticalAlignment" Value="Center" />
+        <Setter Property="Margin" Value="0,2,8,2" />
+        <Setter Property="Foreground" Value="#8BA5C4" />
+    </Style>
+    <Style x:Key="ParamInput" TargetType="TextBox">
+        <Setter Property="Margin" Value="0,2,0,2" />
+        <Setter Property="Padding" Value="4,2" />
+    </Style>
+    <Style x:Key="ParamCheck" TargetType="CheckBox">
+        <Setter Property="Margin" Value="0,2,0,2" />
+        <Setter Property="VerticalAlignment" Value="Center" />
+    </Style>
+
+    <!-- Align -->
+    <DataTemplate DataType="{x:Type fa:AlignParameters}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MinBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MinBinary, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MaxBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MaxBinary, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="SearchSize" />
+            <TextBox   Grid.Row="1" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding SearchSize, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MinBlobArea" />
+            <TextBox   Grid.Row="1" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MinBlobArea, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MaxShiftX" />
+            <TextBox   Grid.Row="2" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MaxShiftX, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MaxShiftY" />
+            <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MaxShiftY, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MaxAngle" />
+            <TextBox   Grid.Row="3" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MaxAngle, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- PadBW -->
+    <DataTemplate DataType="{x:Type fa:PadBWParameters}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="BinaryMin" />
+            <TextBox   Grid.Row="0" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding BinaryMin, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="BinaryMax" />
+            <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding BinaryMax, UpdateSourceTrigger=PropertyChanged}" />
+
+            <CheckBox  Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource ParamCheck}" Content="UseTeachArea" IsChecked="{Binding UseTeachArea}" />
+            <CheckBox  Grid.Row="1" Grid.Column="2" Grid.ColumnSpan="2" Style="{StaticResource ParamCheck}" Content="UseFillHole"  IsChecked="{Binding UseFillHole}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="AreaRateMin" />
+            <TextBox   Grid.Row="2" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding TeachAreaRateMin, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="AreaRateMax" />
+            <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding TeachAreaRateMax, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="FilterLevel" />
+            <TextBox   Grid.Row="3" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding FilterLevel, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- Blob -->
+    <DataTemplate DataType="{x:Type fa:BlobParameters}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MinBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MinBinary, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MaxBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MaxBinary, UpdateSourceTrigger=PropertyChanged}" />
+
+            <CheckBox  Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource ParamCheck}" Content="InvertCheck" IsChecked="{Binding InvertCheck}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="AreaMin" />
+            <TextBox   Grid.Row="2" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding AreaMin, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="AreaMax" />
+            <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding AreaMax, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="ShiftX" />
+            <TextBox   Grid.Row="3" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding ShiftX, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="3" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="ShiftY" />
+            <TextBox   Grid.Row="3" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding ShiftY, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- BGA -->
+    <DataTemplate DataType="{x:Type fa:BGAParameters}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MinBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MinBinary, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MaxBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MaxBinary, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="TeachArea" />
+            <TextBox   Grid.Row="1" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding TeachArea, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="TeachVolume" />
+            <TextBox   Grid.Row="1" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding TeachVolume, UpdateSourceTrigger=PropertyChanged}" />
+
+            <CheckBox  Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource ParamCheck}" Content="UseCircleRate" IsChecked="{Binding UseCircleRate}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="CircleRate" />
+            <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding TeachCircleRate, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- Edge -->
+    <DataTemplate DataType="{x:Type fa:EdgeParameters}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition /><RowDefinition /><RowDefinition />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MinBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MinBinary, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MaxBinary" />
+            <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MaxBinary, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="LineCnt" />
+            <TextBox   Grid.Row="1" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding SetLineCnt, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="LineFindRate" />
+            <TextBox   Grid.Row="1" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding LineFindRate, UpdateSourceTrigger=PropertyChanged}" />
+
+            <CheckBox  Grid.Row="2" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource ParamCheck}" Content="UseAngle" IsChecked="{Binding UseAngle}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="TeachRotate" />
+            <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding TeachRotate, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- Pattern -->
+    <DataTemplate DataType="{x:Type fa:PatternParameters}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition /><RowDefinition /><RowDefinition /><RowDefinition />
+            </Grid.RowDefinitions>
+            <CheckBox  Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="2" Style="{StaticResource ParamCheck}" Content="UsePolarity" IsChecked="{Binding UsePolarity}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="AcceptScore" />
+            <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding AcceptScore, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="WndAngle" />
+            <TextBox   Grid.Row="1" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding WndAngle, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="RangeAngle" />
+            <TextBox   Grid.Row="1" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding RangeAngle, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="AngleMin" />
+            <TextBox   Grid.Row="2" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding SearchAngleRangeMin, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="AngleMax" />
+            <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding SearchAngleRangeMax, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="3" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="ModelPath" />
+            <TextBox   Grid.Row="3" Grid.Column="1" Grid.ColumnSpan="3" Style="{StaticResource ParamInput}" Text="{Binding ModelPathInspect, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+    </DataTemplate>
+
+    <!-- ShapeX -->
+    <DataTemplate DataType="{x:Type fa:ShapeXParameters}">
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="100" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition /><RowDefinition /><RowDefinition />
+            </Grid.RowDefinitions>
+            <TextBlock Grid.Row="0" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MatchScore" />
+            <TextBox   Grid.Row="0" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MatchScore, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="AspectRatio" />
+            <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding AspectRatio, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="MaxNgArea" />
+            <TextBox   Grid.Row="1" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding MaxNgArea, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="CriticalArea" />
+            <TextBox   Grid.Row="1" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding CriticalArea, UpdateSourceTrigger=PropertyChanged}" />
+
+            <TextBlock Grid.Row="2" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="TieBarRate" />
+            <TextBox   Grid.Row="2" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding TieBarRate, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="2" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="Contrast" />
+            <TextBox   Grid.Row="2" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding ContrastValue, UpdateSourceTrigger=PropertyChanged}" />
+        </Grid>
+    </DataTemplate>
+
+</ResourceDictionary>
