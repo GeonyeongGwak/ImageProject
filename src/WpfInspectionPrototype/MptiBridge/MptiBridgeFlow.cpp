@@ -2,6 +2,7 @@
 #include "MPTI.h"
 #include "MptiBridgeFlow.h"
 #include "NativeSources/MPTILib_Algo/InspManager.h"
+#include "NativeSources/PInspAlgo/PInspAlgo_Lib.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Align/InspParamDef_Align.h"
 
 #include <cstdarg>
@@ -111,9 +112,19 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeBeginPart(
         s_part.partCy = partCy;
         s_part.partWidth = partWidth;
         s_part.partHeight = partHeight;
+        // MakePartParam (reference, ucSamePartPreTest.cs:541-545 + InspectionFunc.cs) seeds
+        // anyAngle* from the boundary ROI. For a non-rotated minimal flow it equals partRect.
+        s_part.anyAngleCx = partCx;
+        s_part.anyAngleCy = partCy;
+        s_part.anyAngleWidth = partWidth;
+        s_part.anyAngleLength = partHeight;
         s_part.angle = angle;
         s_part.partIndex = 0;
         s_part.nPartID = 1;
+        // Minimum string fields the legacy code reads as wide-strings.
+        wcsncpy_s(s_part.modelName, MAX_STRLEN, L"WpfInspectionPrototype", _TRUNCATE);
+        wcsncpy_s(s_part.ModuleNo, MAX_STRLEN, L"M1", _TRUNCATE);
+        wcsncpy_s(s_part.PartNo, MAX_STRLEN, L"P1", _TRUNCATE);
         s_sourceWidth = sourceWidth;
         s_sourceHeight = sourceHeight;
         return 0;
@@ -136,11 +147,20 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeAddWindow(
         wnd.cy = cy;
         wnd.width = width;
         wnd.length = height;
+        // MakePartParam (reference) seeds the window's anyAngle* from the boundary ROI; for
+        // a non-rotated minimal flow it equals the window rect itself.
+        wnd.anyAngleCx = cx;
+        wnd.anyAngleCy = cy;
+        wnd.anyAngleWidth = width;
+        wnd.anyAngleLength = height;
         wnd.wndIndex = static_cast<int>(s_windows.size()) + 1;
         wnd.groupIndex = static_cast<int>(s_windows.size()) + 1;   // one window == one group (SortingParamater skips groupIndex < 1)
         wnd.nAlignWndID = alignWndId;
         wnd.nParentWndID = parentWndId;
         wnd.WndInspType = static_cast<byte>(wndInspType);
+        wnd.nInspCameraType = 0;       // 0 = eCoaxial (top camera), reference default
+        wnd.Gen2D = 0;                  // MakePartParam line 462
+        wnd.m_nAlignPartWnd = 0;        // 1 would make InspNormal_Ver2 skip this window (line 1441)
         wnd.nAlgorithmCnt = 0;
         wnd.vArrAlgoParam = nullptr;
         wnd.m_nUsedWndPolygon = 0;
@@ -270,6 +290,27 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeCommitInspParam(wchar_t* message, int message
         {
             g_pMPTI->m_nSizeXRawData = s_sourceWidth;
             g_pMPTI->m_nSizeYRawData = s_sourceHeight;
+        }
+
+        // Force-set FOV resolution if MPTI_SetRawDataFovInfo never ran (minimal flow
+        // without .pot). PInspAlgoWrapper::WndSizeChange divides partWidth by
+        // PIAL::PInspAlgo_Lib::m_resolX, so 0.0 causes wnd_w to become 0 ->
+        // InspWindowAlgo3 returns e_NG before the algo body runs (line 8790 of
+        // InspManager.cpp). resolX/Y=1.0 treats our coords as already in pixel-space.
+        // We set the fields directly instead of calling InspManager::SetResolution()
+        // because that triggers MIL re-init (m_procMil = new CProcMil + InitMil...)
+        // which AVs in a minimal flow where MIL device wasn't fully initialized.
+        if (g_pInspMng && (!g_pInspMng->m_bSetResolution || g_pInspMng->m_resolX <= 0.0))
+        {
+            const int fovW = s_sourceWidth > 0 ? s_sourceWidth : g_pMPTI->m_nSizeXRawData;
+            const int fovH = s_sourceHeight > 0 ? s_sourceHeight : g_pMPTI->m_nSizeYRawData;
+            g_pInspMng->m_fovWidth = fovW;
+            g_pInspMng->m_fovLength = fovH;
+            g_pInspMng->m_resolX = 1.0;
+            g_pInspMng->m_resolY = 1.0;
+            g_pInspMng->m_bSetResolution = true;
+            PIAL::PInspAlgo_Lib::m_resolX = 1.0;
+            PIAL::PInspAlgo_Lib::m_resolY = 1.0;
         }
 
         const int ret = MPTI_SetInspParam(&s_part, s_windows.data(), static_cast<int>(s_windows.size()));
@@ -452,7 +493,14 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeDumpAlignDiag(wchar_t* output, int outputLeng
         p = Append(output, outputLength, p, L"g_pInspMng is NULL\n");
         return 0;
     }
-    p = Append(output, outputLength, p, L"g_pInspMng ok\n");
+    p = Append(output, outputLength, p,
+        L"g_pInspMng ok | m_bSetResolution=%d fov=%dx%d resol=(%.6f,%.6f)\n",
+        (int)g_pInspMng->m_bSetResolution,
+        g_pInspMng->m_fovWidth, g_pInspMng->m_fovLength,
+        g_pInspMng->m_resolX, g_pInspMng->m_resolY);
+    p = Append(output, outputLength, p,
+        L"  PInspAlgo_Lib::m_resolX=%.6f m_resolY=%.6f\n",
+        PIAL::PInspAlgo_Lib::m_resolX, PIAL::PInspAlgo_Lib::m_resolY);
 
     // group meta
     if (g_pInspMng->m_inspItemCnts)
@@ -483,6 +531,39 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeDumpAlignDiag(wchar_t* output, int outputLeng
         p = Append(output, outputLength, p,
             L"  partCx=%.1f partCy=%.1f partW=%.1f partH=%.1f nWindowCount=%d\n",
             bi->partCx, bi->partCy, bi->partWidth, bi->partHeight, bi->nWindowCount);
+        p = Append(output, outputLength, p,
+            L"  anyAngle: cx=%.1f cy=%.1f w=%.1f l=%.1f\n",
+            bi->anyAngleCx, bi->anyAngleCy, bi->anyAngleWidth, bi->anyAngleLength);
+        if (bi->pWindows && bi->nWindowCount > 0)
+        {
+            for (int i = 0; i < bi->nWindowCount && p < outputLength - 256; ++i)
+            {
+                const InspPartParam& w = bi->pWindows[i];
+                p = Append(output, outputLength, p,
+                    L"  wnd[%d]: inspType=%d WndInspType=%d cx=%.1f cy=%.1f w=%.1f l=%.1f "
+                    L"anyAngle=(%.1f,%.1f,%.1f,%.1f) algoCnt=%d vArrAlgoParam=%s "
+                    L"alignWndID=%d alignPartWnd=%d groupIndex=%d wndIndex=%d nInspCamType=%d Gen2D=%d\n",
+                    i, w.inspType, (int)w.WndInspType, w.cx, w.cy, w.width, w.length,
+                    w.anyAngleCx, w.anyAngleCy, w.anyAngleWidth, w.anyAngleLength,
+                    w.nAlgorithmCnt, w.vArrAlgoParam ? L"set" : L"NULL",
+                    w.nAlignWndID, w.m_nAlignPartWnd, w.groupIndex, w.wndIndex,
+                    w.nInspCameraType, w.Gen2D);
+                if (w.vArrAlgoParam && w.nAlgorithmCnt > 0)
+                {
+                    for (int a = 0; a < w.nAlgorithmCnt && p < outputLength - 256; ++a)
+                    {
+                        const InspAlgo& al = w.vArrAlgoParam[a];
+                        p = Append(output, outputLength, p,
+                            L"    algoIn[%d]: eAlgoType=%d enable=%d required=%d ptr=%s "
+                            L"light=%d R=%d G=%d B=%d W=%d mix=%d\n",
+                            a, (int)al.m_eAlgoType, (int)al.m_bAlgoEnable, (int)al.m_bIsRequired,
+                            al.m_ptrInspAlgoParam ? L"set" : L"NULL",
+                            (int)al.m_eLightType, al.m_nRedValue, al.m_nGreenValue,
+                            al.m_nBlueValue, al.m_nWhiteValue, al.m_nMixCount);
+                    }
+                }
+            }
+        }
     }
 
     InspectionResult* r = g_pInspMng->m_inspectionResult;
