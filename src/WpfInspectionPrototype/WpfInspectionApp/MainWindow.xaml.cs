@@ -63,6 +63,7 @@ public partial class MainWindow : Window, IDialogOwner
             _roiCanvasViewModel,
             _imageRuntimeStateService,
             App.Services.InspectionWorkflow,
+            App.Services.InspectionFlow,
             App.Services.ThresholdPreviewWorkflow);
         DataContext = _viewModel;
         _viewModel.ConfigureCommands(ZoomOne, ZoomFit);
@@ -215,7 +216,10 @@ public partial class MainWindow : Window, IDialogOwner
             PreloadNativeBridgeFromUi(Keyboard.Modifiers.HasFlag(ModifierKeys.Alt));
             return;
         }
-
+        if (e.Key == Key.F11)
+        {
+            PreloadNativeBridgeFromUi(true);   // �� �� ��° ������
+        }
         if (!_viewModel.IsAlignSearchActive || Keyboard.Modifiers.HasFlag(ModifierKeys.Control) || Keyboard.Modifiers.HasFlag(ModifierKeys.Alt))
         {
             return;

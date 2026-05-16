@@ -519,6 +519,10 @@
                                     Content="Run Part Inspection"
                                     Command="{Binding RunInspectionCommand}"
                                     IsEnabled="{Binding CanRunInspection}" />
+                            <Button x:Name="RunFlowButton"
+                                    Margin="0,4,0,0"
+                                    Content="Run MPTI Flow (Align)"
+                                    Command="{Binding RunFlowCommand}" />
                             <TextBox x:Name="ResultText"
                                      Margin="0,8,0,0"
                                      Height="170"

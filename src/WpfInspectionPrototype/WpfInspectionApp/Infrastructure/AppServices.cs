@@ -71,4 +71,8 @@ public sealed class AppServices
     public IThresholdResultService ThresholdResult { get; }
 
     public IThresholdPreviewWorkflowService ThresholdPreviewWorkflow { get; }
+
+    // Bridge-flow runner for MPTI_SetInspParam -> MPTI_InspProc -> MPTI_GetInspectionResult.
+    // Separate from the single-shot InspectionWorkflow which targets per-algo bridges.
+    public IInspectionFlowService InspectionFlow { get; } = new InspectionFlowService();
 }

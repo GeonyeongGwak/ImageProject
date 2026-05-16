@@ -37,7 +37,9 @@ public sealed class MainViewModel : ViewModelBase
     private readonly RoiCanvasViewModel _roi;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
+    private readonly IInspectionFlowService _inspectionFlowService;
     private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
+    private string? _lastFlowPttPath;
     private AlgorithmPanelFactory? _algorithmPanelFactory;
     private IAlgorithmPanel? _activeAlgorithmPanel;
     private bool _alignSearchTabActive;
@@ -52,6 +54,7 @@ public sealed class MainViewModel : ViewModelBase
         RoiCanvasViewModel roi,
         IImageRuntimeStateService imageRuntimeStateService,
         IInspectionWorkflowService inspectionWorkflowService,
+        IInspectionFlowService inspectionFlowService,
         IThresholdPreviewWorkflowService thresholdPreviewWorkflowService)
     {
         _model = model;
@@ -64,6 +67,7 @@ public sealed class MainViewModel : ViewModelBase
         _roi = roi;
         _imageRuntimeStateService = imageRuntimeStateService;
         _inspectionWorkflowService = inspectionWorkflowService;
+        _inspectionFlowService = inspectionFlowService;
         _thresholdPreviewWorkflowService = thresholdPreviewWorkflowService;
         AlgorithmTypes = new ObservableCollection<string>(AlgorithmCatalog.All.Select(item => item.Type));
         InspectionTreeNodes = [];
@@ -75,8 +79,73 @@ public sealed class MainViewModel : ViewModelBase
         ImportPartCommand = new RelayCommand(BrowseAndImportPart);
         AddAlgorithmCommand = new RelayCommand(AddAlgorithm);
         RunInspectionCommand = new AsyncRelayCommand(RunInspectionAsync, () => CanRunInspection);
+        RunFlowCommand = new AsyncRelayCommand(RunFlowAsync, () => !IsInspectionRunning);
         ZoomOneCommand = DisabledCommand();
         ZoomFitCommand = DisabledCommand();
+    }
+
+    // Runs the new MPTI_SetInspParam -> MPTI_InspProc -> MPTI_GetInspectionResult flow.
+    // Currently scoped to one Align window with one Align algorithm; uses the last-loaded
+    // PTT path (or prompts) so the result is visible in InspectionResultText without
+    // touching the existing single-shot RunInspectionCommand pipeline.
+    private async Task RunFlowAsync()
+    {
+        var pttPath = _lastFlowPttPath;
+        if (string.IsNullOrWhiteSpace(pttPath) || !System.IO.File.Exists(pttPath))
+        {
+            pttPath = _fileDialogService.BrowsePtt(_dialogOwner.GetDialogOwner());
+            if (string.IsNullOrWhiteSpace(pttPath)) return;
+            _lastFlowPttPath = pttPath;
+        }
+
+        BeginInspectionRun();
+        StatusMessage = "MPTI flow running...";
+
+        try
+        {
+            var result = await _inspectionFlowService.RunAlignAsync(new AlignFlowRequest(
+                PttPath: pttPath!,
+                WindowWidth: 0,
+                WindowHeight: 0));
+            ApplyFlowResult(result);
+        }
+        catch (Exception ex)
+        {
+            DiagnosticsLog.Write($"MPTI flow failed: {ex}");
+            InspectionResultText = $"FLOW FAILED: {ex.GetType().Name}: {ex.Message}";
+            StatusMessage = "MPTI flow failed (see InspectionResult).";
+        }
+        finally
+        {
+            IsInspectionRunning = false;
+        }
+    }
+
+    private void ApplyFlowResult(AlignFlowResult result)
+    {
+        if (!result.Available)
+        {
+            StatusMessage = "MPTI bridge unavailable.";
+            InspectionResultText = result.StatusMessage;
+            return;
+        }
+
+        var centers = string.Join(";",
+            Enumerable.Range(0, 4)
+                .Select(i => $"({result.CentersX[i]},{result.CentersY[i]})"));
+        InspectionResultText =
+            $"PART={result.PartWidth}x{result.PartHeight}  " +
+            $"isInsp={result.IsInsp} isOk={result.IsOk} defect={result.DefectCode} " +
+            $"okCount={result.OkCount}\n" +
+            $"offset=({result.OffsetX:F2},{result.OffsetY:F2})  theta={result.Theta:F3}°  " +
+            $"okShift=({result.OkShiftX},{result.OkShiftY}) okAngle={result.OkAngle}\n" +
+            $"centers=[{centers}]\n" +
+            $"elapsed={result.ElapsedMs:F1} ms\n" +
+            $"---\n{result.StatusMessage}";
+        StatusMessage = result.Success
+            ? $"MPTI flow OK ({result.ElapsedMs:F1} ms)"
+            : $"MPTI flow ran (isInsp={result.IsInsp})";
+        TimingText = $"{result.ElapsedMs:F2} ms";
     }
 
     private async Task RunInspectionAsync()
@@ -610,6 +679,7 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand ImportPartCommand { get; private set; }
     public ICommand AddAlgorithmCommand { get; private set; }
     public ICommand RunInspectionCommand { get; private set; }
+    public ICommand RunFlowCommand { get; private set; }
     public ICommand ZoomOneCommand { get; private set; }
     public ICommand ZoomFitCommand { get; private set; }
 
