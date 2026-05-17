@@ -8,6 +8,7 @@ internal static class Program
     [STAThread]
     public static int Main(string[] args)
     {
+        AppContext.SetSwitch("Switch.System.Windows.Input.Stylus.DisableStylusAndTouchSupport", true);
         FpExceptionGuard.TryMask();
         FpExceptionGuard.Diag("Program.Main entered");
 
