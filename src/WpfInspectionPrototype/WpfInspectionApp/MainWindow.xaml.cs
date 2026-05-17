@@ -2,7 +2,9 @@ using System.IO;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using WpfInspectionApp.AlgorithmPanels;
 using WpfInspectionApp.Diagnostics;
@@ -123,7 +125,63 @@ public partial class MainWindow : Window, IDialogOwner
         Focusable = false;
         InputMethod.SetIsInputMethodEnabled(this, false);
         InputMethod.SetPreferredImeState(this, InputMethodState.Off);
-        FpExceptionGuard.Diag("MainWindow native-debug startup guards applied");
+        var guardedControls = GuardTextInputSubtree(this);
+        FpExceptionGuard.Diag($"MainWindow native-debug startup guards applied textInputs={guardedControls}");
+    }
+
+    private static int GuardTextInputSubtree(DependencyObject root)
+    {
+        var guardedControls = 0;
+        var visited = new HashSet<DependencyObject>();
+
+        void Visit(DependencyObject current)
+        {
+            if (!visited.Add(current))
+            {
+                return;
+            }
+
+            if (current is TextBoxBase textBox)
+            {
+                GuardTextInputElement(textBox);
+                textBox.IsTabStop = false;
+                textBox.Focusable = false;
+                guardedControls++;
+            }
+            else if (current is ComboBox comboBox)
+            {
+                GuardTextInputElement(comboBox);
+                comboBox.IsTabStop = false;
+                comboBox.Focusable = false;
+                guardedControls++;
+            }
+
+            foreach (var child in LogicalTreeHelper.GetChildren(current).OfType<DependencyObject>())
+            {
+                Visit(child);
+            }
+
+            try
+            {
+                var visualChildren = VisualTreeHelper.GetChildrenCount(current);
+                for (var index = 0; index < visualChildren; index++)
+                {
+                    Visit(VisualTreeHelper.GetChild(current, index));
+                }
+            }
+            catch (InvalidOperationException)
+            {
+            }
+        }
+
+        Visit(root);
+        return guardedControls;
+    }
+
+    private static void GuardTextInputElement(DependencyObject element)
+    {
+        InputMethod.SetIsInputMethodEnabled(element, false);
+        InputMethod.SetPreferredImeState(element, InputMethodState.Off);
     }
 
     private System.Windows.Forms.Panel EnsurePttViewerPanel()

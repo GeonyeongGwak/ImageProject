@@ -36,6 +36,7 @@ public partial class App : Application
     public static AppServices Services => s_servicesLazy.Value;
     private static bool s_renderGuardApplied;
     private static bool s_imeGuardApplied;
+    private static bool s_visualDiagnosticsGuardApplied;
     private static bool s_startupStabilityGuardsEnabled;
     internal static bool StartupStabilityGuardsEnabled => s_startupStabilityGuardsEnabled;
 
@@ -133,6 +134,7 @@ public partial class App : Application
         }
 
         ApplyProcessImeGuard();
+        DisableVisualDiagnosticsForDebugger();
 
         if (s_renderGuardApplied)
         {
@@ -162,6 +164,25 @@ public partial class App : Application
         catch (Exception ex)
         {
             FpExceptionGuard.Diag($"Process IME disable FAILED {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static void DisableVisualDiagnosticsForDebugger()
+    {
+        if (s_visualDiagnosticsGuardApplied)
+        {
+            return;
+        }
+
+        s_visualDiagnosticsGuardApplied = true;
+        try
+        {
+            System.Windows.Diagnostics.VisualDiagnostics.DisableVisualTreeChanged();
+            FpExceptionGuard.Diag("WPF VisualDiagnostics disabled for native-debug startup");
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"WPF VisualDiagnostics disable FAILED {ex.GetType().Name}: {ex.Message}");
         }
     }
 
