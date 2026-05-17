@@ -299,7 +299,10 @@ namespace WpfInspectionApp.Diagnostics
         // the stack. This guard makes recursive calls a no-op.
         [System.ThreadStatic] private static bool t_inDiag;
 
-        private static void Diag(string line)
+        // Public so App.xaml.cs / MainWindow.xaml.cs can drop breadcrumbs into fpguard.log
+        // without re-implementing the re-entry guard. Best-effort: never throws, never
+        // recurses.
+        internal static void Diag(string line)
         {
             if (t_inDiag) return;
             t_inDiag = true;

@@ -13,10 +13,45 @@ namespace WpfInspectionApp;
 /// </summary>
 public partial class App : Application
 {
-    public static AppServices Services { get; } = new();
+    // Lazy-init so AppServices construction (which touches 50+ service classes + the
+    // FlowAlgorithm plugin registry) only runs when something actually needs a service.
+    // Eager-init via a property auto-initializer (`= new()`) runs the chain during
+    // App's class-init which can fault under VS native debugging on some setups.
+    private static readonly Lazy<AppServices> s_servicesLazy = new(() =>
+    {
+        FpExceptionGuard.Diag("App.Services factory invoked");
+        try
+        {
+            var svc = new AppServices();
+            FpExceptionGuard.Diag("App.Services factory returned ok");
+            return svc;
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"App.Services factory THREW {ex.GetType().Name}: {ex.Message}");
+            throw;
+        }
+    });
+    public static AppServices Services => s_servicesLazy.Value;
+
+    static App()
+    {
+        FpExceptionGuard.Diag("App.cctor entered");
+    }
+
+    public App()
+    {
+        FpExceptionGuard.Diag("App ctor entered");
+        // InitializeComponent (App.g.cs) parses App.xaml — including the merged
+        // FlowAlgorithmTemplates resource dictionary. If we crash before the next
+        // checkpoint, the XAML parse / resource load is the culprit.
+        InitializeComponent();
+        FpExceptionGuard.Diag("App ctor: InitializeComponent done");
+    }
 
     protected override void OnStartup(StartupEventArgs e)
     {
+        FpExceptionGuard.Diag("App.OnStartup entered");
         // FpExceptionGuard's ModuleInitializer already ran before Main. Re-mask defensively
         // in case PresentationFramework/PresentationCore static ctors (or VS WpfTap injection)
         // ran code that unmasked fp exceptions between module init and OnStartup.
@@ -74,8 +109,13 @@ public partial class App : Application
                 }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
             };
         }
-
+        FpExceptionGuard.Diag("App.OnStartup: creating MainWindow");
+        MainWindow = new MainWindow();
+        FpExceptionGuard.Diag("App.OnStartup: MainWindow created, showing");
+        MainWindow.Show();
+        FpExceptionGuard.Diag("App.OnStartup: MainWindow.Show() returned");
         base.OnStartup(e);
+        FpExceptionGuard.Diag("App.OnStartup: base.OnStartup done");
     }
 
     private static void ApplyDebuggerRenderGuard(string[] cmdArgs)
