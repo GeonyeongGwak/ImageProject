@@ -92,34 +92,60 @@ public partial class App : Application
         PreloadNativeBridgeForDebugger(cmdArgs);
         FpExceptionGuard.TryMask();
 
-        if (cmdArgs.Any(arg => string.Equals(arg, "--smoke-test", StringComparison.OrdinalIgnoreCase)))
+        var runSmokeTest = cmdArgs.Any(arg => string.Equals(arg, "--smoke-test", StringComparison.OrdinalIgnoreCase));
+        if (runSmokeTest)
         {
-            // MainWindow is intentionally allowed to be created so that MptiBridge.dll
-            // can load with full MFC/WPF context. The smoke test runs once the window
-            // is loaded, then explicitly shuts the application down.
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
-            Startup += (_, _) =>
-            {
-                Dispatcher.BeginInvoke(new Action(() =>
-                {
-                    var exitCode = SmokeTestRunner.Run(Services);
-                    DiagnosticsLog.Write($"Smoke test exit code: {exitCode}");
-                    // Close MainWindow if present, then exit
-                    if (MainWindow != null)
-                    {
-                        try { MainWindow.Close(); } catch { /* ignore */ }
-                    }
-                    Shutdown(exitCode);
-                }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
-            };
         }
-        FpExceptionGuard.Diag("App.OnStartup: creating MainWindow");
-        MainWindow = new MainWindow();
-        FpExceptionGuard.Diag("App.OnStartup: MainWindow created, showing");
-        MainWindow.Show();
-        FpExceptionGuard.Diag("App.OnStartup: MainWindow.Show() returned");
+
+        if (StartupStabilityGuardsEnabled)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            base.OnStartup(e);
+            FpExceptionGuard.Diag("App.OnStartup: base.OnStartup done before delayed MainWindow show");
+            _ = ShowMainWindowAfterNativeDebugDelayAsync(runSmokeTest);
+            return;
+        }
+
+        CreateShowMainWindowAndMaybeRunSmokeTest(runSmokeTest);
         base.OnStartup(e);
         FpExceptionGuard.Diag("App.OnStartup: base.OnStartup done");
+    }
+
+    private async Task ShowMainWindowAfterNativeDebugDelayAsync(bool runSmokeTest)
+    {
+        FpExceptionGuard.Diag("App.OnStartup: delaying MainWindow creation for native-debug guard");
+        await Task.Delay(1500).ConfigureAwait(false);
+        await Dispatcher.InvokeAsync(() =>
+        {
+            FpExceptionGuard.TryMask();
+            FpExceptionGuard.Diag("App.OnStartup: delayed MainWindow creation dispatching");
+            CreateShowMainWindowAndMaybeRunSmokeTest(runSmokeTest);
+        }, System.Windows.Threading.DispatcherPriority.Background);
+    }
+
+    private void CreateShowMainWindowAndMaybeRunSmokeTest(bool runSmokeTest)
+    {
+        FpExceptionGuard.Diag("App.MainWindow: creating MainWindow");
+        MainWindow = new MainWindow();
+        FpExceptionGuard.Diag("App.MainWindow: MainWindow created, showing");
+        MainWindow.Show();
+        FpExceptionGuard.Diag("App.MainWindow: MainWindow.Show() returned");
+
+        if (runSmokeTest)
+        {
+            Dispatcher.BeginInvoke(new Action(() =>
+            {
+                var exitCode = SmokeTestRunner.Run(Services);
+                DiagnosticsLog.Write($"Smoke test exit code: {exitCode}");
+                if (MainWindow != null)
+                {
+                    try { MainWindow.Close(); } catch { /* ignore */ }
+                }
+
+                Shutdown(exitCode);
+            }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
     }
 
     internal static void ApplyDebuggerRenderGuard(string[] cmdArgs)
