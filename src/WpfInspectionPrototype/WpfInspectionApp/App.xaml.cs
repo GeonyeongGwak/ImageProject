@@ -35,11 +35,15 @@ public partial class App : Application
     });
     public static AppServices Services => s_servicesLazy.Value;
     private static bool s_renderGuardApplied;
+    private static bool s_imeGuardApplied;
     private static bool s_startupStabilityGuardsEnabled;
     internal static bool StartupStabilityGuardsEnabled => s_startupStabilityGuardsEnabled;
 
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern bool IsDebuggerPresent();
+
+    [DllImport("imm32.dll", ExactSpelling = true)]
+    private static extern bool ImmDisableIME(uint idThread);
 
     static App()
     {
@@ -128,6 +132,8 @@ public partial class App : Application
             return;
         }
 
+        ApplyProcessImeGuard();
+
         if (s_renderGuardApplied)
         {
             return;
@@ -138,6 +144,25 @@ public partial class App : Application
         DiagnosticsLog.Write("WPF software rendering enabled for debugger stability.");
         FpExceptionGuard.Diag(
             $"WPF software rendering enabled managedDebugger={managedDebuggerAttached} nativeDebugger={nativeDebuggerAttached} arg={requestedByArg}");
+    }
+
+    private static void ApplyProcessImeGuard()
+    {
+        if (s_imeGuardApplied)
+        {
+            return;
+        }
+
+        s_imeGuardApplied = true;
+        try
+        {
+            var disabled = ImmDisableIME(uint.MaxValue);
+            FpExceptionGuard.Diag($"Process IME disabled for native-debug startup: {disabled}");
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"Process IME disable FAILED {ex.GetType().Name}: {ex.Message}");
+        }
     }
 
     private static bool IsNativeDebuggerAttached()
