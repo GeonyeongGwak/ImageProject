@@ -38,6 +38,7 @@ public partial class App : Application
     private static bool s_renderGuardApplied;
     private static bool s_imeGuardApplied;
     private static bool s_visualDiagnosticsGuardApplied;
+    private static bool s_messagePumpGuardApplied;
     private static bool s_startupStabilityGuardsEnabled;
     private Window? _startupGuardWindow;
     internal static bool StartupStabilityGuardsEnabled => s_startupStabilityGuardsEnabled;
@@ -221,6 +222,7 @@ public partial class App : Application
 
         ApplyProcessImeGuard();
         DisableVisualDiagnosticsForDebugger();
+        InstallMessagePumpGuardForDebugger();
 
         if (s_renderGuardApplied)
         {
@@ -250,6 +252,28 @@ public partial class App : Application
         catch (Exception ex)
         {
             FpExceptionGuard.Diag($"Process IME disable FAILED {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static void InstallMessagePumpGuardForDebugger()
+    {
+        if (s_messagePumpGuardApplied)
+        {
+            return;
+        }
+
+        s_messagePumpGuardApplied = true;
+        try
+        {
+            System.Windows.Interop.ComponentDispatcher.ThreadFilterMessage +=
+                (ref System.Windows.Interop.MSG msg, ref bool handled) => FpExceptionGuard.TryMask();
+            System.Windows.Interop.ComponentDispatcher.ThreadPreprocessMessage +=
+                (ref System.Windows.Interop.MSG msg, ref bool handled) => FpExceptionGuard.TryMask();
+            FpExceptionGuard.Diag("WPF message-pump FPU guard installed for native-debug startup");
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"WPF message-pump FPU guard install FAILED {ex.GetType().FullName}: {ex.Message}");
         }
     }
 
