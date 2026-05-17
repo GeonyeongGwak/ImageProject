@@ -142,36 +142,18 @@ namespace WpfInspectionApp.Diagnostics
                 Diag($"ModuleInit: RenderMode set FAILED {ex.GetType().Name}: {ex.Message}");
             }
 
-            // Hook every assembly load - between Application..ctor and the fp crash,
-            // PresentationCore.resources/UIAutomation*/etc. all load and each load
-            // is a chance for a native dependency to unmask fp.
-            try
-            {
-                AppDomain.CurrentDomain.AssemblyLoad += (_, a) =>
-                {
-                    Diag($"AssemblyLoad: {a.LoadedAssembly.GetName().Name}");
-                    TryMaskLogged($"  after AssemblyLoad: {a.LoadedAssembly.GetName().Name}");
-                };
-                Diag("ModuleInit: AssemblyLoad hook registered");
-            }
-            catch (Exception ex)
-            {
-                Diag($"ModuleInit: AssemblyLoad hook FAILED {ex.GetType().Name}: {ex.Message}");
-            }
-
-            try
-            {
-                AppDomain.CurrentDomain.FirstChanceException += (_, e) =>
-                {
-                    Diag($"FirstChance: {e.Exception.GetType().FullName} :: {e.Exception.Message}");
-                    TryMaskLogged($"  after FirstChance: {e.Exception.GetType().Name}");
-                };
-                Diag("ModuleInit: FirstChanceException hook registered");
-            }
-            catch (Exception ex)
-            {
-                Diag($"ModuleInit: FirstChanceException hook FAILED {ex.GetType().Name}: {ex.Message}");
-            }
+            // Note: AssemblyLoad and FirstChanceException hooks were removed.
+            //
+            // FirstChanceException + Diag's File.AppendAllText was a hidden infinite-
+            // recursion bug. If File.AppendAllText itself raised a first-chance
+            // exception (path resolution, lock contention, ACL fail under VS attach,
+            // etc.), the handler called Diag, which raised another first-chance,
+            // which re-entered the handler... -> 0xC00000FD stack overflow. Only
+            // triggered under VS native debugging because the debugger increases
+            // file I/O contention enough to push the first failure over the edge.
+            //
+            // VEH already handles fp masking on every thread; these hooks were only
+            // diagnostic and not worth the risk.
 
             try
             {
@@ -312,8 +294,15 @@ namespace WpfInspectionApp.Diagnostics
             }
         }
 
+        // Re-entry guard: if Diag's File I/O itself raises a first-chance exception
+        // and a handler somewhere calls back into Diag, we'd recurse forever and blow
+        // the stack. This guard makes recursive calls a no-op.
+        [System.ThreadStatic] private static bool t_inDiag;
+
         private static void Diag(string line)
         {
+            if (t_inDiag) return;
+            t_inDiag = true;
             try
             {
                 System.IO.File.AppendAllText(LogPath, $"{DateTime.Now:HH:mm:ss.fff} {line}{Environment.NewLine}");
@@ -321,6 +310,10 @@ namespace WpfInspectionApp.Diagnostics
             catch
             {
                 // best effort
+            }
+            finally
+            {
+                t_inDiag = false;
             }
         }
     }
