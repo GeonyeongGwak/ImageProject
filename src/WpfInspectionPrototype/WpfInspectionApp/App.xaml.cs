@@ -3,6 +3,7 @@ using System.Data;
 using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using WpfInspectionApp.Diagnostics;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
@@ -38,6 +39,7 @@ public partial class App : Application
     private static bool s_imeGuardApplied;
     private static bool s_visualDiagnosticsGuardApplied;
     private static bool s_startupStabilityGuardsEnabled;
+    private Window? _startupGuardWindow;
     internal static bool StartupStabilityGuardsEnabled => s_startupStabilityGuardsEnabled;
 
     [DllImport("kernel32.dll", ExactSpelling = true)]
@@ -103,6 +105,7 @@ public partial class App : Application
             ShutdownMode = ShutdownMode.OnExplicitShutdown;
             base.OnStartup(e);
             FpExceptionGuard.Diag("App.OnStartup: base.OnStartup done before delayed MainWindow show");
+            ShowNativeDebugParkingWindow();
             _ = ShowMainWindowAfterNativeDebugDelayAsync(runSmokeTest);
             return;
         }
@@ -131,6 +134,8 @@ public partial class App : Application
         FpExceptionGuard.Diag("App.MainWindow: MainWindow created, showing");
         MainWindow.Show();
         FpExceptionGuard.Diag("App.MainWindow: MainWindow.Show() returned");
+        CloseNativeDebugParkingWindow();
+        ShutdownMode = runSmokeTest ? ShutdownMode.OnExplicitShutdown : ShutdownMode.OnMainWindowClose;
 
         if (runSmokeTest)
         {
@@ -145,6 +150,61 @@ public partial class App : Application
 
                 Shutdown(exitCode);
             }), System.Windows.Threading.DispatcherPriority.ApplicationIdle);
+        }
+    }
+
+    private void ShowNativeDebugParkingWindow()
+    {
+        try
+        {
+            _startupGuardWindow = new NativeDebugParkingWindow();
+            _startupGuardWindow.Show();
+            FpExceptionGuard.Diag("App.NativeDebugParkingWindow shown");
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"App.NativeDebugParkingWindow show FAILED {ex.GetType().FullName}: {ex.Message}");
+        }
+    }
+
+    private void CloseNativeDebugParkingWindow()
+    {
+        var parkingWindow = _startupGuardWindow;
+        if (parkingWindow == null)
+        {
+            return;
+        }
+
+        _startupGuardWindow = null;
+        try
+        {
+            parkingWindow.Close();
+            FpExceptionGuard.Diag("App.NativeDebugParkingWindow closed");
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"App.NativeDebugParkingWindow close FAILED {ex.GetType().FullName}: {ex.Message}");
+        }
+    }
+
+    private sealed class NativeDebugParkingWindow : Window
+    {
+        public NativeDebugParkingWindow()
+        {
+            Width = 1;
+            Height = 1;
+            Left = -32000;
+            Top = -32000;
+            ShowActivated = false;
+            ShowInTaskbar = false;
+            WindowStyle = WindowStyle.None;
+            ResizeMode = ResizeMode.NoResize;
+            Focusable = false;
+        }
+
+        protected override AutomationPeer? OnCreateAutomationPeer()
+        {
+            return null;
         }
     }
 
