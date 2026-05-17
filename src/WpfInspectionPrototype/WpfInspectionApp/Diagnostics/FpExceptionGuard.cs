@@ -11,7 +11,7 @@ namespace System.Runtime.CompilerServices
 
 namespace WpfInspectionApp.Diagnostics
 {
-    // Aggressive FPU exception mask + WPF software rendering forced at module load.
+    // Aggressive FPU exception mask installed before WPF startup.
     //
     // Root cause: under VS native debugging, something between our ModuleInitializer and
     // Application.ApplicationInit (NVIDIA D3D driver nvd3dumx.dll, OR the native debugger
@@ -131,16 +131,12 @@ namespace WpfInspectionApp.Diagnostics
                 Diag($"ModuleInit: VEH install FAILED {ex.GetType().Name}: {ex.Message}");
             }
 
-            try
-            {
-                System.Windows.Media.RenderOptions.ProcessRenderMode =
-                    System.Windows.Interop.RenderMode.SoftwareOnly;
-                Diag("ModuleInit: RenderMode = SoftwareOnly");
-            }
-            catch (Exception ex)
-            {
-                Diag($"ModuleInit: RenderMode set FAILED {ex.GetType().Name}: {ex.Message}");
-            }
+            // Do not touch WPF media/rendering APIs from the module initializer.
+            // Under VS native debugging, that can pull PresentationCore into the
+            // process before Application construction and fail before App-level
+            // handlers can run. App.OnStartup applies software rendering after WPF
+            // has reached a safer initialization point.
+            Diag("ModuleInit: WPF render-mode setup deferred to App.OnStartup");
 
             // Note: AssemblyLoad and FirstChanceException hooks were removed.
             //
