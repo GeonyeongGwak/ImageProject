@@ -85,13 +85,6 @@ public partial class App : Application
         PreloadNativeBridgeForDebugger(cmdArgs);
         FpExceptionGuard.TryMask();
 
-        // Catch-all #1: re-mask immediately before each WPF render frame.
-        System.Windows.Media.CompositionTarget.Rendering += (_, _) => FpExceptionGuard.TryMask();
-        // Catch-all #2: re-mask before EVERY dispatcher operation runs. Measure/Arrange/
-        // input/etc. all go through the dispatcher - this catches anything that the
-        // per-frame hook misses (e.g. layout passes happening between frames).
-        Dispatcher.Hooks.OperationStarted += (_, _) => FpExceptionGuard.TryMask();
-        Dispatcher.Hooks.OperationPosted  += (_, _) => FpExceptionGuard.TryMask();
         if (cmdArgs.Any(arg => string.Equals(arg, "--smoke-test", StringComparison.OrdinalIgnoreCase)))
         {
             // MainWindow is intentionally allowed to be created so that MptiBridge.dll

@@ -4,6 +4,7 @@ using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
 using WpfInspectionApp.AlgorithmPanels;
+using WpfInspectionApp.Diagnostics;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
 using WpfInspectionApp.Models;
@@ -174,22 +175,42 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
-        var defaultImage = _applicationPathService.FindDefaultImagePath();
-        if (defaultImage != null)
-        {
-            LoadImage(defaultImage);
-        }
-        else
-        {
-            ViewModel.StatusMessage = "Default Image/2D.jpg was not found.";
-        }
+        FpExceptionGuard.Diag("MainWindow.Loaded entered; deferring startup work");
+        Dispatcher.BeginInvoke(new Action(RunStartupLoadWork), DispatcherPriority.ApplicationIdle);
+    }
 
-        var importPath = ResolveStartupImportPath(Environment.GetCommandLineArgs().Skip(1));
-        DiagnosticsLog.Write($"Startup args: {string.Join(" | ", Environment.GetCommandLineArgs().Skip(1))}");
-        DiagnosticsLog.Write($"Startup import path: {importPath ?? "<none>"}");
-        if (importPath != null)
+    private void RunStartupLoadWork()
+    {
+        FpExceptionGuard.TryMask();
+        FpExceptionGuard.Diag("MainWindow.StartupLoadWork entered");
+        try
         {
-            ImportPartFromPath(importPath);
+            var defaultImage = _applicationPathService.FindDefaultImagePath();
+            if (defaultImage != null)
+            {
+                FpExceptionGuard.Diag("MainWindow.StartupLoadWork: loading default image");
+                LoadImage(defaultImage);
+                FpExceptionGuard.Diag("MainWindow.StartupLoadWork: default image loaded");
+            }
+            else
+            {
+                ViewModel.StatusMessage = "Default Image/2D.jpg was not found.";
+            }
+
+            var importPath = ResolveStartupImportPath(Environment.GetCommandLineArgs().Skip(1));
+            DiagnosticsLog.Write($"Startup args: {string.Join(" | ", Environment.GetCommandLineArgs().Skip(1))}");
+            DiagnosticsLog.Write($"Startup import path: {importPath ?? "<none>"}");
+            if (importPath != null)
+            {
+                FpExceptionGuard.Diag("MainWindow.StartupLoadWork: importing startup path");
+                ImportPartFromPath(importPath);
+                FpExceptionGuard.Diag("MainWindow.StartupLoadWork: startup path imported");
+            }
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"MainWindow.StartupLoadWork THREW {ex.GetType().FullName}: {ex.Message}");
+            throw;
         }
     }
 
