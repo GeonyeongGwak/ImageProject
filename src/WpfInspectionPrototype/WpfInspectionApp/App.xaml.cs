@@ -35,6 +35,8 @@ public partial class App : Application
     });
     public static AppServices Services => s_servicesLazy.Value;
     private static bool s_renderGuardApplied;
+    private static bool s_startupStabilityGuardsEnabled;
+    internal static bool StartupStabilityGuardsEnabled => s_startupStabilityGuardsEnabled;
 
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern bool IsDebuggerPresent();
@@ -120,7 +122,8 @@ public partial class App : Application
         var managedDebuggerAttached = Debugger.IsAttached;
         var nativeDebuggerAttached = IsNativeDebuggerAttached();
         var requestedByArg = cmdArgs.Any(arg => string.Equals(arg, "--software-rendering", StringComparison.OrdinalIgnoreCase));
-        if (!managedDebuggerAttached && !nativeDebuggerAttached && !requestedByArg)
+        s_startupStabilityGuardsEnabled = managedDebuggerAttached || nativeDebuggerAttached || requestedByArg;
+        if (!s_startupStabilityGuardsEnabled)
         {
             return;
         }

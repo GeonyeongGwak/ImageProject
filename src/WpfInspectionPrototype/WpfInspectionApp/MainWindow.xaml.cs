@@ -1,5 +1,6 @@
 using System.IO;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Threading;
@@ -42,6 +43,7 @@ public partial class MainWindow : Window, IDialogOwner
     public MainWindow()
     {
         InitializeComponent();
+        ApplyNativeDebugStartupGuards();
         SubscribeAlignPanelEvents();
         _roiOverlayCoordinator = new RoiOverlayCoordinator(App.Services.RoiGeometry);
         _applicationPathService = App.Services.ApplicationPath;
@@ -97,6 +99,31 @@ public partial class MainWindow : Window, IDialogOwner
         ApplyModelAndRefreshView(scheduleThreshold: false);
         _viewModel.SetAlignSearchTabActive(AlignPanel.IsSearchTabActive);
         _uiReady = true;
+    }
+
+    protected override AutomationPeer? OnCreateAutomationPeer()
+    {
+        if (App.StartupStabilityGuardsEnabled)
+        {
+            FpExceptionGuard.Diag("MainWindow automation peer suppressed for native-debug startup");
+            return null;
+        }
+
+        return base.OnCreateAutomationPeer();
+    }
+
+    private void ApplyNativeDebugStartupGuards()
+    {
+        if (!App.StartupStabilityGuardsEnabled)
+        {
+            return;
+        }
+
+        ShowActivated = false;
+        Focusable = false;
+        InputMethod.SetIsInputMethodEnabled(this, false);
+        InputMethod.SetPreferredImeState(this, InputMethodState.Off);
+        FpExceptionGuard.Diag("MainWindow native-debug startup guards applied");
     }
 
     private System.Windows.Forms.Panel EnsurePttViewerPanel()
