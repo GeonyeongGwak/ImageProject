@@ -544,59 +544,69 @@
                                              content is an implicit DataTemplate matched
                                              on the Parameters' concrete type (defined in
                                              Views/FlowAlgorithmTemplates.xaml). -->
-                                        <Expander Margin="0,2,0,0">
-                                            <Expander.Header>
-                                                <Grid HorizontalAlignment="Stretch" Width="380">
-                                                    <Grid.ColumnDefinitions>
-                                                        <ColumnDefinition Width="12" />
-                                                        <ColumnDefinition Width="100" />
-                                                        <ColumnDefinition Width="*" />
-                                                    </Grid.ColumnDefinitions>
-                                                    <!-- OK/NG color chip: green when last run was Success, red on fail, gray before first run. -->
-                                                    <Border Grid.Column="0"
-                                                            Width="10" Height="10"
-                                                            CornerRadius="2"
-                                                            VerticalAlignment="Center"
-                                                            HorizontalAlignment="Left">
-                                                        <Border.Style>
-                                                            <Style TargetType="Border">
-                                                                <Setter Property="Background" Value="#3F4854" />
-                                                                <Style.Triggers>
-                                                                    <DataTrigger Binding="{Binding LastResult, Converter={x:Static fa:NullToBoolConverter.NotNull}}" Value="True">
-                                                                        <Setter Property="Background" Value="#F44336" />
-                                                                    </DataTrigger>
-                                                                    <DataTrigger Binding="{Binding LastSuccess}" Value="True">
-                                                                        <Setter Property="Background" Value="#18E07B" />
-                                                                    </DataTrigger>
-                                                                </Style.Triggers>
-                                                            </Style>
-                                                        </Border.Style>
-                                                    </Border>
-                                                    <Button Grid.Column="1"
-                                                            Content="{Binding DisplayName}"
-                                                            Command="{Binding RunCommand}" />
-                                                    <TextBlock Grid.Column="2"
-                                                               Margin="6,0,0,0"
-                                                               VerticalAlignment="Center"
-                                                               TextTrimming="CharacterEllipsis"
-                                                               ToolTip="{Binding Summary}"
-                                                               Text="{Binding Summary}" />
-                                                </Grid>
-                                            </Expander.Header>
+                                        <!--
+                                          Each row is a header (color chip + Run + Summary + toggle) and a
+                                          collapsible body. We avoid WPF Expander on purpose - its built-in
+                                          chevron RotateTransform calls Matrix.CreateRotationRadians during
+                                          the first layout pass which triggers an FP-inexact SEH under VS
+                                          native debugging and crashes the process (0xC0000005 in JIT code).
+                                          A plain ToggleButton + Visibility binding doesn't go through
+                                          any rotation/animation path.
+                                        -->
+                                        <StackPanel Margin="0,2,0,0">
+                                            <Grid>
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="12" />
+                                                    <ColumnDefinition Width="100" />
+                                                    <ColumnDefinition Width="*" />
+                                                    <ColumnDefinition Width="24" />
+                                                </Grid.ColumnDefinitions>
+                                                <!-- OK/NG color chip: bound directly to a Brush computed
+                                                     on the runner. No DataTrigger / IValueConverter
+                                                     evaluation on the layout-critical path. -->
+                                                <Border Grid.Column="0"
+                                                        Width="10" Height="10"
+                                                        CornerRadius="2"
+                                                        VerticalAlignment="Center"
+                                                        HorizontalAlignment="Left"
+                                                        Background="{Binding OkNgBrush}" />
+                                                <Button Grid.Column="1"
+                                                        Content="{Binding DisplayName}"
+                                                        Command="{Binding RunCommand}" />
+                                                <TextBlock Grid.Column="2"
+                                                           Margin="6,0,0,0"
+                                                           VerticalAlignment="Center"
+                                                           TextTrimming="CharacterEllipsis"
+                                                           ToolTip="{Binding Summary}"
+                                                           Text="{Binding Summary}" />
+                                                <!-- Two-state toggle (+ / -). No RotateTransform / Storyboard. -->
+                                                <ToggleButton Grid.Column="3"
+                                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
+                                                              FontFamily="Consolas">
+                                                    <ToggleButton.Style>
+                                                        <Style TargetType="ToggleButton">
+                                                            <Setter Property="Content" Value="+" />
+                                                            <Style.Triggers>
+                                                                <Trigger Property="IsChecked" Value="True">
+                                                                    <Setter Property="Content" Value="-" />
+                                                                </Trigger>
+                                                            </Style.Triggers>
+                                                        </Style>
+                                                    </ToggleButton.Style>
+                                                </ToggleButton>
+                                            </Grid>
 
-                                            <!-- Expanded body: Parameters panel + structured last-result fields. -->
-                                            <StackPanel Margin="20,4,0,8">
+                                            <!-- Collapsible body. Visibility binding uses WPF's built-in
+                                                 BooleanToVisibilityConverter (no custom converter call). -->
+                                            <StackPanel Margin="20,4,0,8"
+                                                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
                                                 <ContentPresenter Content="{Binding Parameters}" />
 
                                                 <TextBlock Text="LAST RESULT FIELDS"
                                                            Margin="0,10,0,2"
                                                            FontSize="10"
-                                                           Foreground="#8BA5C4"
-                                                           Visibility="{Binding LastResult, Converter={x:Static fa:NullToVisibilityConverter.NotNullToVisible}}" />
+                                                           Foreground="#8BA5C4" />
 
-                                                <!-- Auto-renders one row per (Key, Value) in FlowAlgorithmResult.Fields.
-                                                     Each algorithm populates its own Fields in ReadResult, so this
-                                                     grid grows/shrinks per algo without XAML changes. -->
                                                 <ItemsControl ItemsSource="{Binding LastResult.Fields}">
                                                     <ItemsControl.ItemTemplate>
                                                         <DataTemplate>
@@ -617,7 +627,7 @@
                                                     </ItemsControl.ItemTemplate>
                                                 </ItemsControl>
                                             </StackPanel>
-                                        </Expander>
+                                        </StackPanel>
                                     </DataTemplate>
                                 </ItemsControl.ItemTemplate>
                             </ItemsControl>

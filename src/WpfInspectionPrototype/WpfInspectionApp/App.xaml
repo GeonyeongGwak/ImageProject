@@ -1,7 +1,8 @@
 ﻿<Application x:Class="WpfInspectionApp.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:local="clr-namespace:WpfInspectionApp">
+             xmlns:local="clr-namespace:WpfInspectionApp"
+             xmlns:swc="clr-namespace:System.Windows.Controls;assembly=PresentationFramework">
 
     <Application.Resources>
         <ResourceDictionary>
@@ -12,6 +13,12 @@
                      DataTemplate here. -->
                 <ResourceDictionary Source="Views/FlowAlgorithmTemplates.xaml" />
             </ResourceDictionary.MergedDictionaries>
+
+            <!-- WPF's built-in bool->Visibility converter. Used in place of a custom
+                 IValueConverter on the layout-critical path so the JIT doesn't run
+                 unfamiliar code during the first render (which had been observed to
+                 trigger fp-inexact SEH under VS native debugging). -->
+            <swc:BooleanToVisibilityConverter x:Key="BoolToVis" />
         </ResourceDictionary>
     </Application.Resources>
 </Application>

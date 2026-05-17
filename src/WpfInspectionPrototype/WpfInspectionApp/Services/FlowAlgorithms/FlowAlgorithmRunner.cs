@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Text;
 using System.Windows.Input;
+using System.Windows.Media;
 using WpfInspectionApp.Commands;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
@@ -22,6 +23,19 @@ public sealed class FlowAlgorithmRunner : ObservableObject
     private string _summary = "Not run yet.";
     private bool _lastSuccess;
     private FlowAlgorithmResult? _lastResult;
+    private bool _isExpanded;
+    // Pre-built brushes (frozen so they can be shared on the UI thread). Frozen brushes
+    // also dodge WPF's per-instance Matrix evaluation that triggers fp inexact under
+    // native debugging, which was crashing the app when DataTriggers re-evaluated.
+    private static readonly Brush s_idleBrush = MakeFrozenBrush(0xFF, 0x3F, 0x48, 0x54);
+    private static readonly Brush s_okBrush   = MakeFrozenBrush(0xFF, 0x18, 0xE0, 0x7B);
+    private static readonly Brush s_ngBrush   = MakeFrozenBrush(0xFF, 0xF4, 0x43, 0x36);
+    private static Brush MakeFrozenBrush(byte a, byte r, byte g, byte b)
+    {
+        var brush = new SolidColorBrush(Color.FromArgb(a, r, g, b));
+        brush.Freeze();
+        return brush;
+    }
 
     public FlowAlgorithmRunner(
         IFlowAlgorithm algorithm,
@@ -73,8 +87,29 @@ public sealed class FlowAlgorithmRunner : ObservableObject
     public FlowAlgorithmResult? LastResult
     {
         get => _lastResult;
-        private set => SetProperty(ref _lastResult, value);
+        private set
+        {
+            if (SetProperty(ref _lastResult, value))
+            {
+                // Push the derived color so XAML doesn't need a DataTrigger ladder.
+                // DataTriggers + custom IValueConverters get re-evaluated during the
+                // initial layout pass and were observed to trigger fp inexact under
+                // VS native debugging — direct Brush binding avoids that path.
+                OnPropertyChanged(nameof(OkNgBrush));
+            }
+        }
     }
+
+    // Toggle-bound expand state (replaces WPF Expander whose chevron RotateTransform
+    // triggers Matrix.CreateRotationRadians on first render).
+    public bool IsExpanded
+    {
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
+    }
+
+    // Color chip: gray before first run, green when last run was OK, red on NG/error.
+    public Brush OkNgBrush => _lastResult == null ? s_idleBrush : (_lastSuccess ? s_okBrush : s_ngBrush);
 
     private async Task RunAsync()
     {
