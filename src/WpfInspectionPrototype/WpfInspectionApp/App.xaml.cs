@@ -1,6 +1,7 @@
 using System.Configuration;
 using System.Data;
 using System.Diagnostics;
+using System.Runtime.InteropServices;
 using System.Windows;
 using WpfInspectionApp.Diagnostics;
 using WpfInspectionApp.Infrastructure;
@@ -33,6 +34,10 @@ public partial class App : Application
         }
     });
     public static AppServices Services => s_servicesLazy.Value;
+    private static bool s_renderGuardApplied;
+
+    [DllImport("kernel32.dll", ExactSpelling = true)]
+    private static extern bool IsDebuggerPresent();
 
     static App()
     {
@@ -117,16 +122,38 @@ public partial class App : Application
         FpExceptionGuard.Diag("App.OnStartup: base.OnStartup done");
     }
 
-    private static void ApplyDebuggerRenderGuard(string[] cmdArgs)
+    internal static void ApplyDebuggerRenderGuard(string[] cmdArgs)
     {
-        if (!Debugger.IsAttached
-            && !cmdArgs.Any(arg => string.Equals(arg, "--software-rendering", StringComparison.OrdinalIgnoreCase)))
+        var managedDebuggerAttached = Debugger.IsAttached;
+        var nativeDebuggerAttached = IsNativeDebuggerAttached();
+        var requestedByArg = cmdArgs.Any(arg => string.Equals(arg, "--software-rendering", StringComparison.OrdinalIgnoreCase));
+        if (!managedDebuggerAttached && !nativeDebuggerAttached && !requestedByArg)
         {
             return;
         }
 
+        if (s_renderGuardApplied)
+        {
+            return;
+        }
+
+        s_renderGuardApplied = true;
         System.Windows.Media.RenderOptions.ProcessRenderMode = System.Windows.Interop.RenderMode.SoftwareOnly;
         DiagnosticsLog.Write("WPF software rendering enabled for debugger stability.");
+        FpExceptionGuard.Diag(
+            $"WPF software rendering enabled managedDebugger={managedDebuggerAttached} nativeDebugger={nativeDebuggerAttached} arg={requestedByArg}");
+    }
+
+    private static bool IsNativeDebuggerAttached()
+    {
+        try
+        {
+            return IsDebuggerPresent();
+        }
+        catch
+        {
+            return false;
+        }
     }
 
     private static void PreloadNativeBridgeForDebugger(string[] cmdArgs)

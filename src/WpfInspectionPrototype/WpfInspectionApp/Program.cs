@@ -17,6 +17,8 @@ internal static class Program
             var app = new App();
             FpExceptionGuard.Diag("Program.Main: App constructed");
 
+            App.ApplyDebuggerRenderGuard(args);
+
             app.InitializeComponent();
             FpExceptionGuard.Diag("Program.Main: App.InitializeComponent done");
 
