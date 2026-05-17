@@ -123,6 +123,8 @@ public partial class MainWindow : Window, IDialogOwner
 
         ShowActivated = false;
         Focusable = false;
+        IsEnabled = false;
+        IsHitTestVisible = false;
         InputMethod.SetIsInputMethodEnabled(this, false);
         InputMethod.SetPreferredImeState(this, InputMethodState.Off);
         var guardedControls = GuardTextInputSubtree(this);
@@ -260,8 +262,29 @@ public partial class MainWindow : Window, IDialogOwner
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
+        if (App.StartupStabilityGuardsEnabled)
+        {
+            FpExceptionGuard.Diag("MainWindow.Loaded entered; delaying startup work for native-debug guard");
+            _ = RunStartupLoadWorkAfterNativeDebugDelayAsync();
+            return;
+        }
+
         FpExceptionGuard.Diag("MainWindow.Loaded entered; deferring startup work");
         Dispatcher.BeginInvoke(new Action(RunStartupLoadWork), DispatcherPriority.ApplicationIdle);
+    }
+
+    private async Task RunStartupLoadWorkAfterNativeDebugDelayAsync()
+    {
+        await Task.Delay(1500).ConfigureAwait(false);
+        await Dispatcher.InvokeAsync(() =>
+        {
+            FpExceptionGuard.TryMask();
+            IsEnabled = true;
+            IsHitTestVisible = true;
+            Focusable = true;
+            FpExceptionGuard.Diag("MainWindow native-debug delayed startup work dispatching");
+            RunStartupLoadWork();
+        }, DispatcherPriority.Background);
     }
 
     private void RunStartupLoadWork()
