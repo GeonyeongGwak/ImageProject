@@ -46,11 +46,6 @@ public partial class App : Application
     {
         FpExceptionGuard.TryMask();
         FpExceptionGuard.Diag("App ctor entered");
-        // InitializeComponent (App.g.cs) parses App.xaml — including the merged
-        // FlowAlgorithmTemplates resource dictionary. If we crash before the next
-        // checkpoint, the XAML parse / resource load is the culprit.
-        InitializeComponent();
-        FpExceptionGuard.Diag("App ctor: InitializeComponent done");
     }
 
     protected override void OnStartup(StartupEventArgs e)
