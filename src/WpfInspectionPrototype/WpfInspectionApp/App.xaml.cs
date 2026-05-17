@@ -36,11 +36,15 @@ public partial class App : Application
 
     static App()
     {
+        // Native debugging can re-enter WPF after changing the FPU exception mask.
+        // Re-mask immediately before System.Windows.Application's base constructor runs.
+        FpExceptionGuard.TryMask();
         FpExceptionGuard.Diag("App.cctor entered");
     }
 
     public App()
     {
+        FpExceptionGuard.TryMask();
         FpExceptionGuard.Diag("App ctor entered");
         // InitializeComponent (App.g.cs) parses App.xaml — including the merged
         // FlowAlgorithmTemplates resource dictionary. If we crash before the next
