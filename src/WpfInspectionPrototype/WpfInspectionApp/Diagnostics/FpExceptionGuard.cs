@@ -219,7 +219,13 @@ namespace WpfInspectionApp.Diagnostics
             t_vehDepth++;
             try
             {
-                if (t_vehDepth > 4)
+                // Re-entry depth grows only when VEH itself causes another exception
+                // before its own frame unwinds (e.g. managed throw inside the body).
+                // Pure "instruction re-fires same fp SEH" is NOT nested — t_vehDepth
+                // is 1 every time. So raise the limit (was 4) to be lenient for
+                // bursty composition fp ops on render threads; truly recursive bugs
+                // still cap out.
+                if (t_vehDepth > 32)
                 {
                     System.Threading.Interlocked.Increment(ref s_vehGiveUpCount);
                     return EXCEPTION_CONTINUE_SEARCH;

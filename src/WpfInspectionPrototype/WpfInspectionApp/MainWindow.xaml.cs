@@ -165,48 +165,53 @@ public partial class MainWindow : Window, IDialogOwner
         var guardedControls = GuardTextInputSubtree(this);
         FpExceptionGuard.Diag($"MainWindow native-debug startup guards applied textInputs={guardedControls}");
 
-        // ContentRendered fires after the first WPF composition pass — by then the
-        // dangerous WPF native init paths (PresentationCore static ctors, D3D9 caps
-        // probe, WindowsCodecs / DWrite first use) have all run. At that point we can
-        // safely restore interactivity so the user actually has a usable window.
-        // Without this, the window appears (ShowActivated=false hides it behind VS)
-        // and is fully disabled (IsEnabled/IsHitTestVisible=false) — looks like "the
-        // program didn't open" from the user's perspective.
-        ContentRendered += MainWindow_ContentRendered_ReleaseGuards;
+        // Release path. Use BOTH ContentRendered (preferred: fires after first
+        // composition = past dangerous WPF native init) AND a dispatcher idle fallback
+        // (in case ContentRendered doesn't fire because the window dies during first
+        // render). Whichever fires first wins thanks to _nativeDebugGuardsReleased.
+        ContentRendered += MainWindow_ReleaseGuards_Handler;
+        Dispatcher.BeginInvoke(
+            new Action(() => MainWindow_ReleaseGuards_Handler(this, EventArgs.Empty)),
+            DispatcherPriority.ApplicationIdle);
+        FpExceptionGuard.Diag("MainWindow native-debug guard release pending (ContentRendered + Idle)");
     }
 
-    private void MainWindow_ContentRendered_ReleaseGuards(object? sender, EventArgs e)
+    private void MainWindow_ReleaseGuards_Handler(object? sender, EventArgs e)
     {
+        // Log entry FIRST — if we crash later we'll know we at least got here.
+        FpExceptionGuard.Diag($"MainWindow guard release: entered (already-released={_nativeDebugGuardsReleased})");
         if (_nativeDebugGuardsReleased) return;
         _nativeDebugGuardsReleased = true;
-        ContentRendered -= MainWindow_ContentRendered_ReleaseGuards;
+        try { ContentRendered -= MainWindow_ReleaseGuards_Handler; } catch { /* event removal best-effort */ }
 
-        // Re-mask FPU one more time before touching window properties — restoring
-        // IsEnabled triggers a layout pass which uses Matrix math (the original fp
-        // inexact source). VEH + FltSave fix should already prevent the crash, but
-        // belt-and-suspenders.
-        FpExceptionGuard.TryMask();
+        // Re-mask FPU before any property write — restoring IsEnabled triggers a
+        // layout pass which uses Matrix math (the original fp inexact source). VEH
+        // already covers it, this is belt-and-suspenders.
+        try { FpExceptionGuard.TryMask(); } catch { }
 
+        // Per-step try/catch with logging so we know exactly which property assignment
+        // takes the process down (if any). If the log shows "step N done" but no
+        // "step N+1 done", step N+1 is the killer.
+        SafeStep("IsEnabled=true",          () => IsEnabled = true);
+        SafeStep("IsHitTestVisible=true",   () => IsHitTestVisible = true);
+        SafeStep("Focusable=true",          () => Focusable = true);
+        SafeStep("ImeEnabled=true",         () => InputMethod.SetIsInputMethodEnabled(this, true));
+        SafeStep("RestoreTextInputSubtree", () => RestoreTextInputSubtree(this));
+        SafeStep("Activate",                () => Activate());
+
+        FpExceptionGuard.Diag("MainWindow native-debug guards RELEASED");
+    }
+
+    private static void SafeStep(string tag, Action action)
+    {
         try
         {
-            IsEnabled = true;
-            IsHitTestVisible = true;
-            Focusable = true;
-            InputMethod.SetIsInputMethodEnabled(this, true);
-            // PreferredImeState left at Off — the project doesn't need IME and leaving
-            // it on can re-trigger the original IME-related crashes some users see.
-
-            // Re-enable focusability on text inputs that GuardTextInputSubtree disabled.
-            RestoreTextInputSubtree(this);
-
-            // Window may be behind VS — bring it forward (only after interactivity is
-            // restored). Activate doesn't grab focus aggressively, just z-orders up.
-            Activate();
-            FpExceptionGuard.Diag("MainWindow native-debug guards RELEASED on ContentRendered");
+            action();
+            FpExceptionGuard.Diag($"  release step ok: {tag}");
         }
         catch (Exception ex)
         {
-            FpExceptionGuard.Diag($"MainWindow guard release FAILED {ex.GetType().Name}: {ex.Message}");
+            FpExceptionGuard.Diag($"  release step FAILED: {tag} :: {ex.GetType().Name}: {ex.Message}");
         }
     }
 
