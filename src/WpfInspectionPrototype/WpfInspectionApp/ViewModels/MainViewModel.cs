@@ -881,15 +881,6 @@ public sealed class MainViewModel : ViewModelBase
             };
             InspectionTreeNodes.Add(windowNode);
 
-            windowNode.Children.Add(new InspectionTreeNodeViewModel
-            {
-                Header = $"ROI {FormatRoiBrief(window.Roi)}",
-                Kind = InspectionTreeNodeKind.WindowInfo,
-                Payload = window.Roi,
-                Foreground = new SolidColorBrush(Color.FromRgb(255, 210, 41)),
-                IsEnabled = false
-            });
-
             for (var algorithmIndex = 0; algorithmIndex < window.Algorithms.Count; algorithmIndex++)
             {
                 var algorithm = window.Algorithms[algorithmIndex];
@@ -905,11 +896,11 @@ public sealed class MainViewModel : ViewModelBase
                 windowNode.Children.Add(algorithmNode);
                 algorithmNode.Children.Add(new InspectionTreeNodeViewModel
                 {
-                    Header = $"Algorithm ROI {FormatRoiBrief(algorithm.AlgorithmRoi)}",
+                    Header = FormatAlgorithmDisplayName(algorithm),
                     Kind = InspectionTreeNodeKind.AlgorithmRoi,
-                    Payload = algorithm.AlgorithmRoi,
+                    Payload = algorithm,
                     Foreground = new SolidColorBrush(Color.FromRgb(128, 223, 255)),
-                    IsEnabled = false
+                    IsEnabled = true
                 });
                 algorithmNode.Children.Add(new InspectionTreeNodeViewModel
                 {
@@ -951,15 +942,11 @@ public sealed class MainViewModel : ViewModelBase
         return $"Window ROI {Math.Max(0, zeroBasedIndex) + 1}";
     }
 
-    private static string FormatRoiBrief(RoiRect? roi)
+    private static string FormatAlgorithmDisplayName(InspectionAlgorithmData algorithm)
     {
-        if (!roi.HasValue)
-        {
-            return "none";
-        }
-
-        var value = roi.Value;
-        return $"X {value.X} Y {value.Y}";
+        return !string.IsNullOrWhiteSpace(algorithm.DisplayName)
+            ? algorithm.DisplayName
+            : algorithm.Type;
     }
 
     public bool SelectTreeNode(InspectionTreeNodeViewModel? node)
