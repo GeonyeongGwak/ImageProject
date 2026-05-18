@@ -396,6 +396,11 @@ public static class LegacyRawPartImportAdapter
             SetInt(algorithm, "Align.Threshold", Round(binaryRange[0]));
         }
 
+        if (TryReadBoolLeaf(element, out var invertCheck, "InvChk", "InvertCheck", "bInvertCheck"))
+        {
+            SetBool(algorithm, "Align.InvertCheck", invertCheck);
+        }
+
         if (TryReadBoolLeaf(element, out var use2D, "Use2D"))
         {
             SetBool(algorithm, "Align.Use2D", use2D);
@@ -409,6 +414,28 @@ public static class LegacyRawPartImportAdapter
         if (TryReadIntLeaf(element, out var range2D, "TPR2D"))
         {
             SetInt(algorithm, "Align.Range2DType", range2D);
+        }
+
+        if (TryReadIntLeaf(element, out var range3D, "TPR3D", "Range3D", "nTypeRange3D"))
+        {
+            SetInt(algorithm, "Align.Range3DType", range3D);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var heightRange, "MnMxAvgHeiR") && heightRange.Length >= 3)
+        {
+            SetDouble(algorithm, "Align.HeightRateMin", heightRange[0]);
+            SetDouble(algorithm, "Align.HeightRateMax", heightRange[1]);
+            SetDouble(algorithm, "Align.HeightAvg", heightRange[2]);
+        }
+
+        if (TryReadBoolLeaf(element, out var useIpc, "UseIPC", "bUseIPC"))
+        {
+            SetBool(algorithm, "Align.UseIPC", useIpc);
+        }
+
+        if (TryReadIntLeaf(element, out var ipcClass, "CSIPC", "IPCClass", "byIPCClass"))
+        {
+            SetInt(algorithm, "Align.IPCClass", ipcClass);
         }
 
         if (TryReadBoolLeaf(element, out var useShift, "UseSft", "UseShift"))
@@ -499,6 +526,26 @@ public static class LegacyRawPartImportAdapter
             SetBool(algorithm, "Align.FillHole", fillHole);
         }
 
+        if (TryReadIntLeaf(element, out var inspOpt, "IOPT", "InspOPT", "byInspOPT"))
+        {
+            SetInt(algorithm, "Align.InspOPT", inspOpt);
+        }
+
+        if (TryReadDoubleLeaf(element, out var fiduAngle, "FiduAngle", "dFiduAngle"))
+        {
+            SetDouble(algorithm, "Align.FiduAngle", fiduAngle);
+        }
+
+        if (TryReadBoolLeaf(element, out var sameSize, "SSize", "SameSize", "bSameSize"))
+        {
+            SetBool(algorithm, "Align.SameSize", sameSize);
+        }
+
+        if (TryReadBoolLeaf(element, out var useFixedSize, "UseFixedSize"))
+        {
+            SetBool(algorithm, "Align.UseFixedSize", useFixedSize);
+        }
+
         SetBool(algorithm, "Import.AlignMapped", true);
     }
 
@@ -538,7 +585,12 @@ public static class LegacyRawPartImportAdapter
         SetInt(algorithm, "PadBW.Range2DType", ReadArrayInt(bData, 4));
         SetInt(algorithm, "PadBW.Range3DType", ReadArrayInt(bData, 5));
         SetInt(algorithm, "PadBW.LightCount", ReadArrayInt(bData, 6));
+        SetInt(algorithm, "PadBW.HistogramRangeType", ReadArrayInt(bData, 7));
+        SetInt(algorithm, "PadBW.HistogramMin", ReadArrayInt(bData, 8));
+        SetInt(algorithm, "PadBW.HistogramMax", ReadArrayInt(bData, 9));
+        SetInt(algorithm, "PadBW.HistogramMaxFreq", ReadArrayInt(bData, 10));
         SetInt(algorithm, "PadBW.Mask", ReadArrayInt(bData, 11));
+        ApplyPadBwMaskFlags(algorithm, "PadBW", ReadArrayInt(bData, 11));
         SetInt(algorithm, "PadBW.HistogramLimitMin", ReadArrayInt(bData, 12));
         SetInt(algorithm, "PadBW.HistogramLimitMax", ReadArrayInt(bData, 13));
         SetInt(algorithm, "PadBW.MaskShape", ReadArrayInt(bData, 14));
@@ -551,11 +603,13 @@ public static class LegacyRawPartImportAdapter
         SetInt(algorithm, "PadBW.Direction", ReadArrayInt(bData, 22));
         SetInt(algorithm, "PadBW.AIModelID", ReadArrayInt(bData, 24, -1));
 
+        SetBool(algorithm, "PadBW.UseFilter", HasFlag(dataFlags, 0x01));
         SetBool(algorithm, "PadBW.UseTeachArea", HasFlag(dataFlags, 0x02));
         SetBool(algorithm, "PadBW.UseShift", HasFlag(dataFlags, 0x04));
         SetBool(algorithm, "PadBW.UseBlobWidth", HasFlag(dataFlags, 0x08));
         SetBool(algorithm, "PadBW.UseBlobLength", HasFlag(dataFlags, 0x10));
         SetBool(algorithm, "PadBW.UseBlobArea", HasFlag(dataFlags, 0x20));
+        SetBool(algorithm, "PadBW.UseOption3DMinMax", HasFlag(dataFlags, 0x40));
         SetBool(algorithm, "PadBW.UseOption3DRange", HasFlag(dataFlags, 0x80));
         SetBool(algorithm, "PadBW.UseRelativeHeight", HasFlag(data2Flags, 0x01));
         SetBool(algorithm, "PadBW.UseShadeFix", HasFlag(data2Flags, 0x02));
@@ -564,6 +618,9 @@ public static class LegacyRawPartImportAdapter
         SetBool(algorithm, "PadBW.UseHoleAlign", HasFlag(data2Flags, 0x10));
         SetBool(algorithm, "PadBW.UseNGGrouping", HasFlag(data2Flags, 0x20));
         SetBool(algorithm, "PadBW.UseDirection", HasFlag(data2Flags, 0x40));
+        SetBool(algorithm, "PadBW.UseWarningArea", HasFlag(data3Flags, 0x01));
+        SetBool(algorithm, "PadBW.WarningAnd", HasFlag(data3Flags, 0x02));
+        SetBool(algorithm, "PadBW.UseImageAnd", HasFlag(data3Flags, 0x04));
         SetBool(algorithm, "PadBW.UseAI", HasFlag(data3Flags, 0x08));
 
         SetDouble(algorithm, "PadBW.HeightMin", ReadArrayDouble(fData, 0));
@@ -584,6 +641,8 @@ public static class LegacyRawPartImportAdapter
         SetDouble(algorithm, "PadBW.RelativeHeightMax", ReadArrayDouble(fData, 15));
         SetDouble(algorithm, "PadBW.NGGroupingMaxSize", ReadArrayDouble(fData, 16));
         SetDouble(algorithm, "PadBW.NGGroupingDistance", ReadArrayDouble(fData, 17));
+        SetDouble(algorithm, "PadBW.HistogramMinValue", ReadArrayDouble(fData, 18, ReadArrayDouble(bData, 8)));
+        SetDouble(algorithm, "PadBW.HistogramMaxValue", ReadArrayDouble(fData, 19, ReadArrayDouble(bData, 9)));
         SetDouble(algorithm, "PadBW.DirectionLength", ReadArrayDouble(fData, 20));
         SetInt(algorithm, "PadBW.MinBlobArea", Math.Max(1, Round(ReadArrayDouble(fData, 9, 1))));
 
@@ -595,6 +654,7 @@ public static class LegacyRawPartImportAdapter
         if (TryReadIntLeaf(element, out var blobInfoCount, "BlobInfoCnt_"))
         {
             SetInt(algorithm, "PadBW.BlobInfoCount", Math.Max(0, blobInfoCount));
+            ApplyPadBwBlobLabelInfo(algorithm, element, Math.Max(0, blobInfoCount));
         }
 
         for (var index = 1; index <= 4; index++)
@@ -618,17 +678,29 @@ public static class LegacyRawPartImportAdapter
         var modeFlags = ReadArrayInt(bData, 1);
         var useHistogram = HasFlag(modeFlags, 0x04);
         var prefix = $"PadBW.Sub{index}";
+        var subBinaryMin = useHistogram
+            ? ReadArrayInt(fData, 2, ReadArrayInt(bData, 5, ReadArrayInt(bData, 2)))
+            : ReadArrayInt(bData, 2);
+        var subBinaryMax = useHistogram
+            ? ReadArrayInt(fData, 3, ReadArrayInt(bData, 6, ReadArrayInt(bData, 3, 255)))
+            : ReadArrayInt(bData, 3, 255);
 
+        SetInt(algorithm, $"{prefix}.DataFlags", ReadArrayInt(bData, 0));
+        SetBool(algorithm, $"{prefix}.UseFilter", HasFlag(ReadArrayInt(bData, 0), 0x01));
         SetBool(algorithm, $"{prefix}.Use2D", HasFlag(modeFlags, 0x01));
         SetBool(algorithm, $"{prefix}.Use3D", HasFlag(modeFlags, 0x02));
         SetBool(algorithm, $"{prefix}.UseHistogram", useHistogram);
         SetBool(algorithm, $"{prefix}.UseFillHole", HasFlag(modeFlags, 0x08));
-        SetInt(algorithm, $"{prefix}.BinaryMin", Net48Compat.Clamp(ReadArrayInt(bData, 2), 0, 255));
-        SetInt(algorithm, $"{prefix}.BinaryMax", Net48Compat.Clamp(ReadArrayInt(bData, 3, 255), 0, 255));
+        SetInt(algorithm, $"{prefix}.BinaryMin", Net48Compat.Clamp(subBinaryMin, 0, 255));
+        SetInt(algorithm, $"{prefix}.BinaryMax", Net48Compat.Clamp(subBinaryMax, 0, 255));
         SetInt(algorithm, $"{prefix}.Range2DType", ReadArrayInt(bData, 4));
+        SetInt(algorithm, $"{prefix}.HistogramMinByte", ReadArrayInt(bData, 5));
+        SetInt(algorithm, $"{prefix}.HistogramMaxByte", ReadArrayInt(bData, 6));
         SetInt(algorithm, $"{prefix}.Range3DType", ReadArrayInt(bData, 7));
         SetInt(algorithm, $"{prefix}.RangeHistogramType", ReadArrayInt(bData, 8));
+        SetInt(algorithm, $"{prefix}.HistogramMaxFreq", ReadArrayInt(bData, 9));
         SetInt(algorithm, $"{prefix}.Mask", ReadArrayInt(bData, 10));
+        ApplyPadBwMaskFlags(algorithm, prefix, ReadArrayInt(bData, 10));
         SetInt(algorithm, $"{prefix}.HistogramLimitMin", ReadArrayInt(bData, 11));
         SetInt(algorithm, $"{prefix}.HistogramLimitMax", ReadArrayInt(bData, 12));
         SetInt(algorithm, $"{prefix}.MaskShape", ReadArrayInt(bData, 13));
@@ -638,10 +710,67 @@ public static class LegacyRawPartImportAdapter
         SetDouble(algorithm, $"{prefix}.HeightMax", ReadArrayDouble(fData, 1));
         SetDouble(algorithm, $"{prefix}.HistogramMin", ReadArrayDouble(fData, 2, ReadArrayDouble(bData, 5)));
         SetDouble(algorithm, $"{prefix}.HistogramMax", ReadArrayDouble(fData, 3, ReadArrayDouble(bData, 6)));
+        SetDouble(algorithm, $"{prefix}.HistogramMinValue", ReadArrayDouble(fData, 2, ReadArrayDouble(bData, 5)));
+        SetDouble(algorithm, $"{prefix}.HistogramMaxValue", ReadArrayDouble(fData, 3, ReadArrayDouble(bData, 6)));
 
         if (TryReadNumberArrayLeaf(element, out var subLight, $"SubLight_{index}"))
         {
             SetInt(algorithm, $"{prefix}.LightCount", ReadArrayInt(subLight, 0));
+        }
+    }
+
+    private static void ApplyPadBwMaskFlags(InspectionAlgorithmData algorithm, string prefix, int maskFlags)
+    {
+        SetBool(algorithm, $"{prefix}.MaskFilter", HasFlag(maskFlags, 0x01));
+        SetBool(algorithm, $"{prefix}.MaskBright", HasFlag(maskFlags, 0x02));
+        SetBool(algorithm, $"{prefix}.MaskIn", HasFlag(maskFlags, 0x04));
+        SetBool(algorithm, $"{prefix}.MaskOut", HasFlag(maskFlags, 0x08));
+    }
+
+    private static void ApplyPadBwBlobLabelInfo(InspectionAlgorithmData algorithm, XElement element, int blobInfoCount)
+    {
+        var limit = Math.Min(blobInfoCount, 32);
+        if (limit <= 0)
+        {
+            return;
+        }
+
+        TryReadNumberArrayLeaf(element, out var ids, "BlobID_");
+        TryReadNumberArrayLeaf(element, out var centerXs, "BlobCX_");
+        TryReadNumberArrayLeaf(element, out var centerYs, "BlobCY_");
+        TryReadNumberArrayLeaf(element, out var areas, "BlobArea_");
+        TryReadNumberArrayLeaf(element, out var widths, "BlobWidth_");
+        TryReadNumberArrayLeaf(element, out var lengths, "BlobLength_");
+        TryReadNumberArrayLeaf(element, out var startXs, "BlobStX_");
+        TryReadNumberArrayLeaf(element, out var startYs, "BlobStY_");
+
+        for (var offset = 0; offset < limit; offset++)
+        {
+            var prefix = $"PadBW.BlobInfo{offset + 1}";
+            SetOptionalInt(algorithm, $"{prefix}.Id", ids, offset);
+            SetOptionalDouble(algorithm, $"{prefix}.CenterX", centerXs, offset);
+            SetOptionalDouble(algorithm, $"{prefix}.CenterY", centerYs, offset);
+            SetOptionalDouble(algorithm, $"{prefix}.Area", areas, offset);
+            SetOptionalDouble(algorithm, $"{prefix}.Width", widths, offset);
+            SetOptionalDouble(algorithm, $"{prefix}.Length", lengths, offset);
+            SetOptionalDouble(algorithm, $"{prefix}.StartX", startXs, offset);
+            SetOptionalDouble(algorithm, $"{prefix}.StartY", startYs, offset);
+        }
+    }
+
+    private static void SetOptionalInt(InspectionAlgorithmData algorithm, string key, IReadOnlyList<double> values, int index)
+    {
+        if (index >= 0 && index < values.Count)
+        {
+            SetInt(algorithm, key, Round(values[index]));
+        }
+    }
+
+    private static void SetOptionalDouble(InspectionAlgorithmData algorithm, string key, IReadOnlyList<double> values, int index)
+    {
+        if (index >= 0 && index < values.Count)
+        {
+            SetDouble(algorithm, key, values[index]);
         }
     }
 

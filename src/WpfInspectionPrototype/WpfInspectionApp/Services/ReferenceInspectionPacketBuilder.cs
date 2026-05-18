@@ -164,9 +164,9 @@ public static class ReferenceInspectionPacketBuilder
     {
         return referenceName switch
         {
-            "Align" => ["LTInfo", "SearMargin_mm", "Use2D", "TPR2D", "MnMx2D", "Use3D", "UseSft", "Sft", "UseAng", "Ang", "SearPnt", "Searsz", "SearMargin", "FH"],
+            "Align" => ["LTInfo", "SearMargin_mm", "InvChk", "Use2D", "TPR2D", "TPR3D", "MnMx2D", "MnMxAvgHeiR", "Use3D", "UseIPC", "CSIPC", "UseSft", "Sft", "UseAng", "Ang", "SearPnt", "Searsz", "SearMargin", "FH", "IOPT", "SSize", "UseFixedSize"],
             "AlignEdge" => ["InspDirection", "UsePeak", "MinEdge", "MaxEdge", "Search", "Edge", "Angle", "Offset", "ROI"],
-            "PadBW" => ["BData", "FData", "SubBData", "SubFData", "SubLight", "SubC", "AMROI", "ROI"],
+            "PadBW" => ["BData", "FData", "SubBData", "SubFData", "SubLight", "SubC", "BlobInfo", "BlobID", "BlobCX", "BlobCY", "BlobArea", "BlobWidth", "BlobLength", "BlobStX", "BlobStY", "AMROI", "ROI"],
             "NGBlob" => ["BData", "FData", "UseData", "SelV", "ROIF", "AMROI", "ROI"],
             "ShapeX" => ["OCRMxCnt", "ImgCBLTData", "ROICnt", "Dir", "MSc", "Hist", "Opt", "Asp", "thick", "VMxLeng", "HMxLeng", "NGA", "CrtA", "MxChLeng", "TBRate", "TPSel", "ROI", "UShp", "UExShp"],
             _ => ["BData", "FData", "UseData", "ROI", "AMROI", "Sub", "Threshold", "Tolerance"]
