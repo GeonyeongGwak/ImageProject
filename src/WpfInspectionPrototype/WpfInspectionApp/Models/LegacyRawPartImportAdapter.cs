@@ -368,9 +368,27 @@ public static class LegacyRawPartImportAdapter
         {
             ApplyAlignParameters(algorithm, element, transform);
         }
+        else if (string.Equals(algorithm.Type, "AlgoBW", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyBlackWhiteParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoBlob", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(algorithm.Type, "AlgoBody_Blob", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(algorithm.Type, "AlgoBump", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyBlobParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoNGBlob", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyNgBlobParameters(algorithm, element, transform);
+        }
         else if (string.Equals(algorithm.Type, "AlgoPadBW", StringComparison.OrdinalIgnoreCase))
         {
             ApplyPadBwParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoShapeX", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyShapeXParameters(algorithm, element, transform);
         }
     }
 
@@ -547,6 +565,563 @@ public static class LegacyRawPartImportAdapter
         }
 
         SetBool(algorithm, "Import.AlignMapped", true);
+    }
+
+    private static void ApplyBlackWhiteParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetBoolIfPresent(algorithm, $"{family}.InvertCheck", element, "InvChk", "InvertCheck", "bInvertCheck");
+        SetBoolIfPresent(algorithm, $"{family}.Use2D", element, "Use2D", "b2DCheck");
+        SetBoolIfPresent(algorithm, $"{family}.Use3D", element, "Use3D", "b3DCheck");
+        SetBoolIfPresent(algorithm, $"{family}.ChipTracking", element, "ChipTrack", "ChipTracking");
+        SetBoolIfPresent(algorithm, $"{family}.UseTeachingRate", element, "UseTCR", "UseTeachingRate");
+        SetBoolIfPresent(algorithm, $"{family}.UseHeightMean", element, "UseHMean", "UseHeightMean");
+        SetBoolIfPresent(algorithm, $"{family}.UseHeightMeanMin", element, "UseHOpt", "UseHeightMeanMin");
+
+        SetIntIfPresent(algorithm, $"{family}.Range2DType", element, "R2D", "TPR2D", "Range");
+        SetIntIfPresent(algorithm, $"{family}.Range3DType", element, "R3D", "TPR3D", "N3dRange", "n3dRange");
+        SetDoubleIfPresent(algorithm, $"{family}.PercentOK", element, "PerOK", "PercentOK");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachingArea", element, "TCArea2", "TeachingArea");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachingAreaPix", element, "TeachingAreaPix");
+        SetDoubleIfPresent(algorithm, $"{family}.AreaCurrent", element, "AreaCur", "AreaCurrent");
+        SetDoubleIfPresent(algorithm, $"{family}.StdOKArea", element, "StdOKArea");
+        SetDoubleIfPresent(algorithm, $"{family}.ChipTrackingGap", element, "ChipTrackGap", "ChipTrackingGap");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightMeanMinUm", element, "HMeanMin", "HeightMeanMinUm");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightMeanMax", element, "HMeanMax", "HeightMeanMax");
+
+        if (TryReadNumberArrayLeaf(element, out var binaryRange, "MnMx2D") && binaryRange.Length >= 2)
+        {
+            SetBinaryRange(algorithm, family, Round(binaryRange[0]), Round(binaryRange[1]));
+        }
+        else if (TryReadIntLeaf(element, out var minValue, "MinValue")
+            && TryReadIntLeaf(element, out var maxValue, "MaxValue"))
+        {
+            SetBinaryRange(algorithm, family, minValue, maxValue);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var heightRange, "MnMxAvg3D", "MnMxAvgHeiR") && heightRange.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.HeightMin", heightRange[0]);
+            SetDouble(algorithm, $"{family}.HeightMax", heightRange[1]);
+            SetDouble(algorithm, $"{family}.HeightAvg", heightRange[2]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.HeightMin", element, "d3dMinValue", "D3dHeightMin");
+            SetDoubleIfPresent(algorithm, $"{family}.HeightMax", element, "d3dMaxValue", "D3dHeightMax");
+            SetDoubleIfPresent(algorithm, $"{family}.HeightAvg", element, "d3dAvgHeight", "D3dHeightAvg");
+        }
+
+        SetBool(algorithm, "Import.BlackWhiteMapped", true);
+    }
+
+    private static void ApplyBlobParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetBoolIfPresent(algorithm, $"{family}.InvertCheck", element, "Inv", "InvChk", "InvertCheck");
+        SetBoolIfPresent(algorithm, $"{family}.Invert", element, "Inv", "InvChk", "InvertCheck");
+        SetBoolIfPresent(algorithm, $"{family}.UseIPC", element, "UseIPC", "bUseIPC");
+        SetIntIfPresent(algorithm, $"{family}.IpcClass", element, "CSIPC", "IPCClass", "byIPCClass");
+        SetIntIfPresent(algorithm, $"{family}.IPCClass", element, "CSIPC", "IPCClass", "byIPCClass");
+        SetBoolIfPresent(algorithm, $"{family}.Use2D", element, "Use2D");
+        SetBoolIfPresent(algorithm, $"{family}.Use3D", element, "Use3D");
+        SetBoolIfPresent(algorithm, $"{family}.UseShift", element, "UseShift", "UseSft");
+        SetBoolIfPresent(algorithm, $"{family}.FillHole", element, "FillHole", "FH");
+        SetBoolIfPresent(algorithm, $"{family}.UseFillHole", element, "FillHole", "FH");
+        SetIntIfPresent(algorithm, $"{family}.Range2DType", element, "TPR2D", "R2D", "Range");
+        SetIntIfPresent(algorithm, $"{family}.Range3DType", element, "TPR3D", "R3D", "Range3D");
+
+        if (TryReadNumberArrayLeaf(element, out var areaRange, "MnMxArea") && areaRange.Length >= 2)
+        {
+            SetBool(algorithm, $"{family}.UseArea", true);
+            SetDouble(algorithm, $"{family}.AreaMin", areaRange[0]);
+            SetDouble(algorithm, $"{family}.AreaMax", areaRange[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var binaryRange, "MnMx2D") && binaryRange.Length >= 2)
+        {
+            SetBinaryRange(algorithm, family, Round(binaryRange[0]), Round(binaryRange[1]));
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var heightRange, "MnMxAvgHeiR", "MnMxAvg3D") && heightRange.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.HeightRateMin", heightRange[0]);
+            SetDouble(algorithm, $"{family}.HeightRateMax", heightRange[1]);
+            SetDouble(algorithm, $"{family}.HeightAvg", heightRange[2]);
+            SetDouble(algorithm, $"{family}.MinHeightRate", heightRange[0]);
+            SetDouble(algorithm, $"{family}.MaxHeightRate", heightRange[1]);
+            SetDouble(algorithm, $"{family}.TargetHeight", heightRange[2]);
+            SetDouble(algorithm, $"{family}.MinHeight", heightRange[0]);
+            SetDouble(algorithm, $"{family}.MaxHeight", heightRange[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var shift, "Shift", "Sft") && shift.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.ShiftX", shift[0]);
+            SetDouble(algorithm, $"{family}.ShiftY", shift[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var teachWidthRate, "MnMxTCWR") && teachWidthRate.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.TeachWidthRateMin", teachWidthRate[0]);
+            SetDouble(algorithm, $"{family}.TeachWidthRateMax", teachWidthRate[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var teachLengthRate, "MnMxTCLR") && teachLengthRate.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.TeachLengthRateMin", teachLengthRate[0]);
+            SetDouble(algorithm, $"{family}.TeachLengthRateMax", teachLengthRate[1]);
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.UseWidth", element, "UseTCW");
+        SetBoolIfPresent(algorithm, $"{family}.UseLength", element, "UseTCL");
+        SetDoubleIfPresent(algorithm, $"{family}.BlobSizeWidth", element, "TCW");
+        SetDoubleIfPresent(algorithm, $"{family}.BlobSizeLength", element, "TCL");
+
+        ApplyBlobPatternParameters(algorithm, element, family);
+        ApplyBlobSubLineParameters(algorithm, element, family);
+
+        SetBool(algorithm, "Import.BlobMapped", true);
+    }
+
+    private static void ApplyBlobPatternParameters(InspectionAlgorithmData algorithm, XElement element, string family)
+    {
+        SetBoolIfPresent(algorithm, $"{family}.UseForeignPattern", element, "Use2D_pat");
+        SetBoolIfPresent(algorithm, $"{family}.ForeignPatternBinary", element, "Use2D_pat");
+
+        if (TryReadNumberArrayLeaf(element, out var pattern2D, "MnMx2D_pat") && pattern2D.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.ForeignPattern2DMin", pattern2D[0]);
+            SetDouble(algorithm, $"{family}.ForeignPattern2DMax", pattern2D[1]);
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.UseForeignPattern3D", element, "Use3D_pat");
+        if (TryReadNumberArrayLeaf(element, out var pattern3D, "MnMxHei_pat", "MnMx3D_pat") && pattern3D.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.ForeignPatternHeightMin", pattern3D[0]);
+            SetDouble(algorithm, $"{family}.ForeignPatternHeightMax", pattern3D[1]);
+        }
+    }
+
+    private static void ApplyBlobSubLineParameters(InspectionAlgorithmData algorithm, XElement element, string family)
+    {
+        SetBoolIfPresent(algorithm, $"{family}.UseSubLine2D", element, "Use2D_SB");
+        if (TryReadNumberArrayLeaf(element, out var subLine2D, "MnMx2D_SB") && subLine2D.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.SubLine2DMin", subLine2D[0]);
+            SetDouble(algorithm, $"{family}.SubLine2DMax", subLine2D[1]);
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.UseSubLine3D", element, "Use3D_SB");
+        if (TryReadNumberArrayLeaf(element, out var subLine3D, "MnMxAvgHeiR_SB") && subLine3D.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.SubLine3DMin", subLine3D[0]);
+            SetDouble(algorithm, $"{family}.SubLine3DMax", subLine3D[1]);
+            if (subLine3D.Length >= 3)
+            {
+                SetDouble(algorithm, $"{family}.SubLine3DAvg", subLine3D[2]);
+            }
+        }
+    }
+
+    private static void ApplyNgBlobParameters(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
+    {
+        var family = algorithm.ParameterFamily;
+        var bData = TryReadNumberArrayLeaf(element, out var parsedBData, "BData")
+            ? parsedBData
+            : Array.Empty<double>();
+        var fData = TryReadNumberArrayLeaf(element, out var parsedFData, "FData")
+            ? parsedFData
+            : Array.Empty<double>();
+
+        SetInt(algorithm, $"{family}.RawBDataCount", bData.Length);
+        SetInt(algorithm, $"{family}.RawFDataCount", fData.Length);
+
+        var dataFlags = TryReadIntLeaf(element, out var explicitDataFlags, "UseData")
+            ? explicitDataFlags
+            : ReadArrayInt(bData, 0);
+        var data2Flags = TryReadIntLeaf(element, out var explicitData2Flags, "UseData2")
+            ? explicitData2Flags
+            : 0;
+
+        SetInt(algorithm, $"{family}.DataFlags", dataFlags);
+        SetInt(algorithm, $"{family}.Data2Flags", data2Flags);
+        SetFlagBooleans(algorithm, family, dataFlags,
+            ("Use2D", 0x01),
+            ("Use3D", 0x02),
+            ("UseFilter", 0x04),
+            ("UseWidth", 0x08),
+            ("UseLength", 0x10),
+            ("UseArea", 0x20),
+            ("UseColor", 0x40),
+            ("UseFillHole", 0x80),
+            ("FillHole", 0x80),
+            ("UseExtraBumpPercent", 0x100),
+            ("UseExtraBumpWidth", 0x200),
+            ("UseHeight", 0x400),
+            ("UseCoplanarity", 0x800),
+            ("UseWarpageDeviation", 0x1000),
+            ("UseWarpageDeviationX", 0x2000),
+            ("UseWarpageDeviationY", 0x4000),
+            ("UseHistogram", 0x8000),
+            ("UseAreaFilter", 0x10000),
+            ("UseClustering", 0x20000),
+            ("UseAnd", 0x40000),
+            ("UseContrast", 0x80000),
+            ("UseColorContrast", 0x100000),
+            ("UseUnderHeight", 0x200000),
+            ("UseChippingType", 0x400000),
+            ("UseBumpNgToOk", 0x800000),
+            ("UseScratchView", 0x1000000),
+            ("UseScDistance", 0x2000000),
+            ("UseScThickness", 0x4000000),
+            ("UseBallDamage", 0x8000000),
+            ("UseBallLand", 0x10000000),
+            ("UseWidthC", 0x20000000),
+            ("UseLengthC", 0x40000000));
+        SetFlagBooleans(algorithm, family, data2Flags,
+            ("UseUnderArea", 0x01),
+            ("UseRelativeHeight", 0x02),
+            ("UseSideWidth", 0x04),
+            ("UseSideLength", 0x08),
+            ("UseSideArea", 0x10),
+            ("UseAI", 0x20),
+            ("UseRectSize", 0x40),
+            ("UseContrastExceptRange", 0x80),
+            ("UseInsideBubbleWidth", 0x100),
+            ("UseInsideBubbleLength", 0x200),
+            ("UseInsideBubbleArea", 0x400));
+
+        if (bData.Length >= 4)
+        {
+            SetBinaryRange(algorithm, family, ReadArrayInt(bData, 2), ReadArrayInt(bData, 3, 255));
+        }
+
+        SetInt(algorithm, $"{family}.Range2DType", ReadArrayInt(bData, 4));
+        SetInt(algorithm, $"{family}.Range3DType", ReadArrayInt(bData, 5));
+        SetInt(algorithm, $"{family}.InspType", ReadArrayInt(bData, 6));
+        SetInt(algorithm, $"{family}.InspArea", ReadArrayInt(bData, 7));
+        SetInt(algorithm, $"{family}.WarpageOption", ReadArrayInt(bData, 8));
+        SetBool(algorithm, $"{family}.UseExceptPattern", ReadArrayInt(bData, 9) != 0);
+        SetInt(algorithm, $"{family}.PatternScore", ReadArrayInt(bData, 10, 80));
+        SetInt(algorithm, $"{family}.BallRangeMin", ReadArrayInt(bData, 11));
+        SetInt(algorithm, $"{family}.BallRangeMax", ReadArrayInt(bData, 12));
+        SetInt(algorithm, $"{family}.HistoMin2D", ReadArrayInt(bData, 13));
+        SetInt(algorithm, $"{family}.HistoMax2D", ReadArrayInt(bData, 14));
+        SetInt(algorithm, $"{family}.LimitMin", ReadArrayInt(bData, 15));
+        SetInt(algorithm, $"{family}.LimitMax", ReadArrayInt(bData, 16, 255));
+        SetInt(algorithm, $"{family}.RangeHistogramType", ReadArrayInt(bData, 17));
+        SetInt(algorithm, $"{family}.MinAreaFilter", ReadArrayInt(bData, 18));
+        SetInt(algorithm, $"{family}.GridX", ReadArrayInt(bData, 19));
+        SetInt(algorithm, $"{family}.GridY", ReadArrayInt(bData, 20));
+        SetInt(algorithm, $"{family}.HistogramLocalType", ReadArrayInt(bData, 21));
+        SetInt(algorithm, $"{family}.MinContrast", ReadArrayInt(bData, 22));
+        SetInt(algorithm, $"{family}.ColorContrast", ReadArrayInt(bData, 23));
+        SetInt(algorithm, $"{family}.DefineNumber", ReadArrayInt(bData, 24));
+        SetInt(algorithm, $"{family}.TargetType", ReadArrayInt(bData, 25));
+        SetInt(algorithm, $"{family}.MinimumNG", ReadArrayInt(bData, 26));
+        SetInt(algorithm, $"{family}.BlobType", ReadArrayInt(bData, 27));
+        SetInt(algorithm, $"{family}.AIModelID", ReadArrayInt(bData, 28, -1));
+        SetInt(algorithm, $"{family}.ContrastExceptRangeNum", ReadArrayInt(bData, 29));
+        SetInt(algorithm, $"{family}.ContrastExceptRangeMode", ReadArrayInt(bData, 30));
+        SetInt(algorithm, $"{family}.KernelSize", ReadArrayInt(bData, 31));
+        SetInt(algorithm, $"{family}.DownSample", ReadArrayInt(bData, 32));
+        SetInt(algorithm, $"{family}.InsideThreshold", ReadArrayInt(bData, 33));
+
+        ApplyNgBlobFloatParameters(algorithm, family, fData);
+
+        if (TryReadIntLeaf(element, out var selectValue, "SelV"))
+        {
+            SetInt(algorithm, $"{family}.SelectValue", selectValue);
+        }
+
+        for (var index = 1; index <= 4; index++)
+        {
+            ApplyNgBlobRoi(algorithm, element, family, transform, index);
+        }
+
+        SetBool(algorithm, "Import.NGBlobMapped", true);
+    }
+
+    private static void ApplyNgBlobFloatParameters(InspectionAlgorithmData algorithm, string family, IReadOnlyList<double> fData)
+    {
+        SetDouble(algorithm, $"{family}.HeightMin", ReadArrayDouble(fData, 0));
+        SetDouble(algorithm, $"{family}.HeightMax", ReadArrayDouble(fData, 1));
+        SetDouble(algorithm, $"{family}.MinHeight", ReadArrayDouble(fData, 0));
+        SetDouble(algorithm, $"{family}.MaxHeight", ReadArrayDouble(fData, 1));
+        SetDouble(algorithm, $"{family}.WidthLimit", ReadArrayDouble(fData, 2));
+        SetDouble(algorithm, $"{family}.LengthLimit", ReadArrayDouble(fData, 3));
+        SetDouble(algorithm, $"{family}.AreaLimit", ReadArrayDouble(fData, 4));
+        SetDouble(algorithm, $"{family}.WidthMax", ReadArrayDouble(fData, 2));
+        SetDouble(algorithm, $"{family}.LengthMax", ReadArrayDouble(fData, 3));
+        SetDouble(algorithm, $"{family}.AreaMin", ReadArrayDouble(fData, 4));
+        SetDouble(algorithm, $"{family}.ExtraBumpPercent", ReadArrayDouble(fData, 5));
+        SetDouble(algorithm, $"{family}.ExtraBumpWidth", ReadArrayDouble(fData, 6));
+        SetDouble(algorithm, $"{family}.OverHeightMax", ReadArrayDouble(fData, 7));
+        SetDouble(algorithm, $"{family}.ScDistanceMax", ReadArrayDouble(fData, 8));
+        SetDouble(algorithm, $"{family}.ScThicknessMax", ReadArrayDouble(fData, 9));
+        SetDouble(algorithm, $"{family}.WarpageDeviation", ReadArrayDouble(fData, 10));
+        SetDouble(algorithm, $"{family}.WarpageDeviationX", ReadArrayDouble(fData, 11));
+        SetDouble(algorithm, $"{family}.WarpageDeviationY", ReadArrayDouble(fData, 12));
+        SetDouble(algorithm, $"{family}.HistoMinValue", ReadArrayDouble(fData, 32));
+        SetDouble(algorithm, $"{family}.HistoMaxValue", ReadArrayDouble(fData, 33));
+        SetDouble(algorithm, $"{family}.HistoLocalAreaRate", ReadArrayDouble(fData, 34));
+        SetDouble(algorithm, $"{family}.ClusteringPitch", ReadArrayDouble(fData, 35));
+        SetDouble(algorithm, $"{family}.GroupingNumber", ReadArrayDouble(fData, 36));
+        SetDouble(algorithm, $"{family}.Group", ReadArrayDouble(fData, 37));
+        SetDouble(algorithm, $"{family}.ForeignMaskWidth", ReadArrayDouble(fData, 38));
+        SetDouble(algorithm, $"{family}.ForeignMaskHeight", ReadArrayDouble(fData, 39));
+        SetDouble(algorithm, $"{family}.WarpageDeviationMin", ReadArrayDouble(fData, 40));
+        SetDouble(algorithm, $"{family}.WidthCLimit", ReadArrayDouble(fData, 41));
+        SetDouble(algorithm, $"{family}.LengthCLimit", ReadArrayDouble(fData, 42));
+        SetDouble(algorithm, $"{family}.SideWidthMin", ReadArrayDouble(fData, 43));
+        SetDouble(algorithm, $"{family}.SideWidthMax", ReadArrayDouble(fData, 44));
+        SetDouble(algorithm, $"{family}.SideLengthMin", ReadArrayDouble(fData, 45));
+        SetDouble(algorithm, $"{family}.SideLengthMax", ReadArrayDouble(fData, 46));
+        SetDouble(algorithm, $"{family}.SideAreaMin", ReadArrayDouble(fData, 47));
+        SetDouble(algorithm, $"{family}.SideAreaMax", ReadArrayDouble(fData, 48));
+        SetDouble(algorithm, $"{family}.WidthMin", ReadArrayDouble(fData, 49));
+        SetDouble(algorithm, $"{family}.InsideBubbleWidth", ReadArrayDouble(fData, 50));
+        SetDouble(algorithm, $"{family}.InsideBubbleLength", ReadArrayDouble(fData, 51));
+        SetDouble(algorithm, $"{family}.InsideBubbleArea", ReadArrayDouble(fData, 52));
+    }
+
+    private static void ApplyNgBlobRoi(InspectionAlgorithmData algorithm, XElement element, string family, LegacyRoiTransform transform, int index)
+    {
+        if (!TryReadNumberArrayLeaf(element, out var roi, $"ROIF{index}") || roi.Length < 4)
+        {
+            return;
+        }
+
+        var prefix = $"{family}.Roi{index}";
+        SetDouble(algorithm, $"{prefix}.Left", roi[0]);
+        SetDouble(algorithm, $"{prefix}.Top", roi[1]);
+        SetDouble(algorithm, $"{prefix}.Right", roi[2]);
+        SetDouble(algorithm, $"{prefix}.Bottom", roi[3]);
+        algorithm.Parameters[$"{prefix}.Raw"] = string.Join(",", roi.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture)));
+
+        var leftTop = ConvertLegacyMmPointToPixel(roi[0], roi[1], transform);
+        var rightBottom = ConvertLegacyMmPointToPixel(roi[2], roi[3], transform);
+        SetInt(algorithm, $"{prefix}.PixelLeft", leftTop.X);
+        SetInt(algorithm, $"{prefix}.PixelTop", leftTop.Y);
+        SetInt(algorithm, $"{prefix}.PixelRight", rightBottom.X);
+        SetInt(algorithm, $"{prefix}.PixelBottom", rightBottom.Y);
+    }
+
+    private static void ApplyShapeXParameters(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetIntIfPresent(algorithm, $"{family}.RoiCount", element, "ROICnt");
+        SetIntIfPresent(algorithm, $"{family}.Direction", element, "Dir");
+        SetIntIfPresent(algorithm, $"{family}.MatchScore", element, "MSc");
+        SetIntIfPresent(algorithm, $"{family}.Histogram1", element, "Hist1");
+        SetIntIfPresent(algorithm, $"{family}.Histogram2", element, "Hist2");
+        SetDoubleIfPresent(algorithm, $"{family}.ScarAspectRatio", element, "Asp");
+        SetDoubleIfPresent(algorithm, $"{family}.AspectRatio", element, "Asp");
+        SetDoubleIfPresent(algorithm, $"{family}.MinScarThickness", element, "thick");
+        SetDoubleIfPresent(algorithm, $"{family}.VerticalMaxLength", element, "VMxLeng");
+        SetDoubleIfPresent(algorithm, $"{family}.HorizontalMaxLength", element, "HMxLeng");
+        SetDoubleIfPresent(algorithm, $"{family}.MaxNGArea", element, "NGA");
+        SetDoubleIfPresent(algorithm, $"{family}.CriticalArea", element, "CrtA");
+        SetDoubleIfPresent(algorithm, $"{family}.ChippingMaxLength", element, "MxChLeng");
+        SetDoubleIfPresent(algorithm, $"{family}.MaxChippingLength", element, "MxChLeng");
+        SetDoubleIfPresent(algorithm, $"{family}.TiebarRate", element, "TBRate");
+        SetDoubleIfPresent(algorithm, $"{family}.TieBarRate", element, "TBRate");
+        SetIntIfPresent(algorithm, $"{family}.SelectBlob", element, "TPSelBlob");
+        SetIntIfPresent(algorithm, $"{family}.SelectTarget", element, "TPSelTarget");
+        SetDoubleIfPresent(algorithm, $"{family}.Check3DMax", element, "C3DMx");
+        SetDoubleIfPresent(algorithm, $"{family}.Check3DMin", element, "C3DMn");
+        SetIntIfPresent(algorithm, $"{family}.WarningForeignCount", element, "WrFrC");
+        SetDoubleIfPresent(algorithm, $"{family}.WarningForeignWidth", element, "WrFrW");
+        SetDoubleIfPresent(algorithm, $"{family}.WarningForeignLength", element, "WrFrL");
+        SetDoubleIfPresent(algorithm, $"{family}.NGGroupingMaxSize", element, "NGGrM");
+        SetDoubleIfPresent(algorithm, $"{family}.NGGroupingDistance", element, "NGGrD");
+
+        var optionFlags = TryReadIntLeaf(element, out var parsedOptionFlags, "Opt") ? parsedOptionFlags : 0;
+        SetInt(algorithm, $"{family}.OptionFlags", optionFlags);
+        SetFlagBooleans(algorithm, family, optionFlags,
+            ("UseMinScarThickness", 0x01),
+            ("UseScarAspectRatio", 0x02),
+            ("UseCrossLineDetect", 0x04),
+            ("UseVerticalMaxLength", 0x08),
+            ("UseHorizontalMaxLength", 0x10),
+            ("UseMaxNGArea", 0x20),
+            ("UseChippingCriticalLine", 0x40),
+            ("TieBarROpt", 0x80),
+            ("EraseScarArea", 0x100),
+            ("UseExistInnerArea", 0x200),
+            ("LineChipping", 0x400),
+            ("NonMatchingMode", 0x800),
+            ("IncludeSide", 0x1000),
+            ("UseWarningForeignCount", 0x2000),
+            ("UseWarningForeignWidth", 0x4000),
+            ("UseWarningForeignLength", 0x8000),
+            ("UseNGGrouping", 0x10000),
+            ("UseContrast", 0x20000),
+            ("UseSwapXY", 0x40000),
+            ("UseNG1SubtractNG2", 0x80000));
+
+        if (TryReadNumberArrayLeaf(element, out var shapeAreaBlob, "BW_ShA_"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "ShapeAreaBlob", shapeAreaBlob, promoteRuntimeKeys: true);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var ngBlob1, "BW_NG1_"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "NG1Blob", ngBlob1, promoteRuntimeKeys: false);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var ngBlob2, "BW_NG2_"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "NG2Blob", ngBlob2, promoteRuntimeKeys: false);
+        }
+
+        var roiCount = TryReadIntLeaf(element, out var parsedRoiCount, "ROICnt") ? parsedRoiCount : 0;
+        var limit = Math.Min(Math.Max(roiCount, 0), 200);
+        for (var index = 0; index < limit; index++)
+        {
+            ApplyShapeXRoi(algorithm, element, family, transform, index);
+        }
+
+        SetBool(algorithm, "Import.ShapeXMapped", true);
+    }
+
+    private static void ApplyShapeXBlobBaseParameters(
+        InspectionAlgorithmData algorithm,
+        string family,
+        string suffix,
+        IReadOnlyList<double> data,
+        bool promoteRuntimeKeys)
+    {
+        var prefix = $"{family}.{suffix}";
+        var dataFlags = ReadArrayInt(data, 0);
+        var min2D = ReadArrayInt(data, 1);
+        var max2D = ReadArrayInt(data, 2, 255);
+        SetInt(algorithm, $"{prefix}.DataFlags", dataFlags);
+        SetBool(algorithm, $"{prefix}.Use", HasFlag(dataFlags, 0x01));
+        SetBool(algorithm, $"{prefix}.Use2D", HasFlag(dataFlags, 0x02));
+        SetBool(algorithm, $"{prefix}.Invert2D", HasFlag(dataFlags, 0x20));
+        SetBool(algorithm, $"{prefix}.Use3D", HasFlag(dataFlags, 0x40));
+        SetBool(algorithm, $"{prefix}.Invert", HasFlag(dataFlags, 0x400));
+        SetBool(algorithm, $"{prefix}.FillHole", HasFlag(dataFlags, 0x800));
+        SetBool(algorithm, $"{prefix}.UseFilter", HasFlag(dataFlags, 0x1000));
+        SetInt(algorithm, $"{prefix}.Range2DType", ResolveBlobBaseRangeType(dataFlags));
+        SetInt(algorithm, $"{prefix}.BinaryMin", min2D);
+        SetInt(algorithm, $"{prefix}.BinaryMax", max2D);
+        SetInt(algorithm, $"{prefix}.FilterIndex", ReadArrayInt(data, 3));
+        SetDouble(algorithm, $"{prefix}.MinArea", ReadArrayDouble(data, 4));
+        SetDouble(algorithm, $"{prefix}.HeightMin", ReadArrayDouble(data, 5));
+        SetDouble(algorithm, $"{prefix}.HeightMax", ReadArrayDouble(data, 6));
+
+        if (!promoteRuntimeKeys)
+        {
+            return;
+        }
+
+        SetBinaryRange(algorithm, family, min2D, max2D);
+        SetBool(algorithm, $"{family}.Use2D", HasFlag(dataFlags, 0x02));
+        SetBool(algorithm, $"{family}.UseFilter", HasFlag(dataFlags, 0x1000));
+        SetInt(algorithm, $"{family}.Range2DType", ResolveBlobBaseRangeType(dataFlags));
+        SetInt(algorithm, $"{family}.FilterIndex", ReadArrayInt(data, 3));
+        SetInt(algorithm, $"{family}.MinBlobArea", Math.Max(1, Round(ReadArrayDouble(data, 4, 1))));
+        SetDouble(algorithm, $"{family}.HeightMin", ReadArrayDouble(data, 5));
+        SetDouble(algorithm, $"{family}.HeightMax", ReadArrayDouble(data, 6));
+    }
+
+    private static void ApplyShapeXRoi(InspectionAlgorithmData algorithm, XElement element, string family, LegacyRoiTransform transform, int zeroBasedIndex)
+    {
+        var oneBasedIndex = zeroBasedIndex + 1;
+        var prefix = $"{family}.Roi{oneBasedIndex}";
+
+        if (TryReadNumberArrayLeaf(element, out var roi, $"ROI{zeroBasedIndex}") && roi.Length >= 4)
+        {
+            SetDouble(algorithm, $"{prefix}.Left", roi[0]);
+            SetDouble(algorithm, $"{prefix}.Top", roi[1]);
+            SetDouble(algorithm, $"{prefix}.Right", roi[2]);
+            SetDouble(algorithm, $"{prefix}.Bottom", roi[3]);
+            algorithm.Parameters[$"{prefix}.Raw"] = string.Join(",", roi.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture)));
+
+            var leftTop = ConvertLegacyMmPointToPixel(roi[0], roi[1], transform);
+            var rightBottom = ConvertLegacyMmPointToPixel(roi[2], roi[3], transform);
+            SetInt(algorithm, $"{prefix}.PixelLeft", leftTop.X);
+            SetInt(algorithm, $"{prefix}.PixelTop", leftTop.Y);
+            SetInt(algorithm, $"{prefix}.PixelRight", rightBottom.X);
+            SetInt(algorithm, $"{prefix}.PixelBottom", rightBottom.Y);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var center, $"pCt{zeroBasedIndex}") && center.Length >= 2)
+        {
+            SetDouble(algorithm, $"{prefix}.CenterX", center[0]);
+            SetDouble(algorithm, $"{prefix}.CenterY", center[1]);
+        }
+
+        SetBoolIfPresent(algorithm, $"{prefix}.UseShape", element, $"UShp{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseExistShape", element, $"UExShp{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseInner", element, $"UIn{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseExist", element, $"UExi{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseShift", element, $"UShift{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseLocalLength", element, $"ULoL{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseDent", element, $"UDnt{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseForeignWidth", element, $"UFrW{zeroBasedIndex}");
+        SetBoolIfPresent(algorithm, $"{prefix}.UseForeignLength", element, $"UFrL{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.ShapeArea", element, $"ShpA{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.ExistShapeArea", element, $"ExShpA{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.InnerArea", element, $"InA{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.ExistArea", element, $"ExiA{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.LocalLengthMin", element, $"LolMn{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.LocalLengthMax", element, $"LolMx{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.Dent", element, $"Dnt{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.DentMin", element, $"DntMn{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.DentMax", element, $"DntMx{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.ForeignWidth", element, $"FrW{zeroBasedIndex}");
+        SetDoubleIfPresent(algorithm, $"{prefix}.ForeignLength", element, $"FrL{zeroBasedIndex}");
+        SetIntIfPresent(algorithm, $"{prefix}.ModelCount", element, $"MoCnt{zeroBasedIndex}");
+
+        if (TryReadNumberArrayLeaf(element, out var shift, $"Shft{zeroBasedIndex}") && shift.Length >= 2)
+        {
+            SetDouble(algorithm, $"{prefix}.ShiftX", shift[0]);
+            SetDouble(algorithm, $"{prefix}.ShiftY", shift[1]);
+        }
+
+        if (TryReadLeafValue(element, out var models, $"ArrMo{zeroBasedIndex}"))
+        {
+            algorithm.Parameters[$"{prefix}.Models"] = models;
+        }
+
+        if (zeroBasedIndex == 0)
+        {
+            PromoteFirstShapeXRoi(algorithm, element, family);
+        }
+    }
+
+    private static void PromoteFirstShapeXRoi(InspectionAlgorithmData algorithm, XElement element, string family)
+    {
+        SetBoolIfPresent(algorithm, $"{family}.UseShapeXArea", element, "UShp0");
+        SetBoolIfPresent(algorithm, $"{family}.ExistShape", element, "UExShp0");
+        SetBoolIfPresent(algorithm, $"{family}.UseExistArea", element, "UExi0");
+        SetBoolIfPresent(algorithm, $"{family}.UseLocalLength", element, "ULoL0");
+        SetBoolIfPresent(algorithm, $"{family}.UseDent", element, "UDnt0");
+        SetDoubleIfPresent(algorithm, $"{family}.ShapeArea", element, "ShpA0");
+        SetDoubleIfPresent(algorithm, $"{family}.InnerArea", element, "InA0");
+        SetDoubleIfPresent(algorithm, $"{family}.ExistArea", element, "ExiA0");
+        SetDoubleIfPresent(algorithm, $"{family}.LocalLengthMin", element, "LolMn0");
+        SetDoubleIfPresent(algorithm, $"{family}.LocalLengthMax", element, "LolMx0");
+        SetDoubleIfPresent(algorithm, $"{family}.DentMin", element, "DntMn0");
+        SetDoubleIfPresent(algorithm, $"{family}.DentMax", element, "DntMx0");
+
+        if (TryReadDoubleLeaf(element, out var shapeArea, "ShpA0"))
+        {
+            SetDouble(algorithm, $"{family}.AreaMin", shapeArea);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var shift, "Shft0") && shift.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.ShiftXTol", shift[0]);
+            SetDouble(algorithm, $"{family}.ShiftYTol", shift[1]);
+        }
     }
 
     private static void ApplyPadBwParameters(InspectionAlgorithmData algorithm, XElement element)
@@ -772,6 +1347,69 @@ public static class LegacyRawPartImportAdapter
         {
             SetDouble(algorithm, key, values[index]);
         }
+    }
+
+    private static void SetBoolIfPresent(InspectionAlgorithmData algorithm, string key, XElement element, params string[] names)
+    {
+        if (TryReadBoolLeaf(element, out var value, names))
+        {
+            SetBool(algorithm, key, value);
+        }
+    }
+
+    private static void SetIntIfPresent(InspectionAlgorithmData algorithm, string key, XElement element, params string[] names)
+    {
+        if (TryReadIntLeaf(element, out var value, names))
+        {
+            SetInt(algorithm, key, value);
+        }
+    }
+
+    private static void SetDoubleIfPresent(InspectionAlgorithmData algorithm, string key, XElement element, params string[] names)
+    {
+        if (TryReadDoubleLeaf(element, out var value, names))
+        {
+            SetDouble(algorithm, key, value);
+        }
+    }
+
+    private static void SetBinaryRange(InspectionAlgorithmData algorithm, string family, int minValue, int maxValue)
+    {
+        var min = Net48Compat.Clamp(minValue, 0, 255);
+        var max = Net48Compat.Clamp(maxValue, 0, 255);
+        SetInt(algorithm, $"{family}.MinValue", min);
+        SetInt(algorithm, $"{family}.MaxValue", max);
+        SetInt(algorithm, $"{family}.BinaryMin", min);
+        SetInt(algorithm, $"{family}.BinaryMax", max);
+        SetInt(algorithm, $"{family}.Threshold", min);
+    }
+
+    private static void SetFlagBooleans(InspectionAlgorithmData algorithm, string family, int flags, params (string Key, int Flag)[] flagMap)
+    {
+        foreach (var (key, flag) in flagMap)
+        {
+            SetBool(algorithm, $"{family}.{key}", HasFlag(flags, flag));
+        }
+    }
+
+    private static int ResolveBlobBaseRangeType(int flags)
+    {
+        if (HasFlag(flags, 0x10))
+        {
+            return 0;
+        }
+
+        if (HasFlag(flags, 0x04))
+        {
+            return 2;
+        }
+
+        if (HasFlag(flags, 0x08))
+        {
+            return 3;
+        }
+
+        return 0;
     }
 
     private static (int X, int Y) ConvertLegacyMmPointToPixel(double xMm, double yMm, LegacyRoiTransform transform)

@@ -164,11 +164,13 @@ public static class ReferenceInspectionPacketBuilder
     {
         return referenceName switch
         {
+            "BW" => ["InvChk", "InvertCheck", "PerOK", "Use2D", "Use3D", "R2D", "R3D", "Range", "MnMx2D", "MnMxAvg3D", "MinValue", "MaxValue", "ChipTrack", "UseTCR", "TCArea", "AreaCur", "StdOKArea", "HMean", "UseH"],
+            "Blob" or "Body_Blob" or "Bump" => ["Inv", "UseIPC", "CSIPC", "MnMxArea", "Use2D", "TPR2D", "MnMx2D", "Use3D", "TPR3D", "MnMxAvgHeiR", "FillHole", "UseShift", "Shift", "MnMxTC", "UseTC", "TCW", "TCL", "Use2D_pat", "MnMx2D_pat", "Use3D_pat", "MnMxHei_pat", "Use2D_SB", "MnMx2D_SB", "Use3D_SB", "MnMxAvgHeiR_SB", "ROI"],
             "Align" => ["LTInfo", "SearMargin_mm", "InvChk", "Use2D", "TPR2D", "TPR3D", "MnMx2D", "MnMxAvgHeiR", "Use3D", "UseIPC", "CSIPC", "UseSft", "Sft", "UseAng", "Ang", "SearPnt", "Searsz", "SearMargin", "FH", "IOPT", "SSize", "UseFixedSize"],
             "AlignEdge" => ["InspDirection", "UsePeak", "MinEdge", "MaxEdge", "Search", "Edge", "Angle", "Offset", "ROI"],
             "PadBW" => ["BData", "FData", "SubBData", "SubFData", "SubLight", "SubC", "BlobInfo", "BlobID", "BlobCX", "BlobCY", "BlobArea", "BlobWidth", "BlobLength", "BlobStX", "BlobStY", "AMROI", "ROI"],
-            "NGBlob" => ["BData", "FData", "UseData", "SelV", "ROIF", "AMROI", "ROI"],
-            "ShapeX" => ["OCRMxCnt", "ImgCBLTData", "ROICnt", "Dir", "MSc", "Hist", "Opt", "Asp", "thick", "VMxLeng", "HMxLeng", "NGA", "CrtA", "MxChLeng", "TBRate", "TPSel", "ROI", "UShp", "UExShp"],
+            "NGBlob" => ["BData", "FData", "UseData", "UseData2", "SelV", "ROIF", "AMROI", "ROI"],
+            "ShapeX" => ["OCRMxCnt", "ImgCBLTData", "ROICnt", "Dir", "MSc", "Hist", "Opt", "Asp", "thick", "VMxLeng", "HMxLeng", "NGA", "CrtA", "MxChLeng", "TBRate", "TPSel", "C3D", "WrFr", "NGGr", "ROI", "pCt", "UShp", "UExShp", "UIn", "UExi", "UShift", "ShpA", "ExShpA", "InA", "ExiA", "Shft", "ULoL", "UDnt", "Lol", "Dnt", "UFr", "Fr", "MoCnt", "ArrMo", "BW_ShA", "BW_NG"],
             _ => ["BData", "FData", "UseData", "ROI", "AMROI", "Sub", "Threshold", "Tolerance"]
         };
     }
