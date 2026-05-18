@@ -89,6 +89,18 @@ namespace WpfInspectionApp.Diagnostics
         [DllImport("kernel32.dll", SetLastError = true)]
         private static extern IntPtr AddVectoredExceptionHandler(uint first, VectoredHandlerDelegate handler);
 
+        // Native VEH installer (in MptiBridge.dll). Pure C++ implementation does
+        // CONTEXT.MxCsr + FltSave fix without CLR managed-to-native transition. Under
+        // VS native debugging, every SEH (incl. VS-injected breakpoint / DLL-load
+        // notifications) calls every registered VEH — a managed VEH's ~200B per-call
+        // stack frames cumulatively cause 0xC00000FD stack overflow before the real
+        // fp exception even happens. Native VEH is ~16B per call, no overflow.
+        [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int MptiBridgeInstallFpVeh();
+
+        [DllImport("MptiBridge.dll", CallingConvention = CallingConvention.Cdecl)]
+        private static extern long MptiBridgeGetFpSwallowCount();
+
         // Keep alive for process lifetime so the GC doesn't collect the delegate while
         // it's still referenced by the Windows vectored-handler chain.
         private static VectoredHandlerDelegate? s_vehHandler;
@@ -108,27 +120,33 @@ namespace WpfInspectionApp.Diagnostics
             Diag("ModuleInit: enter");
             TryMaskLogged("ModuleInit: after first mask");
 
-            // Install Vectored Exception Handler FIRST so it can swallow fp SEH that
-            // fires on render threads / D3D probe threads / any thread we don't own.
+            // Install NATIVE Vectored Exception Handler (in MptiBridge.dll) FIRST so it
+            // can swallow fp SEH on render threads / D3D probe threads / any thread we
+            // don't own. Native is mandatory under VS native debugging because every
+            // SEH (incl. VS-injected) runs every VEH; a managed VEH's CLR-transition
+            // stack frames cumulatively overflow before the real fp exception fires.
             //
-            // The previous VEH attempt (commit 8db4626, reverted) called _controlfp_s
-            // on the current thread but did NOT modify EXCEPTION_POINTERS->ContextRecord
-            // ->MxCsr. When Windows resumes execution after EXCEPTION_CONTINUE_EXECUTION,
-            // it restores thread state FROM ContextRecord — so the fp mask we just set
-            // via _controlfp_s was overwritten and the faulting instruction re-fired the
-            // exact same exception (infinite loop / re-trigger / fail).
-            //
-            // This version writes MxCsr |= 0x1F80 (mask all 6 fp exceptions) directly
-            // into ContextRecord so the resumed instruction sees masked state.
+            // Fallback to managed VEH if MptiBridge.dll isn't loadable (e.g. running
+            // before bridge dll deployed). Both implementations apply the same
+            // CONTEXT.MxCsr + FltSave fix.
             try
             {
-                s_vehHandler = OnVectoredException;
-                var h = AddVectoredExceptionHandler(1u /* first = run before others */, s_vehHandler);
-                Diag($"ModuleInit: VEH installed handle=0x{h.ToInt64():X}");
+                int rc = MptiBridgeInstallFpVeh();
+                Diag($"ModuleInit: native VEH installed rc={rc}");
             }
             catch (Exception ex)
             {
-                Diag($"ModuleInit: VEH install FAILED {ex.GetType().Name}: {ex.Message}");
+                Diag($"ModuleInit: native VEH install FAILED {ex.GetType().Name}: {ex.Message}; falling back to managed VEH");
+                try
+                {
+                    s_vehHandler = OnVectoredException;
+                    var h = AddVectoredExceptionHandler(1u /* first = run before others */, s_vehHandler);
+                    Diag($"ModuleInit: managed VEH installed handle=0x{h.ToInt64():X}");
+                }
+                catch (Exception ex2)
+                {
+                    Diag($"ModuleInit: managed VEH install ALSO FAILED {ex2.GetType().Name}: {ex2.Message}");
+                }
             }
 
             // Do not touch WPF media/rendering APIs from the module initializer.
@@ -158,7 +176,11 @@ namespace WpfInspectionApp.Diagnostics
                     Diag($"UNHANDLED: terminating={e.IsTerminating} exception={(e.ExceptionObject as Exception)?.GetType().FullName} :: {(e.ExceptionObject as Exception)?.Message}");
                 };
                 AppDomain.CurrentDomain.ProcessExit += (_, _) =>
-                    Diag($"ProcessExit (VEH swallowed {System.Threading.Interlocked.Read(ref s_fpSwallowCount)} fp SEHs, gave up {System.Threading.Interlocked.Read(ref s_vehGiveUpCount)} times)");
+                {
+                    long nativeCount = 0;
+                    try { nativeCount = MptiBridgeGetFpSwallowCount(); } catch { }
+                    Diag($"ProcessExit (native VEH swallowed {nativeCount}, managed VEH swallowed {System.Threading.Interlocked.Read(ref s_fpSwallowCount)} fp SEHs, gave up {System.Threading.Interlocked.Read(ref s_vehGiveUpCount)} times)");
+                };
                 Diag("ModuleInit: UnhandledException/ProcessExit hooks registered");
             }
             catch (Exception ex)

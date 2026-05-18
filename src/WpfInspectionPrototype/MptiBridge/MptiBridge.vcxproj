@@ -131,6 +131,9 @@ if exist "$(IntelIppBinRoot)\ippcore.dll" xcopy /Y /D "$(IntelIppBinRoot)\ippcor
   <ItemGroup>
     <ClCompile Include="MptiBridge.cpp" />
     <ClCompile Include="MptiBridgeFlow.cpp" />
+    <ClCompile Include="MptiBridgeFpGuard.cpp">
+      <PrecompiledHeader>NotUsing</PrecompiledHeader>
+    </ClCompile>
     <ClCompile Include="NativeSources\MPTILib_Algo\stdafx.cpp">
       <PrecompiledHeader>Create</PrecompiledHeader>
     </ClCompile>
