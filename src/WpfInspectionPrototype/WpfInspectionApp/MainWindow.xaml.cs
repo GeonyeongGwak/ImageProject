@@ -197,10 +197,31 @@ public partial class MainWindow : Window, IDialogOwner
         SafeStep("Focusable=true",          () => Focusable = true);
         SafeStep("ImeEnabled=true",         () => InputMethod.SetIsInputMethodEnabled(this, true));
         SafeStep("RestoreTextInputSubtree", () => RestoreTextInputSubtree(this));
-        SafeStep("Activate",                () => Activate());
+        // Activate() was the killer step under VS native debugging — it calls
+        // SetForegroundWindow synchronously, which triggers WM_ACTIVATE / WM_GETOBJECT
+        // (UIAutomation peer creation) and IMM32 fp ops despite our message filter.
+        // Replaced with SetWindowPos(HWND_TOP, SWP_NOACTIVATE) which raises z-order
+        // without grabbing focus or activating — no foreground-window side effects.
+        SafeStep("RaiseZOrderNoActivate",   () => RaiseZOrderNoActivate());
 
         FpExceptionGuard.Diag("MainWindow native-debug guards RELEASED");
     }
+
+    private void RaiseZOrderNoActivate()
+    {
+        var hwnd = new System.Windows.Interop.WindowInteropHelper(this).Handle;
+        if (hwnd == IntPtr.Zero) return;
+        // SWP_NOACTIVATE | SWP_NOMOVE | SWP_NOSIZE = just z-order change, no activation.
+        const uint SWP_NOSIZE = 0x0001;
+        const uint SWP_NOMOVE = 0x0002;
+        const uint SWP_NOACTIVATE = 0x0010;
+        var HWND_TOP = IntPtr.Zero;
+        SetWindowPos(hwnd, HWND_TOP, 0, 0, 0, 0, SWP_NOSIZE | SWP_NOMOVE | SWP_NOACTIVATE);
+    }
+
+    [System.Runtime.InteropServices.DllImport("user32.dll", SetLastError = true)]
+    private static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter,
+        int X, int Y, int cx, int cy, uint uFlags);
 
     private static void SafeStep(string tag, Action action)
     {
