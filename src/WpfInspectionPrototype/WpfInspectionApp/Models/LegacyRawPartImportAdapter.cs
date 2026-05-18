@@ -352,12 +352,443 @@ public static class LegacyRawPartImportAdapter
             algorithm.Parameters[pair.Key] = pair.Value;
         }
 
+        ApplyAlgorithmParameterMapping(algorithm, element, transform);
+
         algorithm.Result = new InspectionResultData
         {
             Message = "Imported from legacy RawData"
         };
         algorithm.PanelData = AlgorithmPanelSchema.Create(algorithm);
         return algorithm;
+    }
+
+    private static void ApplyAlgorithmParameterMapping(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
+    {
+        if (string.Equals(algorithm.Type, "AlgoAlign", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyAlignParameters(algorithm, element, transform);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoPadBW", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyPadBwParameters(algorithm, element);
+        }
+    }
+
+    private static void ApplyAlignParameters(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
+    {
+        if (TryReadIntLeaf(element, out var searchNum, "SearNum", "SearchNum"))
+        {
+            SetInt(algorithm, "Align.SearchNum", Net48Compat.Clamp(searchNum, 1, 4));
+        }
+        else
+        {
+            var pointCount = Enumerable.Range(1, 4).Count(index => TryReadNumberArrayLeaf(element, out _, $"SearPnt{index}", $"ArrSearchPoint{index}"));
+            if (pointCount > 0)
+            {
+                SetInt(algorithm, "Align.SearchNum", pointCount);
+            }
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var binaryRange, "MnMx2D") && binaryRange.Length >= 2)
+        {
+            SetInt(algorithm, "Align.BinaryMin", Round(binaryRange[0]));
+            SetInt(algorithm, "Align.BinaryMax", Round(binaryRange[1]));
+            SetInt(algorithm, "Align.Threshold", Round(binaryRange[0]));
+        }
+
+        if (TryReadBoolLeaf(element, out var use2D, "Use2D"))
+        {
+            SetBool(algorithm, "Align.Use2D", use2D);
+        }
+
+        if (TryReadBoolLeaf(element, out var use3D, "Use3D"))
+        {
+            SetBool(algorithm, "Align.Use3D", use3D);
+        }
+
+        if (TryReadIntLeaf(element, out var range2D, "TPR2D"))
+        {
+            SetInt(algorithm, "Align.Range2DType", range2D);
+        }
+
+        if (TryReadBoolLeaf(element, out var useShift, "UseSft", "UseShift"))
+        {
+            SetBool(algorithm, "Align.UseShift", useShift);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var shift, "Sft") && shift.Length >= 2)
+        {
+            SetDouble(algorithm, "Align.ShiftX", shift[0]);
+            SetDouble(algorithm, "Align.ShiftY", shift[1]);
+        }
+
+        if (TryReadBoolLeaf(element, out var useAngle, "UseAng", "UseAngle"))
+        {
+            SetBool(algorithm, "Align.UseAngle", useAngle);
+        }
+
+        if (TryReadDoubleLeaf(element, out var angle, "Ang", "Angle"))
+        {
+            SetDouble(algorithm, "Align.Angle", angle);
+        }
+
+        if (TryReadIntLeaf(element, out var searchMargin, "SearMargin", "SearchMargin"))
+        {
+            SetInt(algorithm, "Align.SearchMargin", Math.Max(0, searchMargin));
+        }
+        else if (TryReadDoubleLeaf(element, out var searchMarginMm, "SearMargin_mm") && transform.PixelResolutionX > 0)
+        {
+            SetInt(algorithm, "Align.SearchMargin", Math.Max(0, Round(searchMarginMm / transform.PixelResolutionX)));
+        }
+
+        var defaultSearchSize = TryReadNumberArrayLeaf(element, out var searchSize, "Searsz", "ArrSearchSize")
+            ? searchSize
+            : Array.Empty<double>();
+        var searchSizeMm = TryReadNumberArrayLeaf(element, out var arrSearchSizeMm, "ArrSearchSize_mm")
+            ? arrSearchSizeMm
+            : Array.Empty<double>();
+
+        var defaultWidth = defaultSearchSize.Length >= 1 ? Math.Max(1, Round(defaultSearchSize[0])) : 0;
+        var defaultHeight = defaultSearchSize.Length >= 2 ? Math.Max(1, Round(defaultSearchSize[1])) : 0;
+        if (defaultWidth > 0)
+        {
+            SetInt(algorithm, "Align.SearchSizeX", defaultWidth);
+        }
+
+        if (defaultHeight > 0)
+        {
+            SetInt(algorithm, "Align.SearchSizeY", defaultHeight);
+        }
+
+        for (var index = 1; index <= 4; index++)
+        {
+            if (TryReadNumberArrayLeaf(element, out var point, $"SearPnt{index}", $"ArrSearchPoint{index}") && point.Length >= 2)
+            {
+                var pixelPoint = ConvertLegacyMmPointToPixel(point[0], point[1], transform);
+                SetInt(algorithm, $"Align.SearchPoint{index}.X", pixelPoint.X);
+                SetInt(algorithm, $"Align.SearchPoint{index}.Y", pixelPoint.Y);
+            }
+
+            var width = defaultWidth;
+            var height = defaultHeight;
+            var sizeOffset = (index - 1) * 2;
+            if (searchSizeMm.Length > sizeOffset + 1 && transform.PixelResolutionX > 0 && transform.PixelResolutionY > 0)
+            {
+                width = Math.Max(1, Round(searchSizeMm[sizeOffset] / transform.PixelResolutionX));
+                height = Math.Max(1, Round(searchSizeMm[sizeOffset + 1] / transform.PixelResolutionY));
+            }
+
+            if (width > 0)
+            {
+                SetInt(algorithm, $"Align.SearchSize{index}.W", width);
+            }
+
+            if (height > 0)
+            {
+                SetInt(algorithm, $"Align.SearchSize{index}.H", height);
+            }
+        }
+
+        if (TryReadIntLeaf(element, out var minBlob, "MinBlob"))
+        {
+            SetInt(algorithm, "Align.MinBlobArea", Math.Max(1, minBlob));
+        }
+
+        if (TryReadBoolLeaf(element, out var fillHole, "FH"))
+        {
+            SetBool(algorithm, "Align.FillHole", fillHole);
+        }
+
+        SetBool(algorithm, "Import.AlignMapped", true);
+    }
+
+    private static void ApplyPadBwParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        if (!TryReadNumberArrayLeaf(element, out var bData, "BData"))
+        {
+            return;
+        }
+
+        var fData = TryReadNumberArrayLeaf(element, out var parsedFData, "FData")
+            ? parsedFData
+            : Array.Empty<double>();
+
+        SetInt(algorithm, "PadBW.RawBDataCount", bData.Length);
+        SetInt(algorithm, "PadBW.RawFDataCount", fData.Length);
+
+        var dataFlags = ReadArrayInt(bData, 0);
+        var modeFlags = ReadArrayInt(bData, 1);
+        var data2Flags = ReadArrayInt(bData, 20);
+        var data3Flags = ReadArrayInt(bData, 23);
+        var useHistogram = HasFlag(modeFlags, 0x04);
+
+        var binaryMin = useHistogram
+            ? ReadArrayInt(fData, 18, ReadArrayInt(bData, 8, ReadArrayInt(bData, 2)))
+            : ReadArrayInt(bData, 2);
+        var binaryMax = useHistogram
+            ? ReadArrayInt(fData, 19, ReadArrayInt(bData, 9, ReadArrayInt(bData, 3, 255)))
+            : ReadArrayInt(bData, 3, 255);
+
+        SetInt(algorithm, "PadBW.BinaryMin", Net48Compat.Clamp(binaryMin, 0, 255));
+        SetInt(algorithm, "PadBW.BinaryMax", Net48Compat.Clamp(binaryMax, 0, 255));
+        SetBool(algorithm, "PadBW.Use2D", HasFlag(modeFlags, 0x01));
+        SetBool(algorithm, "PadBW.Use3D", HasFlag(modeFlags, 0x02));
+        SetBool(algorithm, "PadBW.UseHistogram", useHistogram);
+        SetBool(algorithm, "PadBW.UseFillHole", HasFlag(modeFlags, 0x08));
+        SetInt(algorithm, "PadBW.Range2DType", ReadArrayInt(bData, 4));
+        SetInt(algorithm, "PadBW.Range3DType", ReadArrayInt(bData, 5));
+        SetInt(algorithm, "PadBW.LightCount", ReadArrayInt(bData, 6));
+        SetInt(algorithm, "PadBW.Mask", ReadArrayInt(bData, 11));
+        SetInt(algorithm, "PadBW.HistogramLimitMin", ReadArrayInt(bData, 12));
+        SetInt(algorithm, "PadBW.HistogramLimitMax", ReadArrayInt(bData, 13));
+        SetInt(algorithm, "PadBW.MaskShape", ReadArrayInt(bData, 14));
+        SetInt(algorithm, "PadBW.EdgeFilterLevel", ReadArrayInt(bData, 15));
+        SetInt(algorithm, "PadBW.Correct3DOrder", ReadArrayInt(bData, 16));
+        SetInt(algorithm, "PadBW.FilterLevel", ReadArrayInt(bData, 17));
+        SetInt(algorithm, "PadBW.SelectBlobType", ReadArrayInt(bData, 18));
+        SetInt(algorithm, "PadBW.SelectBlobNum", ReadArrayInt(bData, 19));
+        SetInt(algorithm, "PadBW.ContrastValue", ReadArrayInt(bData, 21));
+        SetInt(algorithm, "PadBW.Direction", ReadArrayInt(bData, 22));
+        SetInt(algorithm, "PadBW.AIModelID", ReadArrayInt(bData, 24, -1));
+
+        SetBool(algorithm, "PadBW.UseTeachArea", HasFlag(dataFlags, 0x02));
+        SetBool(algorithm, "PadBW.UseShift", HasFlag(dataFlags, 0x04));
+        SetBool(algorithm, "PadBW.UseBlobWidth", HasFlag(dataFlags, 0x08));
+        SetBool(algorithm, "PadBW.UseBlobLength", HasFlag(dataFlags, 0x10));
+        SetBool(algorithm, "PadBW.UseBlobArea", HasFlag(dataFlags, 0x20));
+        SetBool(algorithm, "PadBW.UseOption3DRange", HasFlag(dataFlags, 0x80));
+        SetBool(algorithm, "PadBW.UseRelativeHeight", HasFlag(data2Flags, 0x01));
+        SetBool(algorithm, "PadBW.UseShadeFix", HasFlag(data2Flags, 0x02));
+        SetBool(algorithm, "PadBW.UseBlobAnd", HasFlag(data2Flags, 0x04));
+        SetBool(algorithm, "PadBW.UseContrastGV", HasFlag(data2Flags, 0x08));
+        SetBool(algorithm, "PadBW.UseHoleAlign", HasFlag(data2Flags, 0x10));
+        SetBool(algorithm, "PadBW.UseNGGrouping", HasFlag(data2Flags, 0x20));
+        SetBool(algorithm, "PadBW.UseDirection", HasFlag(data2Flags, 0x40));
+        SetBool(algorithm, "PadBW.UseAI", HasFlag(data3Flags, 0x08));
+
+        SetDouble(algorithm, "PadBW.HeightMin", ReadArrayDouble(fData, 0));
+        SetDouble(algorithm, "PadBW.HeightMax", ReadArrayDouble(fData, 1));
+        SetDouble(algorithm, "PadBW.TeachArea", ReadArrayDouble(fData, 2));
+        SetDouble(algorithm, "PadBW.AreaRateMin", ReadArrayDouble(fData, 3, 80));
+        SetDouble(algorithm, "PadBW.AreaRateMax", ReadArrayDouble(fData, 4, 120));
+        SetDouble(algorithm, "PadBW.ShiftX", ReadArrayDouble(fData, 5));
+        SetDouble(algorithm, "PadBW.ShiftY", ReadArrayDouble(fData, 6));
+        SetDouble(algorithm, "PadBW.BlobWidth", ReadArrayDouble(fData, 7));
+        SetDouble(algorithm, "PadBW.BlobLength", ReadArrayDouble(fData, 8));
+        SetDouble(algorithm, "PadBW.BlobAreaMin", ReadArrayDouble(fData, 9));
+        SetDouble(algorithm, "PadBW.Option3DMin", ReadArrayDouble(fData, 10));
+        SetDouble(algorithm, "PadBW.Option3DMax", ReadArrayDouble(fData, 11));
+        SetDouble(algorithm, "PadBW.Option3DRange", ReadArrayDouble(fData, 12));
+        SetDouble(algorithm, "PadBW.Option3DThickMin", ReadArrayDouble(fData, 13));
+        SetDouble(algorithm, "PadBW.RelativeHeightMin", ReadArrayDouble(fData, 14));
+        SetDouble(algorithm, "PadBW.RelativeHeightMax", ReadArrayDouble(fData, 15));
+        SetDouble(algorithm, "PadBW.NGGroupingMaxSize", ReadArrayDouble(fData, 16));
+        SetDouble(algorithm, "PadBW.NGGroupingDistance", ReadArrayDouble(fData, 17));
+        SetDouble(algorithm, "PadBW.DirectionLength", ReadArrayDouble(fData, 20));
+        SetInt(algorithm, "PadBW.MinBlobArea", Math.Max(1, Round(ReadArrayDouble(fData, 9, 1))));
+
+        if (TryReadLeafValue(element, out var amRoi, "AMROI"))
+        {
+            algorithm.Parameters["PadBW.MaskRoi"] = amRoi;
+        }
+
+        if (TryReadIntLeaf(element, out var blobInfoCount, "BlobInfoCnt_"))
+        {
+            SetInt(algorithm, "PadBW.BlobInfoCount", Math.Max(0, blobInfoCount));
+        }
+
+        for (var index = 1; index <= 4; index++)
+        {
+            ApplyPadBwSubParameters(algorithm, element, index);
+        }
+
+        SetBool(algorithm, "Import.PadBWMapped", true);
+    }
+
+    private static void ApplyPadBwSubParameters(InspectionAlgorithmData algorithm, XElement element, int index)
+    {
+        if (!TryReadNumberArrayLeaf(element, out var bData, $"SubBData_{index}"))
+        {
+            return;
+        }
+
+        var fData = TryReadNumberArrayLeaf(element, out var parsedFData, $"SubFData_{index}")
+            ? parsedFData
+            : Array.Empty<double>();
+        var modeFlags = ReadArrayInt(bData, 1);
+        var useHistogram = HasFlag(modeFlags, 0x04);
+        var prefix = $"PadBW.Sub{index}";
+
+        SetBool(algorithm, $"{prefix}.Use2D", HasFlag(modeFlags, 0x01));
+        SetBool(algorithm, $"{prefix}.Use3D", HasFlag(modeFlags, 0x02));
+        SetBool(algorithm, $"{prefix}.UseHistogram", useHistogram);
+        SetBool(algorithm, $"{prefix}.UseFillHole", HasFlag(modeFlags, 0x08));
+        SetInt(algorithm, $"{prefix}.BinaryMin", Net48Compat.Clamp(ReadArrayInt(bData, 2), 0, 255));
+        SetInt(algorithm, $"{prefix}.BinaryMax", Net48Compat.Clamp(ReadArrayInt(bData, 3, 255), 0, 255));
+        SetInt(algorithm, $"{prefix}.Range2DType", ReadArrayInt(bData, 4));
+        SetInt(algorithm, $"{prefix}.Range3DType", ReadArrayInt(bData, 7));
+        SetInt(algorithm, $"{prefix}.RangeHistogramType", ReadArrayInt(bData, 8));
+        SetInt(algorithm, $"{prefix}.Mask", ReadArrayInt(bData, 10));
+        SetInt(algorithm, $"{prefix}.HistogramLimitMin", ReadArrayInt(bData, 11));
+        SetInt(algorithm, $"{prefix}.HistogramLimitMax", ReadArrayInt(bData, 12));
+        SetInt(algorithm, $"{prefix}.MaskShape", ReadArrayInt(bData, 13));
+        SetInt(algorithm, $"{prefix}.EdgeFilterLevel", ReadArrayInt(bData, 14));
+        SetInt(algorithm, $"{prefix}.FilterSize", ReadArrayInt(bData, 15));
+        SetDouble(algorithm, $"{prefix}.HeightMin", ReadArrayDouble(fData, 0));
+        SetDouble(algorithm, $"{prefix}.HeightMax", ReadArrayDouble(fData, 1));
+        SetDouble(algorithm, $"{prefix}.HistogramMin", ReadArrayDouble(fData, 2, ReadArrayDouble(bData, 5)));
+        SetDouble(algorithm, $"{prefix}.HistogramMax", ReadArrayDouble(fData, 3, ReadArrayDouble(bData, 6)));
+
+        if (TryReadNumberArrayLeaf(element, out var subLight, $"SubLight_{index}"))
+        {
+            SetInt(algorithm, $"{prefix}.LightCount", ReadArrayInt(subLight, 0));
+        }
+    }
+
+    private static (int X, int Y) ConvertLegacyMmPointToPixel(double xMm, double yMm, LegacyRoiTransform transform)
+    {
+        if (!transform.HasResolution)
+        {
+            return (Round(xMm), Round(yMm));
+        }
+
+        return (
+            Round(transform.OriginX + xMm / transform.PixelResolutionX),
+            Round(transform.OriginY + yMm / transform.PixelResolutionY));
+    }
+
+    private static bool TryReadNumberArrayLeaf(XElement element, out double[] values, params string[] names)
+    {
+        values = Array.Empty<double>();
+        if (!TryReadLeafValue(element, out var raw, names))
+        {
+            return false;
+        }
+
+        var parsed = new List<double>();
+        foreach (var token in raw.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            if (!TryParseDouble(token.Trim(), out var number))
+            {
+                continue;
+            }
+
+            parsed.Add(number);
+        }
+
+        values = parsed.ToArray();
+        return values.Length > 0;
+    }
+
+    private static bool TryReadIntLeaf(XElement element, out int value, params string[] names)
+    {
+        value = 0;
+        if (!TryReadDoubleLeaf(element, out var parsed, names))
+        {
+            return false;
+        }
+
+        value = Round(parsed);
+        return true;
+    }
+
+    private static bool TryReadDoubleLeaf(XElement element, out double value, params string[] names)
+    {
+        value = 0;
+        if (!TryReadLeafValue(element, out var raw, names))
+        {
+            return false;
+        }
+
+        return TryParseDouble(raw, out value);
+    }
+
+    private static bool TryReadBoolLeaf(XElement element, out bool value, params string[] names)
+    {
+        value = false;
+        if (!TryReadLeafValue(element, out var raw, names))
+        {
+            return false;
+        }
+
+        if (bool.TryParse(raw, out value))
+        {
+            return true;
+        }
+
+        if (TryParseDouble(raw, out var number))
+        {
+            value = Math.Abs(number) > double.Epsilon;
+            return true;
+        }
+
+        return false;
+    }
+
+    private static bool TryReadLeafValue(XElement element, out string value, params string[] names)
+    {
+        foreach (var name in names)
+        {
+            var direct = element.Elements()
+                .FirstOrDefault(candidate => string.Equals(candidate.Name.LocalName, name, StringComparison.OrdinalIgnoreCase));
+            if (direct != null && !direct.HasElements && !string.IsNullOrWhiteSpace(direct.Value))
+            {
+                value = direct.Value.Trim();
+                return true;
+            }
+        }
+
+        foreach (var name in names)
+        {
+            var descendant = element.Descendants()
+                .FirstOrDefault(candidate => !candidate.HasElements
+                    && string.Equals(candidate.Name.LocalName, name, StringComparison.OrdinalIgnoreCase)
+                    && !string.IsNullOrWhiteSpace(candidate.Value));
+            if (descendant != null)
+            {
+                value = descendant.Value.Trim();
+                return true;
+            }
+        }
+
+        value = "";
+        return false;
+    }
+
+    private static int ReadArrayInt(IReadOnlyList<double> values, int index, int fallback = 0)
+    {
+        return index >= 0 && index < values.Count ? Round(values[index]) : fallback;
+    }
+
+    private static double ReadArrayDouble(IReadOnlyList<double> values, int index, double fallback = 0)
+    {
+        return index >= 0 && index < values.Count ? values[index] : fallback;
+    }
+
+    private static bool HasFlag(int value, int flag)
+    {
+        return (value & flag) == flag;
+    }
+
+    private static void SetInt(InspectionAlgorithmData algorithm, string key, int value)
+    {
+        algorithm.Parameters[key] = value.ToString(CultureInfo.InvariantCulture);
+    }
+
+    private static void SetDouble(InspectionAlgorithmData algorithm, string key, double value)
+    {
+        algorithm.Parameters[key] = value.ToString("0.########", CultureInfo.InvariantCulture);
+    }
+
+    private static void SetBool(InspectionAlgorithmData algorithm, string key, bool value)
+    {
+        algorithm.Parameters[key] = value ? "true" : "false";
+    }
+
+    private static bool TryParseDouble(string value, out double parsed)
+    {
+        return double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out parsed)
+            || double.TryParse(value, NumberStyles.Float, CultureInfo.CurrentCulture, out parsed);
     }
 
     private static InspectionAlgorithmData CreateFlagAlgorithm(string type, int index, XElement windowElement)
