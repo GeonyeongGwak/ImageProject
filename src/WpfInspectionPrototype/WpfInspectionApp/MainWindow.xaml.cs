@@ -163,16 +163,13 @@ public partial class MainWindow : Window, IDialogOwner
                 Visit(child);
             }
 
-            try
+            if (current is Visual or System.Windows.Media.Media3D.Visual3D)
             {
                 var visualChildren = VisualTreeHelper.GetChildrenCount(current);
                 for (var index = 0; index < visualChildren; index++)
                 {
                     Visit(VisualTreeHelper.GetChild(current, index));
                 }
-            }
-            catch (InvalidOperationException)
-            {
             }
         }
 
@@ -266,9 +263,7 @@ public partial class MainWindow : Window, IDialogOwner
         {
             FpExceptionGuard.Diag("MainWindow.Loaded entered; running startup work immediately for native-debug guard");
             FpExceptionGuard.TryMask();
-            IsEnabled = true;
-            IsHitTestVisible = true;
-            Focusable = true;
+            FpExceptionGuard.Diag("MainWindow native-debug input remains disabled to avoid UIAutomation/IME reentry");
             RunStartupLoadWork();
             return;
         }
