@@ -20,10 +20,6 @@ namespace WpfInspectionApp;
 
 public partial class MainWindow : Window, IDialogOwner
 {
-    private const int WmGetObject = 0x003D;
-    private const int WmImeSetContext = 0x0281;
-    private const int WmImeNotify = 0x0282;
-
     Window IDialogOwner.GetDialogOwner() => this;
 
     private readonly DispatcherTimer _thresholdTimer;
@@ -142,7 +138,7 @@ public partial class MainWindow : Window, IDialogOwner
         ref bool handled)
     {
         FpExceptionGuard.TryMask();
-        if (msg is WmGetObject or WmImeSetContext or WmImeNotify)
+        if (App.ShouldSuppressNativeDebugWindowMessage(msg))
         {
             handled = true;
             return IntPtr.Zero;

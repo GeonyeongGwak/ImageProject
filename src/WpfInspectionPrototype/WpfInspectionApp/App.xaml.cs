@@ -4,6 +4,7 @@ using System.Diagnostics;
 using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Automation.Peers;
+using System.Windows.Interop;
 using WpfInspectionApp.Diagnostics;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Interop;
@@ -40,8 +41,25 @@ public partial class App : Application
     private static bool s_visualDiagnosticsGuardApplied;
     private static bool s_messagePumpGuardApplied;
     private static bool s_startupStabilityGuardsEnabled;
+    private static int s_suppressedNativeDebugMessages;
     private Window? _startupGuardWindow;
     internal static bool StartupStabilityGuardsEnabled => s_startupStabilityGuardsEnabled;
+
+    private const int WmGetObject = 0x003D;
+    private const int WmInputLangChangeRequest = 0x0050;
+    private const int WmInputLangChange = 0x0051;
+    private const int WmImeStartComposition = 0x010D;
+    private const int WmImeEndComposition = 0x010E;
+    private const int WmImeComposition = 0x010F;
+    private const int WmImeSetContext = 0x0281;
+    private const int WmImeNotify = 0x0282;
+    private const int WmImeControl = 0x0283;
+    private const int WmImeCompositionFull = 0x0284;
+    private const int WmImeSelect = 0x0285;
+    private const int WmImeChar = 0x0286;
+    private const int WmImeRequest = 0x0288;
+    private const int WmImeKeyDown = 0x0290;
+    private const int WmImeKeyUp = 0x0291;
 
     [DllImport("kernel32.dll", ExactSpelling = true)]
     private static extern bool IsDebuggerPresent();
@@ -279,16 +297,49 @@ public partial class App : Application
         s_messagePumpGuardApplied = true;
         try
         {
-            System.Windows.Interop.ComponentDispatcher.ThreadFilterMessage +=
-                (ref System.Windows.Interop.MSG msg, ref bool handled) => FpExceptionGuard.TryMask();
-            System.Windows.Interop.ComponentDispatcher.ThreadPreprocessMessage +=
-                (ref System.Windows.Interop.MSG msg, ref bool handled) => FpExceptionGuard.TryMask();
+            ComponentDispatcher.ThreadFilterMessage += GuardThreadMessageForNativeDebug;
+            ComponentDispatcher.ThreadPreprocessMessage += GuardThreadMessageForNativeDebug;
             FpExceptionGuard.Diag("WPF message-pump FPU guard installed for native-debug startup");
         }
         catch (Exception ex)
         {
             FpExceptionGuard.Diag($"WPF message-pump FPU guard install FAILED {ex.GetType().FullName}: {ex.Message}");
         }
+    }
+
+    private static void GuardThreadMessageForNativeDebug(ref MSG msg, ref bool handled)
+    {
+        FpExceptionGuard.TryMask();
+        if (!s_startupStabilityGuardsEnabled || handled || !ShouldSuppressNativeDebugWindowMessage(msg.message))
+        {
+            return;
+        }
+
+        handled = true;
+        var count = System.Threading.Interlocked.Increment(ref s_suppressedNativeDebugMessages);
+        if (count <= 12 || count % 100 == 0)
+        {
+            FpExceptionGuard.Diag($"WPF message-pump suppressed msg=0x{msg.message:X4} hwnd=0x{msg.hwnd.ToInt64():X}");
+        }
+    }
+
+    internal static bool ShouldSuppressNativeDebugWindowMessage(int message)
+    {
+        return message is WmGetObject
+            or WmInputLangChangeRequest
+            or WmInputLangChange
+            or WmImeStartComposition
+            or WmImeEndComposition
+            or WmImeComposition
+            or WmImeSetContext
+            or WmImeNotify
+            or WmImeControl
+            or WmImeCompositionFull
+            or WmImeSelect
+            or WmImeChar
+            or WmImeRequest
+            or WmImeKeyDown
+            or WmImeKeyUp;
     }
 
     private static void DisableVisualDiagnosticsForDebugger()
