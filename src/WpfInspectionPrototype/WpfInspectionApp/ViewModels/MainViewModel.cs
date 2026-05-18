@@ -584,7 +584,7 @@ public sealed class MainViewModel : ViewModelBase
             var window = ActiveWindow;
             return window == null
                 ? "Selected Window: none"
-                : $"Selected Window: {window.Name} | {FormatRoi(window.Roi)} | Algorithms {window.Algorithms.Count}";
+                : $"Selected Window: {window.Name}{Environment.NewLine}{FormatRoi(window.Roi)} | Algorithms {window.Algorithms.Count}";
         }
     }
 

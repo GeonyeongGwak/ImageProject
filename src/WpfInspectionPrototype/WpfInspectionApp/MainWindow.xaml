@@ -299,7 +299,9 @@
         <HierarchicalDataTemplate DataType="{x:Type vm:InspectionTreeNodeViewModel}"
                                   ItemsSource="{Binding Children}">
             <TextBlock Text="{Binding Header}"
-                       Foreground="{Binding Foreground}" />
+                       Foreground="{Binding Foreground}"
+                       TextWrapping="Wrap"
+                       TextTrimming="None" />
         </HierarchicalDataTemplate>
 
         <Style x:Key="PanelBorder" TargetType="Border">
@@ -547,6 +549,8 @@
                                       MaxHeight="280"
                                       Margin="0,0,0,8"
                                       ItemsSource="{Binding InspectionTreeNodes}"
+                                      ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                                      ScrollViewer.VerticalScrollBarVisibility="Auto"
                                       Background="#07101C"
                                       BorderBrush="#284A72"
                                       Foreground="#E4F3FF"
@@ -557,6 +561,7 @@
                                        FontFamily="Consolas"
                                        FontWeight="Bold"
                                        TextWrapping="Wrap"
+                                       TextTrimming="None"
                                        Text="{Binding SelectedWindowText}" />
                             <Button x:Name="AddAlgorithmButton"
                                     Content="Algorithm Add"
