@@ -147,6 +147,8 @@ public partial class MainWindow : Window, IDialogOwner
         return IntPtr.Zero;
     }
 
+    private bool _nativeDebugGuardsReleased;
+
     private void ApplyNativeDebugStartupGuards()
     {
         if (!App.StartupStabilityGuardsEnabled)
@@ -162,6 +164,80 @@ public partial class MainWindow : Window, IDialogOwner
         InputMethod.SetPreferredImeState(this, InputMethodState.Off);
         var guardedControls = GuardTextInputSubtree(this);
         FpExceptionGuard.Diag($"MainWindow native-debug startup guards applied textInputs={guardedControls}");
+
+        // ContentRendered fires after the first WPF composition pass — by then the
+        // dangerous WPF native init paths (PresentationCore static ctors, D3D9 caps
+        // probe, WindowsCodecs / DWrite first use) have all run. At that point we can
+        // safely restore interactivity so the user actually has a usable window.
+        // Without this, the window appears (ShowActivated=false hides it behind VS)
+        // and is fully disabled (IsEnabled/IsHitTestVisible=false) — looks like "the
+        // program didn't open" from the user's perspective.
+        ContentRendered += MainWindow_ContentRendered_ReleaseGuards;
+    }
+
+    private void MainWindow_ContentRendered_ReleaseGuards(object? sender, EventArgs e)
+    {
+        if (_nativeDebugGuardsReleased) return;
+        _nativeDebugGuardsReleased = true;
+        ContentRendered -= MainWindow_ContentRendered_ReleaseGuards;
+
+        // Re-mask FPU one more time before touching window properties — restoring
+        // IsEnabled triggers a layout pass which uses Matrix math (the original fp
+        // inexact source). VEH + FltSave fix should already prevent the crash, but
+        // belt-and-suspenders.
+        FpExceptionGuard.TryMask();
+
+        try
+        {
+            IsEnabled = true;
+            IsHitTestVisible = true;
+            Focusable = true;
+            InputMethod.SetIsInputMethodEnabled(this, true);
+            // PreferredImeState left at Off — the project doesn't need IME and leaving
+            // it on can re-trigger the original IME-related crashes some users see.
+
+            // Re-enable focusability on text inputs that GuardTextInputSubtree disabled.
+            RestoreTextInputSubtree(this);
+
+            // Window may be behind VS — bring it forward (only after interactivity is
+            // restored). Activate doesn't grab focus aggressively, just z-orders up.
+            Activate();
+            FpExceptionGuard.Diag("MainWindow native-debug guards RELEASED on ContentRendered");
+        }
+        catch (Exception ex)
+        {
+            FpExceptionGuard.Diag($"MainWindow guard release FAILED {ex.GetType().Name}: {ex.Message}");
+        }
+    }
+
+    private static void RestoreTextInputSubtree(DependencyObject root)
+    {
+        var visited = new HashSet<DependencyObject>();
+        void Visit(DependencyObject current)
+        {
+            if (!visited.Add(current)) return;
+            if (current is TextBoxBase textBox)
+            {
+                textBox.IsTabStop = true;
+                textBox.Focusable = true;
+                InputMethod.SetIsInputMethodEnabled(textBox, true);
+            }
+            else if (current is ComboBox comboBox)
+            {
+                comboBox.IsTabStop = true;
+                comboBox.Focusable = true;
+                InputMethod.SetIsInputMethodEnabled(comboBox, true);
+            }
+            foreach (var child in LogicalTreeHelper.GetChildren(current).OfType<DependencyObject>())
+                Visit(child);
+            if (current is Visual or System.Windows.Media.Media3D.Visual3D)
+            {
+                var visualChildren = VisualTreeHelper.GetChildrenCount(current);
+                for (var index = 0; index < visualChildren; index++)
+                    Visit(VisualTreeHelper.GetChild(current, index));
+            }
+        }
+        Visit(root);
     }
 
     private static int GuardTextInputSubtree(DependencyObject root)
