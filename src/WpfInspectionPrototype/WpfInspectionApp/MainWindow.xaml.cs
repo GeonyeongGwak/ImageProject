@@ -4,6 +4,7 @@ using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Input;
+using System.Windows.Interop;
 using System.Windows.Media;
 using System.Windows.Threading;
 using WpfInspectionApp.AlgorithmPanels;
@@ -19,6 +20,10 @@ namespace WpfInspectionApp;
 
 public partial class MainWindow : Window, IDialogOwner
 {
+    private const int WmGetObject = 0x003D;
+    private const int WmImeSetContext = 0x0281;
+    private const int WmImeNotify = 0x0282;
+
     Window IDialogOwner.GetDialogOwner() => this;
 
     private readonly DispatcherTimer _thresholdTimer;
@@ -112,6 +117,38 @@ public partial class MainWindow : Window, IDialogOwner
         }
 
         return base.OnCreateAutomationPeer();
+    }
+
+    protected override void OnSourceInitialized(EventArgs e)
+    {
+        base.OnSourceInitialized(e);
+        if (!App.StartupStabilityGuardsEnabled)
+        {
+            return;
+        }
+
+        if (PresentationSource.FromVisual(this) is HwndSource source)
+        {
+            source.AddHook(NativeDebugWindowMessageHook);
+            FpExceptionGuard.Diag("MainWindow native-debug HWND hook installed");
+        }
+    }
+
+    private static IntPtr NativeDebugWindowMessageHook(
+        IntPtr hwnd,
+        int msg,
+        IntPtr wParam,
+        IntPtr lParam,
+        ref bool handled)
+    {
+        FpExceptionGuard.TryMask();
+        if (msg is WmGetObject or WmImeSetContext or WmImeNotify)
+        {
+            handled = true;
+            return IntPtr.Zero;
+        }
+
+        return IntPtr.Zero;
     }
 
     private void ApplyNativeDebugStartupGuards()
