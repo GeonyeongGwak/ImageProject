@@ -107,25 +107,20 @@ public partial class App : Application
             base.OnStartup(e);
             FpExceptionGuard.Diag("App.OnStartup: base.OnStartup done before delayed MainWindow show");
             ShowNativeDebugParkingWindow();
-            _ = ShowMainWindowAfterNativeDebugDelayAsync(runSmokeTest);
+            Dispatcher.BeginInvoke(
+                new Action(() =>
+                {
+                    FpExceptionGuard.TryMask();
+                    FpExceptionGuard.Diag("App.OnStartup: immediate MainWindow creation dispatching");
+                    CreateShowMainWindowAndMaybeRunSmokeTest(runSmokeTest);
+                }),
+                System.Windows.Threading.DispatcherPriority.Send);
             return;
         }
 
         CreateShowMainWindowAndMaybeRunSmokeTest(runSmokeTest);
         base.OnStartup(e);
         FpExceptionGuard.Diag("App.OnStartup: base.OnStartup done");
-    }
-
-    private async Task ShowMainWindowAfterNativeDebugDelayAsync(bool runSmokeTest)
-    {
-        FpExceptionGuard.Diag("App.OnStartup: delaying MainWindow creation for native-debug guard");
-        await Task.Delay(1500).ConfigureAwait(false);
-        await Dispatcher.InvokeAsync(() =>
-        {
-            FpExceptionGuard.TryMask();
-            FpExceptionGuard.Diag("App.OnStartup: delayed MainWindow creation dispatching");
-            CreateShowMainWindowAndMaybeRunSmokeTest(runSmokeTest);
-        }, System.Windows.Threading.DispatcherPriority.Background);
     }
 
     private void CreateShowMainWindowAndMaybeRunSmokeTest(bool runSmokeTest)
