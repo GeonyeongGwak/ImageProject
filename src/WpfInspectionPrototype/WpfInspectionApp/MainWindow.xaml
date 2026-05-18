@@ -300,8 +300,8 @@
                                   ItemsSource="{Binding Children}">
             <TextBlock Text="{Binding Header}"
                        Foreground="{Binding Foreground}"
-                       TextWrapping="Wrap"
-                       TextTrimming="None" />
+                       TextWrapping="NoWrap"
+                       TextTrimming="CharacterEllipsis" />
         </HierarchicalDataTemplate>
 
         <Style x:Key="PanelBorder" TargetType="Border">
@@ -560,8 +560,8 @@
                                        Foreground="#D6ECFF"
                                        FontFamily="Consolas"
                                        FontWeight="Bold"
-                                       TextWrapping="Wrap"
-                                       TextTrimming="None"
+                                       TextWrapping="NoWrap"
+                                       TextTrimming="CharacterEllipsis"
                                        Text="{Binding SelectedWindowText}" />
                             <Button x:Name="AddAlgorithmButton"
                                     Content="Algorithm Add"

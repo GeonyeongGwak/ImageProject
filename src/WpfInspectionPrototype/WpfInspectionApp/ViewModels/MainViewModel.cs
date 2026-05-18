@@ -582,9 +582,10 @@ public sealed class MainViewModel : ViewModelBase
         get
         {
             var window = ActiveWindow;
+            var windowIndex = window == null ? -1 : Model.Part.Windows.IndexOf(window);
             return window == null
                 ? "Selected Window: none"
-                : $"Selected Window: {window.Name}{Environment.NewLine}{FormatRoi(window.Roi)} | Algorithms {window.Algorithms.Count}";
+                : $"Selected Window: {FormatWindowDisplayName(windowIndex)} | Algorithms {window.Algorithms.Count}";
         }
     }
 
@@ -870,47 +871,29 @@ public sealed class MainViewModel : ViewModelBase
         for (var index = 0; index < Model.Part.Windows.Count; index++)
         {
             var window = Model.Part.Windows[index];
+            var windowDisplayName = FormatWindowDisplayName(index);
             var windowNode = new InspectionTreeNodeViewModel
             {
-                Header = window.Name,
+                Header = windowDisplayName,
                 Kind = InspectionTreeNodeKind.Window,
                 Payload = window,
                 IsSelected = selectedId == window.Id
             };
             InspectionTreeNodes.Add(windowNode);
 
-            windowNode.Children.Add(new InspectionTreeNodeViewModel
+            for (var algorithmIndex = 0; algorithmIndex < window.Algorithms.Count; algorithmIndex++)
             {
-                Header = $"{window.Name}: {FormatRoi(window.Roi, sourceWidth, sourceHeight)}",
-                Kind = InspectionTreeNodeKind.WindowInfo,
-                Payload = window.Roi,
-                Foreground = new SolidColorBrush(Color.FromRgb(255, 210, 41)),
-                IsEnabled = false
-            });
-
-            foreach (var algorithm in window.Algorithms)
-            {
+                var algorithm = window.Algorithms[algorithmIndex];
                 algorithm.ApplyCatalogDefaults();
                 var result = algorithm.Result ?? new InspectionResultData();
-                var algorithmRoi = algorithm.AlgorithmRoi.HasValue
-                    ? FormatRoi(algorithm.AlgorithmRoi, sourceWidth, sourceHeight)
-                    : "none - uses Window ROI unless assigned";
                 var algorithmNode = new InspectionTreeNodeViewModel
                 {
-                    Header = $"{algorithm.Type} | {algorithm.DisplayName} | {algorithm.LegacyGroup}:{algorithm.LegacyName} ({algorithm.LegacyFlag})",
+                    Header = $"Algorithm{algorithmIndex + 1}",
                     Kind = InspectionTreeNodeKind.Algorithm,
                     Payload = algorithm,
                     IsSelected = selectedId == algorithm.Id
                 };
                 windowNode.Children.Add(algorithmNode);
-                algorithmNode.Children.Add(new InspectionTreeNodeViewModel
-                {
-                    Header = $"Algorithm ROI: {algorithmRoi}",
-                    Kind = InspectionTreeNodeKind.AlgorithmRoi,
-                    Payload = algorithm.AlgorithmRoi,
-                    Foreground = new SolidColorBrush(Color.FromRgb(128, 223, 255)),
-                    IsEnabled = false
-                });
                 algorithmNode.Children.Add(new InspectionTreeNodeViewModel
                 {
                     Header = $"Inspection Result: {result.Message} | FG {result.ForegroundPixels:N0} | {result.ElapsedMs:F3} ms",
@@ -944,6 +927,11 @@ public sealed class MainViewModel : ViewModelBase
         }
 
         RefreshModelBindings();
+    }
+
+    private static string FormatWindowDisplayName(int zeroBasedIndex)
+    {
+        return $"Window ROI {Math.Max(0, zeroBasedIndex) + 1}";
     }
 
     public bool SelectTreeNode(InspectionTreeNodeViewModel? node)
