@@ -414,6 +414,39 @@ public static class LegacyRawPartImportAdapter
         {
             ApplyHeightDiffParameters(algorithm, element);
         }
+        else if (string.Equals(algorithm.Type, "AlgoBridge", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyBridgeParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoTab", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(algorithm.Type, "AlgoTab_Search", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyTabParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoLead_Tip", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyLeadTipParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoLead_Lift", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyLeadLiftParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoLead_Solder", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyLeadSolderParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoLead_Color", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyLeadColorParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoLead_Search", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyLeadSearchParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoLead_SideSolder", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyLeadSideSolderParameters(algorithm, element);
+        }
     }
 
     private static void ApplyAlignParameters(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
@@ -1282,6 +1315,409 @@ public static class LegacyRawPartImportAdapter
         SetBool(algorithm, "Import.HeightDiffMapped", true);
     }
 
+    private static void ApplyBridgeParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetIntIfPresent(algorithm, $"{family}.GrayDiff", element, "GrayDiff", "GD");
+        SetIntIfPresent(algorithm, $"{family}.GapCnt", element, "GapCnt");
+        SetIntIfPresent(algorithm, $"{family}.GapCount", element, "GapCnt");
+        SetIntIfPresent(algorithm, $"{family}.LeadTipDirection", element, "LeadTipDirection", "LT_Dir");
+        SetBoolIfPresent(algorithm, $"{family}.Use3D", element, "Use3D");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightReferenceValue", element, "HeightReferenceValue", "HeiRefV");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightDiff2D3D", element, "HeightReferenceValue", "HeiRefV");
+        SetBoolIfPresent(algorithm, $"{family}.Offset", element, "Offset", "os");
+        SetIntIfPresent(algorithm, $"{family}.TypeBridge", element, "TypeBridge", "TPBrid");
+        SetDoubleIfPresent(algorithm, $"{family}.PercentOK", element, "PercentOK", "PerOK");
+        SetBoolIfPresent(algorithm, $"{family}.UseInsp2D", element, "UseInsp2D");
+        SetBoolIfPresent(algorithm, $"{family}.Use2DInspection", element, "UseInsp2D");
+        SetBoolIfPresent(algorithm, $"{family}.UseInsp3D", element, "UseInsp3D");
+        SetBoolIfPresent(algorithm, $"{family}.Use3DInspection", element, "UseInsp3D");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightDiff", element, "HeightDiff", "HeiDiff");
+        SetBoolIfPresent(algorithm, $"{family}.AutoSearchROI", element, "AutoSearchROI");
+        SetBoolIfPresent(algorithm, $"{family}.UseSolderBall", element, "UseSolderBall", "SBUSE");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderBallArea", element, "SBArea");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderBallAreaPer", element, "SBAreaPer");
+        SetBoolIfPresent(algorithm, $"{family}.Insp2DUpper", element, "Insp2DUp");
+        SetDoubleIfPresent(algorithm, $"{family}.ThinBridge", element, "Thin");
+        SetIntIfPresent(algorithm, $"{family}.Line2D3D", element, "Line23D");
+        SetBoolIfPresent(algorithm, $"{family}.UseMode2", element, "UseMode2", "Mode2");
+        SetIntIfPresent(algorithm, $"{family}.Sorting", element, "Sorting", "Sort");
+
+        if (TryReadIntLeaf(element, out var optionFlags, "Option"))
+        {
+            SetInt(algorithm, $"{family}.OptionFlags", optionFlags);
+            SetBool(algorithm, $"{family}.UseBinarize", HasFlag(optionFlags, 0x01));
+            SetBool(algorithm, $"{family}.UseArea", HasFlag(optionFlags, 0x02));
+            SetBool(algorithm, $"{family}.UseWidth", HasFlag(optionFlags, 0x04));
+            SetBool(algorithm, $"{family}.UseLength", HasFlag(optionFlags, 0x08));
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var arrValue, "ArrValue"))
+        {
+            SetOptionalDouble(algorithm, $"{family}.AreaMax", arrValue, 0);
+            SetOptionalDouble(algorithm, $"{family}.WidthMax", arrValue, 1);
+            SetOptionalDouble(algorithm, $"{family}.LengthMax", arrValue, 2);
+            SetOptionalDouble(algorithm, $"{family}.TotalMax", arrValue, 3);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var solderBall2D, "SB2D") && solderBall2D.Length >= 4)
+        {
+            SetDouble(algorithm, $"{family}.SolderBallRange2D", solderBall2D[0]);
+            SetDouble(algorithm, $"{family}.SolderBallRange3D", solderBall2D[1]);
+            SetDouble(algorithm, $"{family}.SolderBall2DMin", solderBall2D[2]);
+            SetDouble(algorithm, $"{family}.SolderBall2DMax", solderBall2D[3]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var solderBall3D, "SB3D") && solderBall3D.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.SolderBall3DMin", solderBall3D[0]);
+            SetDouble(algorithm, $"{family}.SolderBall3DMax", solderBall3D[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var blobBaseNear, "BlobBN"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "NearBlob", blobBaseNear, promoteRuntimeKeys: false);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var blobBaseFar, "BlobBF"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "FarBlob", blobBaseFar, promoteRuntimeKeys: false);
+        }
+
+        var roiCount = 0;
+        for (var index = 1; index <= 64; index++)
+        {
+            if (TryReadLeafValue(element, out var roi, $"ROI{index}", $"PtrrcGapRect{index}"))
+            {
+                algorithm.Parameters[$"{family}.GapRoi{index}.Raw"] = roi;
+                roiCount++;
+            }
+        }
+
+        if (roiCount > 0)
+        {
+            SetInt(algorithm, $"{family}.GapRoiCount", roiCount);
+        }
+
+        SetBool(algorithm, "Import.BridgeMapped", true);
+    }
+
+    private static void ApplyTabParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyColorParameters(algorithm, element);
+        ApplyLeadPositionParameters(algorithm, element, family);
+        SetBoolIfPresent(algorithm, $"{family}.AutoSearchROI", element, "AutoSearchROI");
+        SetIntIfPresent(algorithm, $"{family}.TabCount", element, "GapCnt", "NTab");
+        SetIntIfPresent(algorithm, $"{family}.TypeTab", element, "TypeTab", "TPTab");
+        SetDoubleIfPresent(algorithm, $"{family}.TailArea", element, "Tail_", "Tail");
+        SetDoubleIfPresent(algorithm, $"{family}.StandardMarginArea", element, "StdMgA_");
+        SetDoubleIfPresent(algorithm, $"{family}.TabLength", element, "chipLg");
+        SetDoubleIfPresent(algorithm, $"{family}.MaxChippingLength", element, "chipLg");
+        SetBoolIfPresent(algorithm, $"{family}.UseChippingCriticalLine", element, "UChCriLn");
+        SetBoolIfPresent(algorithm, $"{family}.UseTieBarRateOption", element, "UTBarROp");
+        SetBoolIfPresent(algorithm, $"{family}.UseTieAreaOption", element, "UTAO");
+        SetDoubleIfPresent(algorithm, $"{family}.StartIndex", element, "StI");
+        SetDoubleIfPresent(algorithm, $"{family}.CriticalArea", element, "CriA", "CrtA");
+        SetBoolIfPresent(algorithm, $"{family}.UseMinScarThickness", element, "UseMinScarThickness");
+        SetDoubleIfPresent(algorithm, $"{family}.MinScarThickness", element, "MinScarThickness");
+        SetBoolIfPresent(algorithm, $"{family}.UseScarAspectRatio", element, "UseScarAspectRatio");
+        SetDoubleIfPresent(algorithm, $"{family}.ScarAspectRatio", element, "dScAspRat");
+        SetBoolIfPresent(algorithm, $"{family}.UseDisableTabArea", element, "UseDisableTabArea");
+        SetBoolIfPresent(algorithm, $"{family}.UseCrossLineDetect", element, "UseCrossLineDetect");
+        SetBoolIfPresent(algorithm, $"{family}.UseVerticalMaxLength", element, "UseVerticalMaxLen");
+        SetDoubleIfPresent(algorithm, $"{family}.VerticalMaxLength", element, "VerticalMaxLen");
+        SetBoolIfPresent(algorithm, $"{family}.UseHorizontalMaxLength", element, "UseHorizontalMaxLen");
+        SetDoubleIfPresent(algorithm, $"{family}.HorizontalMaxLength", element, "HorizontalMaxLen");
+        SetBoolIfPresent(algorithm, $"{family}.UseMaxNGArea", element, "UseMaxNGArea");
+        SetDoubleIfPresent(algorithm, $"{family}.MaxNGArea", element, "MaxNGArea");
+        SetBoolIfPresent(algorithm, $"{family}.UseEraseScarArea", element, "UseEarseScarArea", "UseEraseScarArea");
+        SetIntIfPresent(algorithm, $"{family}.WindowAngle", element, "WndAngle", "WndAng");
+
+        if (TryReadNumberArrayLeaf(element, out var widths, "Ar_dWidth_"))
+        {
+            SetOptionalDouble(algorithm, $"{family}.TabWidth", widths, 0);
+            SetIndexedDoubles(algorithm, family, "TabWidth", widths);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var lines, "Line_"))
+        {
+            SetOptionalDouble(algorithm, $"{family}.Pitch", lines, 0);
+            SetIndexedDoubles(algorithm, family, "Line", lines);
+        }
+
+        CopyRawArrayIfPresent(algorithm, element, family, "LineUse", "Ar_bLine_");
+        CopyRawArrayIfPresent(algorithm, element, family, "WidthUse", "Ar_bWidth_");
+        CopyRawArrayIfPresent(algorithm, element, family, "TabUse", "Ar_bTab_");
+        CopyRawArrayIfPresent(algorithm, element, family, "TailUse", "Ar_bTail_");
+
+        if (TryReadNumberArrayLeaf(element, out var tabBlob, "BW_Tab_"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "TabBlob", tabBlob, promoteRuntimeKeys: true);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var ngBlob1, "BW_NG1_"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "NG1Blob", ngBlob1, promoteRuntimeKeys: false);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var ngBlob2, "BW_NG2_"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "NG2Blob", ngBlob2, promoteRuntimeKeys: false);
+        }
+
+        SetIntIfPresent(algorithm, $"{family}.Histogram1", element, "Hist1");
+        SetIntIfPresent(algorithm, $"{family}.Histogram2", element, "nHist2", "Hist2");
+        SetBool(algorithm, "Import.TabMapped", true);
+    }
+
+    private static void ApplyLeadTipParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetDoubleIfPresent(algorithm, $"{family}.LeadTipPosition", element, "LeadTipPos", "LT_Pos", "LT_Pos_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.SearchRange", element, "SearchRange", "SearR", "SearR_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.Gap", element, "SearchRange", "SearR", "SearR_mm");
+        SetIntIfPresent(algorithm, $"{family}.LeadDirection", element, "LeadDirection", "L_Dir");
+        SetBoolIfPresent(algorithm, $"{family}.InvertCheck", element, "InvertCheck", "InvChk");
+        SetIntIfPresent(algorithm, $"{family}.PixelPercentValue", element, "PixelPercentValue", "PxPerV");
+        SetIntIfPresent(algorithm, $"{family}.Range2DType", element, "N2dRange", "R2D");
+        SetIntIfPresent(algorithm, $"{family}.Range3DType", element, "N3dRange", "R3D");
+        SetBoolIfPresent(algorithm, $"{family}.Use2D", element, "B2dCheck", "Use2D");
+        SetBoolIfPresent(algorithm, $"{family}.Use3D", element, "B3dCheck", "Use3D");
+        SetBoolIfPresent(algorithm, $"{family}.NG", element, "TipFaultNG", "TipFNG");
+        SetIntIfPresent(algorithm, $"{family}.LeadFindPercent", element, "LeadPercentValue", "L_PerV");
+        SetIntIfPresent(algorithm, $"{family}.NGTipOption", element, "NGTipOption", "NGTipOpt");
+        SetIntIfPresent(algorithm, $"{family}.SearchDirBody", element, "SearchDirBody", "SearDirBody");
+        SetBoolIfPresent(algorithm, $"{family}.Use3DIn2D", element, "B3DIn2dCheck", "Use3DIn2D");
+        SetIntIfPresent(algorithm, $"{family}.Range3DIn2D", element, "N3DIn2DRange", "R3DIn2D");
+        SetBoolIfPresent(algorithm, $"{family}.UseSideTip", element, "UseSideTip", "UseST");
+        SetBoolIfPresent(algorithm, $"{family}.UseLeadWindowSizeChange", element, "UseLeadWindowSizeChange", "UseLW_szC");
+        SetBoolIfPresent(algorithm, $"{family}.UseSideTipShift", element, "UseSideTipShift", "UseST_Sft");
+        SetDoubleIfPresent(algorithm, $"{family}.SideTipSearchArea", element, "SideTipSearchArea", "ST_SearArea");
+        SetIntIfPresent(algorithm, $"{family}.FindOption", element, "FindOpt");
+        SetDoubleIfPresent(algorithm, $"{family}.TipLength", element, "T_Length");
+        SetBoolIfPresent(algorithm, $"{family}.UseTipLength", element, "UseTipLength", "T_Length");
+        SetDoubleIfPresent(algorithm, $"{family}.CapGap", element, "T_CapGap");
+        SetBoolIfPresent(algorithm, $"{family}.UseTipCap", element, "UseTipCap", "T_CapGap");
+        SetDoubleIfPresent(algorithm, $"{family}.SideTipPosition", element, "SideTPos");
+        SetDoubleIfPresent(algorithm, $"{family}.SideTipGap", element, "SideTGap");
+        SetBoolIfPresent(algorithm, $"{family}.UseSideBin", element, "USideBin");
+        SetBoolIfPresent(algorithm, $"{family}.Side2DCheck", element, "Side2dChk");
+        SetIntIfPresent(algorithm, $"{family}.Side2DRange", element, "Side2dRg");
+        SetBoolIfPresent(algorithm, $"{family}.Side3DCheck", element, "Side3dChk");
+        SetIntIfPresent(algorithm, $"{family}.Side3DRange", element, "Side3dRg");
+        SetDoubleIfPresent(algorithm, $"{family}.BaseMinArea", element, "BMinArea");
+        SetDoubleIfPresent(algorithm, $"{family}.SideTipGapWidth", element, "SideGW");
+        SetIntIfPresent(algorithm, $"{family}.TemplateMode", element, "TM");
+        SetDoubleIfPresent(algorithm, $"{family}.RoiOffset", element, "ROFF", "ROFF_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.TemplateMatchAreaRate", element, "TMAR");
+        SetIntIfPresent(algorithm, $"{family}.SideTipFindType", element, "ST_TF");
+        SetBoolIfPresent(algorithm, $"{family}.DirectionInvert", element, "DirInv");
+        SetBoolIfPresent(algorithm, $"{family}.UseSideTipShiftUnitPercent", element, "UseSideTipShiftUnitPer", "UseST_SftUnitPer");
+
+        if (TryReadNumberArrayLeaf(element, out var binaryRange, "MnMx2D") && binaryRange.Length >= 2)
+        {
+            SetBinaryRange(algorithm, family, Round(binaryRange[0]), Round(binaryRange[1]));
+        }
+        else
+        {
+            SetIntIfPresent(algorithm, $"{family}.BinaryMin", element, "N2dBinaryMin");
+            SetIntIfPresent(algorithm, $"{family}.BinaryMax", element, "N2dBinaryMax");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var heightRange, "MnMxAvg3D") && heightRange.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.HeightMin3D", heightRange[0]);
+            SetDouble(algorithm, $"{family}.HeightMax3D", heightRange[1]);
+            SetDouble(algorithm, $"{family}.AvgHeight3D", heightRange[2]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.HeightMin3D", element, "N3dHeightMin");
+            SetDoubleIfPresent(algorithm, $"{family}.HeightMax3D", element, "N3dHeightMax");
+            SetDoubleIfPresent(algorithm, $"{family}.AvgHeight3D", element, "D3dAvgHeight");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var heightIn2D, "MnMx3DIn2D") && heightIn2D.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.Height3DIn2DMin", heightIn2D[0]);
+            SetDouble(algorithm, $"{family}.Height3DIn2DMax", heightIn2D[1]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.Height3DIn2DMin", element, "N3DIn2DMinValue");
+            SetDoubleIfPresent(algorithm, $"{family}.Height3DIn2DMax", element, "N3DIn2DMaxValue");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var sideTipShift, "ST_Sft") && sideTipShift.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.SideTipShiftX", sideTipShift[0]);
+            SetDouble(algorithm, $"{family}.SideTipShiftY", sideTipShift[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var sideTipShiftPercent, "ST_SftPer") && sideTipShiftPercent.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.SideTipShiftPercentX", sideTipShiftPercent[0]);
+            SetDouble(algorithm, $"{family}.SideTipShiftPercentY", sideTipShiftPercent[1]);
+        }
+
+        SetBool(algorithm, "Import.LeadTipMapped", true);
+    }
+
+    private static void ApplyLeadLiftParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyLeadPositionParameters(algorithm, element, family);
+        ApplySizeArrayParameters(algorithm, element, family, "Width", "Height", "ROIWH", "ROIWH_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.Interval", element, "LeadTipInterval", "LT_Itv", "LT_Itv_mm");
+        SetIntIfPresent(algorithm, $"{family}.LeadTipDirection", element, "LeadTipDirection", "LT_Dir");
+        SetDoubleIfPresent(algorithm, $"{family}.CurrentPosition", element, "LeadPosition", "L_Pos", "L_Pos_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.CurrentHeight3D", element, "CurrentHeight3D", "HeiCur3D");
+        SetDoubleIfPresent(algorithm, $"{family}.ToleranceBand3D", element, "ToleranceBand3D", "TolerBand3D");
+        SetDoubleIfPresent(algorithm, $"{family}.MinValue", element, "MinValue", "MinV");
+        SetBoolIfPresent(algorithm, $"{family}.UseLeadLift", element, "UseLeadLift", "UseLL");
+        SetBoolIfPresent(algorithm, $"{family}.UseLeadCoplanarity", element, "UseCoplanarity", "UseCopla");
+        SetBoolIfPresent(algorithm, $"{family}.UseCoplanarity", element, "UseCoplanarity", "UseCopla");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightDiff", element, "HeightDiif", "HeightDiff", "HeiDiff");
+        SetBoolIfPresent(algorithm, $"{family}.UseGradient", element, "UseGradient", "UseGrd");
+        SetDoubleIfPresent(algorithm, $"{family}.Gradient", element, "Gradient", "Grd");
+        SetBoolIfPresent(algorithm, $"{family}.UseFilletHeight", element, "UseCR");
+        SetDoubleIfPresent(algorithm, $"{family}.FilletHeightMax", element, "CRMx");
+        SetDoubleIfPresent(algorithm, $"{family}.FilletHeightMin", element, "CRMn");
+        SetIntIfPresent(algorithm, $"{family}.IpcClass", element, "CSIPC");
+
+        if (TryReadNumberArrayLeaf(element, out var heightRange, "MnMxAvgHei") && heightRange.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.HeightMin3D", heightRange[0]);
+            SetDouble(algorithm, $"{family}.HeightMax3D", heightRange[1]);
+            SetDouble(algorithm, $"{family}.AvgHeight3D", heightRange[2]);
+        }
+
+        CopyRawArrayIfPresent(algorithm, element, family, "ArrN", "ArrN");
+        CopyRawArrayIfPresent(algorithm, element, family, "ArrF", "ArrF");
+        SetBool(algorithm, "Import.LeadLiftMapped", true);
+    }
+
+    private static void ApplyLeadSolderParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyLeadPositionParameters(algorithm, element, family);
+        ApplySizeArrayParameters(algorithm, element, family, "Width", "Height", "ROIWH", "ROIWH_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadInterval", element, "LeadInterval", "L_Itv", "L_Itv_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderInterval", element, "SolderInterval", "SD_Itv", "SD_Itv_mm");
+        SetIntIfPresent(algorithm, $"{family}.LeadTipDirection", element, "LeadTipDirection", "LT_Dir");
+        SetDoubleIfPresent(algorithm, $"{family}.CurrentPosition", element, "LeadPosition", "L_Pos", "L_Pos_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderLength", element, "SolderLength", "SD_Len", "SD_Len_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderLength2", element, "SD_Len2");
+        SetBoolIfPresent(algorithm, $"{family}.UseBW", element, "BWInspectionUse", "UseBW");
+        SetBoolIfPresent(algorithm, $"{family}.UseMean", element, "HeightMeanUse", "UseHM");
+        SetBoolIfPresent(algorithm, $"{family}.UseHeightDiff", element, "HeightDiffUse", "UseHD");
+        SetDoubleIfPresent(algorithm, $"{family}.CurrentValueBW", element, "CurrentValueBW", "CurV_BW");
+        SetDoubleIfPresent(algorithm, $"{family}.AvgHeight3D", element, "AvgHeight3D", "HeiAvg");
+        SetDoubleIfPresent(algorithm, $"{family}.PermissibleRange", element, "ToleranceBand3D", "TolerBand3D");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightDiff", element, "HeightDiff");
+        SetDoubleIfPresent(algorithm, $"{family}.OkStandard3DRate", element, "OKStandard3DRate", "OKStd3DR");
+        SetBoolIfPresent(algorithm, $"{family}.UseBWCJ", element, "UseBWCJ");
+        SetDoubleIfPresent(algorithm, $"{family}.CJInterval", element, "CJInterval");
+        SetDoubleIfPresent(algorithm, $"{family}.CJWidth", element, "CJWidth");
+        SetDoubleIfPresent(algorithm, $"{family}.CJHeight", element, "CJHeight");
+        SetDoubleIfPresent(algorithm, $"{family}.BWCJ", element, "BWCJ");
+        SetBoolIfPresent(algorithm, $"{family}.UseTotalArea3D", element, "UseTArea3D");
+        SetDoubleIfPresent(algorithm, $"{family}.TotalArea3D", element, "TArea3D");
+        SetDoubleIfPresent(algorithm, $"{family}.Gap", element, "GapW");
+        SetBoolIfPresent(algorithm, $"{family}.UseExcept", element, "UseExc");
+        SetBoolIfPresent(algorithm, $"{family}.UseContour", element, "UseCont");
+        SetDoubleIfPresent(algorithm, $"{family}.IntervalContourX", element, "IntervalCont");
+        SetDoubleIfPresent(algorithm, $"{family}.IntervalContourY", element, "IntervalContY");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadHeight", element, "HeiLead", "HLd");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadHeightMargin", element, "HLdMg");
+        SetIntIfPresent(algorithm, $"{family}.HeightCalculationMethod", element, "HCalcMethod");
+
+        if (TryReadNumberArrayLeaf(element, out var blackWhite, "BlackWhite", "BW"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "BlackWhite", blackWhite, promoteRuntimeKeys: true);
+        }
+
+        CopyRawArrayIfPresent(algorithm, element, family, "HeightMean", "HeightMean", "HM");
+        CopyRawArrayIfPresent(algorithm, element, family, "Essential", "Ess");
+        CopyRawArrayIfPresent(algorithm, element, family, "RoiContour", "ROICont");
+        CopyRawArrayIfPresent(algorithm, element, family, "ThresholdContour", "T_Cont");
+        SetBool(algorithm, "Import.LeadSolderMapped", true);
+    }
+
+    private static void ApplyLeadColorParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyColorParameters(algorithm, element);
+        ApplyLeadPositionParameters(algorithm, element, family);
+        SetDoubleIfPresent(algorithm, $"{family}.Gap", element, "SolderLength", "SD_Len", "SD_Len_mm");
+        SetIntIfPresent(algorithm, $"{family}.LeadTipDirection", element, "LeadTipDirection", "LT_Dir");
+        SetDoubleIfPresent(algorithm, $"{family}.CurrentPosition", element, "LeadPosition", "L_Pos", "L_Pos_mm");
+        SetIntIfPresent(algorithm, $"{family}.ColorInspectionSetValue", element, "InspTypeColor", "InspTPClr");
+        SetBoolIfPresent(algorithm, $"{family}.ColorJudge", element, "UseRange", "UseRangeBar");
+        SetBool(algorithm, "Import.LeadColorMapped", true);
+    }
+
+    private static void ApplyLeadSearchParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyLeadPositionParameters(algorithm, element, family);
+        ApplySizeArrayParameters(algorithm, element, family, "DisplayPanelSizeX", "DisplayPanelSizeY", "DPPansz");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderStartPos", element, "SolderStartPos", "SD_stPos");
+        SetBoolIfPresent(algorithm, $"{family}.IsContainer", element, "IsContainer", "Ctn");
+        SetBoolIfPresent(algorithm, $"{family}.Use3D", element, "Use3D");
+        SetBoolIfPresent(algorithm, $"{family}.Use2D", element, "Use2D");
+        SetIntIfPresent(algorithm, $"{family}.SolderThreshold", element, "ThresholdValue", "THV");
+        SetBoolIfPresent(algorithm, $"{family}.UseHeight", element, "InspHeightFlag", "UseHei");
+        SetBoolIfPresent(algorithm, $"{family}.UseCoplanarity", element, "InspCoplanrity", "UseCop");
+        SetIntIfPresent(algorithm, $"{family}.RoiCount", element, "SolderCnt", "SDCnt");
+        SetDoubleIfPresent(algorithm, $"{family}.RoiWidth", element, "LeadWidth", "L_W");
+        SetDoubleIfPresent(algorithm, $"{family}.RoiPitch", element, "LeadPitch", "L_P");
+        SetIntIfPresent(algorithm, $"{family}.StartLead", element, "StartLead");
+        SetIntIfPresent(algorithm, $"{family}.EndLead", element, "EndLead");
+        SetBoolIfPresent(algorithm, $"{family}.IsManualSearch", element, "IsManualSearch", "MSear");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadStartLeft", element, "LeadStartLeft", "L_stl");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadStartLeftDistanceX", element, "L_stlDstX");
+        SetIntIfPresent(algorithm, $"{family}.ManualSearchType", element, "MSearType");
+        SetBoolIfPresent(algorithm, $"{family}.SameWidthPitch", element, "SameWidthPitch", "SameWP");
+        SetDoubleIfPresent(algorithm, $"{family}.RoiStartPos", element, "LeadPosition", "L_Pos", "L_Pos_mm");
+        CopyRawArrayIfPresent(algorithm, element, family, "LeadStart", "L_st");
+        CopyRawArrayIfPresent(algorithm, element, family, "LeadEnd", "L_ed");
+        SetBool(algorithm, "Import.LeadSearchMapped", true);
+    }
+
+    private static void ApplyLeadSideSolderParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyLeadPositionParameters(algorithm, element, family);
+        ApplySizeArrayParameters(algorithm, element, family, "Width", "Height", "RectWH");
+        SetIntIfPresent(algorithm, $"{family}.LeadTipDirection", element, "LeadTipDirection", "LT_Dir");
+        SetDoubleIfPresent(algorithm, $"{family}.CurrentPosition", element, "LeadPosition", "L_Pos", "L_Pos_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadLiftSetValue", element, "LeadLiftSetValue", "LL_V");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderLength", element, "SolderLength", "SD_Len", "SD_Len_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.Gap", element, "SolderLength", "SD_Len", "SD_Len_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.GapWidth", element, "GapW");
+        SetBoolIfPresent(algorithm, $"{family}.UseTeachingRate", element, "UseTeachA");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachingArea", element, "TeachA");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachingArea2", element, "TeachA2");
+        SetIntIfPresent(algorithm, $"{family}.InspectionArea", element, "InspA");
+
+        if (TryReadNumberArrayLeaf(element, out var blackWhite, "BlackWhite", "BW"))
+        {
+            ApplyShapeXBlobBaseParameters(algorithm, family, "BlackWhite", blackWhite, promoteRuntimeKeys: true);
+        }
+
+        SetBool(algorithm, "Import.LeadSideSolderMapped", true);
+    }
+
     private static void ApplyCommonRangeParameters(InspectionAlgorithmData algorithm, XElement element)
     {
         var family = algorithm.ParameterFamily;
@@ -1363,6 +1799,55 @@ public static class LegacyRawPartImportAdapter
         if (TryReadLeafValue(element, out var roi2Mm, "ROI2_mm"))
         {
             algorithm.Parameters[$"{family}.Roi2.Mm"] = roi2Mm;
+        }
+    }
+
+    private static void ApplyLeadPositionParameters(InspectionAlgorithmData algorithm, XElement element, string family)
+    {
+        SetIntIfPresent(algorithm, $"{family}.LeadTipDirection", element, "LeadTipDirection", "LT_Dir", "LeadDirection", "L_Dir");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadPosition", element, "LeadPosition", "L_Pos", "L_Pos_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderLength", element, "SolderLength", "SD_Len", "SD_Len_mm");
+        SetDoubleIfPresent(algorithm, $"{family}.SolderStartPos", element, "SolderStartPos", "SD_stPos");
+    }
+
+    private static void ApplySizeArrayParameters(
+        InspectionAlgorithmData algorithm,
+        XElement element,
+        string family,
+        string widthKey,
+        string heightKey,
+        params string[] names)
+    {
+        if (!TryReadNumberArrayLeaf(element, out var size, names) || size.Length < 2)
+        {
+            return;
+        }
+
+        SetDouble(algorithm, $"{family}.{widthKey}", size[0]);
+        SetDouble(algorithm, $"{family}.{heightKey}", size[1]);
+        SetDouble(algorithm, $"{family}.RoiWidth", size[0]);
+        SetDouble(algorithm, $"{family}.RoiHeight", size[1]);
+    }
+
+    private static void SetIndexedDoubles(InspectionAlgorithmData algorithm, string family, string name, IReadOnlyList<double> values)
+    {
+        var limit = Math.Min(values.Count, 32);
+        for (var index = 0; index < limit; index++)
+        {
+            SetDouble(algorithm, $"{family}.{name}{index + 1}", values[index]);
+        }
+    }
+
+    private static void CopyRawArrayIfPresent(
+        InspectionAlgorithmData algorithm,
+        XElement element,
+        string family,
+        string key,
+        params string[] names)
+    {
+        if (TryReadLeafValue(element, out var value, names))
+        {
+            algorithm.Parameters[$"{family}.{key}.Raw"] = value;
         }
     }
 

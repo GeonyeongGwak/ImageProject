@@ -149,6 +149,10 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Number("Lead Solder", "Current Position", $"{family}.CurrentPosition", "0"));
         profile.Controls.Add(Number("Lead Solder", "Lead Interval", $"{family}.LeadInterval", "0"));
         profile.Controls.Add(Number("Lead Solder", "Solder Interval", $"{family}.SolderInterval", "0"));
+        profile.Controls.Add(Number("Lead Solder", "Solder Length", $"{family}.SolderLength", "0"));
+        profile.Controls.Add(Check("Lead Solder", "Use BW", $"{family}.UseBW", "false"));
+        profile.Controls.Add(Check("Lead Solder", "Use Height Diff", $"{family}.UseHeightDiff", "false"));
+        profile.Controls.Add(Number("Lead Solder", "Current BW", $"{family}.CurrentValueBW", "0"));
         profile.Controls.Add(Check("Lead Solder", "Use Rect", $"{family}.UseRect", "false"));
         profile.Controls.Add(Number("Lead Solder", "Gap", $"{family}.Gap", "0"));
         profile.Controls.Add(Check("Lead Solder", "Use Mean", $"{family}.UseMean", "false"));
@@ -418,8 +422,15 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Number("Tab", "Tab Count", $"{family}.TabCount", "0"));
         profile.Controls.Add(Number("Tab", "Tab Width", $"{family}.TabWidth", "0"));
         profile.Controls.Add(Number("Tab", "Tab Length", $"{family}.TabLength", "0"));
+        profile.Controls.Add(Number("Tab", "Lead Position", $"{family}.LeadPosition", "0"));
+        profile.Controls.Add(Number("Tab", "Solder Length", $"{family}.SolderLength", "0"));
+        profile.Controls.Add(Number("Tab", "Tail Area", $"{family}.TailArea", "0"));
+        profile.Controls.Add(Number("Tab", "Critical Area", $"{family}.CriticalArea", "0"));
         profile.Controls.Add(Check("Tab", "Use Pitch", $"{family}.UsePitch", "false"));
         profile.Controls.Add(Number("Tab", "Pitch", $"{family}.Pitch", "0"));
+        profile.Controls.Add(Check("Tab", "Auto Search ROI", $"{family}.AutoSearchROI", "false"));
+        profile.Controls.Add(Check("Tab", "Use Max NG Area", $"{family}.UseMaxNGArea", "false"));
+        profile.Controls.Add(Number("Tab", "Max NG Area", $"{family}.MaxNGArea", "0"));
         profile.Controls.Add(Command("Tab", "Search", $"{family}.TabSearchRequested"));
         profile.Controls.Add(Command("Tab", "Apply All", $"{family}.TabApplyAllRequested"));
     }
@@ -511,14 +522,26 @@ public static partial class AlgorithmReferenceUiCatalog
     {
         profile.Controls.Add(Command("Bridge", "Teach", $"{family}.TeachRequested"));
         profile.Controls.Add(Number("Bridge", "Gray Diff", $"{family}.GrayDiff", "0"));
+        profile.Controls.Add(Number("Bridge", "Gap Count", $"{family}.GapCount", "0"));
+        profile.Controls.Add(Number("Bridge", "Lead Direction", $"{family}.LeadTipDirection", "0"));
         profile.Controls.Add(Number("Bridge", "Current Gray Min", $"{family}.CurrentGrayMin", "0"));
         profile.Controls.Add(Check("Bridge", "2D Inspection Use", $"{family}.Use2DInspection", "true"));
         profile.Controls.Add(Check("Bridge", "2D Range", $"{family}.Use2DRange", "false"));
         profile.Controls.Add(Check("Bridge", "3D Inspection Use", $"{family}.Use3DInspection", "false"));
         profile.Controls.Add(Number("Bridge", "2D/3D Height Diff", $"{family}.HeightDiff2D3D", "0"));
+        profile.Controls.Add(Number("Bridge", "Height Diff", $"{family}.HeightDiff", "0"));
+        profile.Controls.Add(Number("Bridge", "Percent OK", $"{family}.PercentOK", "0"));
         profile.Controls.Add(Check("Bridge", "Auto Search ROI", $"{family}.AutoSearchROI", "false"));
         profile.Controls.Add(Check("Bridge", "Use Solder Ball", $"{family}.UseSolderBall", "false"));
+        profile.Controls.Add(Number("Bridge", "Solder Ball Area", $"{family}.SolderBallArea", "0"));
+        profile.Controls.Add(Number("Bridge", "Solder Ball Area %", $"{family}.SolderBallAreaPer", "0"));
         profile.Controls.Add(Check("Bridge", "Use Binarize", $"{family}.UseBinarize", "false"));
+        profile.Controls.Add(Check("Bridge", "Use Area", $"{family}.UseArea", "false"));
+        profile.Controls.Add(Number("Bridge", "Area Max", $"{family}.AreaMax", "0"));
+        profile.Controls.Add(Check("Bridge", "Use Width", $"{family}.UseWidth", "false"));
+        profile.Controls.Add(Number("Bridge", "Width Max", $"{family}.WidthMax", "0"));
+        profile.Controls.Add(Check("Bridge", "Use Length", $"{family}.UseLength", "false"));
+        profile.Controls.Add(Number("Bridge", "Length Max", $"{family}.LengthMax", "0"));
         profile.Controls.Add(Check("Bridge", "Use Mode2", $"{family}.UseMode2", "false"));
         profile.Controls.Add(Combo("Bridge", "Sorting", $"{family}.Sorting", "0", ["None", "Left", "Right", "Area"]));
         profile.Controls.Add(Command("Bridge", "Sorting Run", $"{family}.SortingRunRequested"));
@@ -542,8 +565,12 @@ public static partial class AlgorithmReferenceUiCatalog
     private static void AddLeadTip(AlgorithmReferenceUiProfile profile, string family)
     {
         profile.Controls.Add(Command("Lead Tip", "Set Position", $"{family}.SetPositionRequested"));
+        profile.Controls.Add(Number("Lead Tip", "Lead Tip Position", $"{family}.LeadTipPosition", "0"));
+        profile.Controls.Add(Number("Lead Tip", "Search Range", $"{family}.SearchRange", "0"));
         profile.Controls.Add(Number("Lead Tip", "Gap", $"{family}.Gap", "0"));
         profile.Controls.Add(Check("Lead Tip", "NG", $"{family}.NG", "false"));
+        profile.Controls.Add(Check("Lead Tip", "Use 2D", $"{family}.Use2D", "false"));
+        profile.Controls.Add(Check("Lead Tip", "Use 3D", $"{family}.Use3D", "false"));
         profile.Controls.Add(Check("Lead Tip", "Use Side Tip", $"{family}.UseSideTip", "false"));
         profile.Controls.Add(Number("Lead Tip", "Side Tip Position", $"{family}.SideTipPosition", "0"));
         profile.Controls.Add(Number("Lead Tip", "Side Tip Gap", $"{family}.SideTipGap", "0"));
@@ -559,9 +586,14 @@ public static partial class AlgorithmReferenceUiCatalog
     private static void AddLeadLift(AlgorithmReferenceUiProfile profile, string family)
     {
         profile.Controls.Add(Command("Lead Lift", "Set Position", $"{family}.SetPositionRequested"));
+        profile.Controls.Add(Number("Lead Lift", "Lead Position", $"{family}.LeadPosition", "0"));
+        profile.Controls.Add(Number("Lead Lift", "Direction", $"{family}.LeadTipDirection", "0"));
         profile.Controls.Add(Number("Lead Lift", "Interval", $"{family}.Interval", "0"));
         profile.Controls.Add(Number("Lead Lift", "Width", $"{family}.Width", "0"));
         profile.Controls.Add(Number("Lead Lift", "Height", $"{family}.Height", "0"));
+        profile.Controls.Add(Number("Lead Lift", "Current Height 3D", $"{family}.CurrentHeight3D", "0"));
+        profile.Controls.Add(Number("Lead Lift", "Avg Height 3D", $"{family}.AvgHeight3D", "0"));
+        profile.Controls.Add(Number("Lead Lift", "Height Diff", $"{family}.HeightDiff", "0"));
         profile.Controls.Add(Check("Lead Lift", "Use Lead Coplanarity", $"{family}.UseLeadCoplanarity", "false"));
         profile.Controls.Add(Check("Lead Lift", "Use Gradient", $"{family}.UseGradient", "false"));
         profile.Controls.Add(Number("Lead Lift", "Gradient", $"{family}.Gradient", "0"));
@@ -574,6 +606,8 @@ public static partial class AlgorithmReferenceUiCatalog
     private static void AddLeadColor(AlgorithmReferenceUiProfile profile, string family)
     {
         profile.Controls.Add(Command("Lead Color", "Set Position", $"{family}.SetPositionRequested"));
+        profile.Controls.Add(Number("Lead Color", "Lead Position", $"{family}.LeadPosition", "0"));
+        profile.Controls.Add(Number("Lead Color", "Solder Length", $"{family}.SolderLength", "0"));
         profile.Controls.Add(Number("Lead Color", "Gap", $"{family}.Gap", "0"));
         profile.Controls.Add(Check("Lead Color", "Color Judge", $"{family}.ColorJudge", "false"));
         profile.Controls.Add(Number("Lead Color", "Color Inspection Set Value", $"{family}.ColorInspectionSetValue", "0"));
@@ -586,8 +620,11 @@ public static partial class AlgorithmReferenceUiCatalog
     private static void AddLeadSideSolder(AlgorithmReferenceUiProfile profile, string family)
     {
         profile.Controls.Add(Command("Lead Side", "Set Position", $"{family}.SetPositionRequested"));
+        profile.Controls.Add(Number("Lead Side", "Lead Position", $"{family}.LeadPosition", "0"));
+        profile.Controls.Add(Number("Lead Side", "Solder Length", $"{family}.SolderLength", "0"));
         profile.Controls.Add(Number("Lead Side", "Height", $"{family}.Height", "0"));
         profile.Controls.Add(Number("Lead Side", "Width", $"{family}.Width", "0"));
+        profile.Controls.Add(Number("Lead Side", "Lead Lift Set Value", $"{family}.LeadLiftSetValue", "0"));
         profile.Controls.Add(Number("Lead Side", "Gap", $"{family}.Gap", "0"));
         profile.Controls.Add(Number("Lead Side", "Gap Width", $"{family}.GapWidth", "0"));
         profile.Controls.Add(Check("Lead Side", "Use Teaching Rate", $"{family}.UseTeachingRate", "false"));
@@ -601,6 +638,8 @@ public static partial class AlgorithmReferenceUiCatalog
     {
         profile.Controls.Add(Check("Lead Search", "Use 3D", $"{family}.Use3D", "true"));
         profile.Controls.Add(Check("Lead Search", "Use 2D", $"{family}.Use2D", "true"));
+        profile.Controls.Add(Number("Lead Search", "Lead Position", $"{family}.LeadPosition", "0"));
+        profile.Controls.Add(Number("Lead Search", "Solder Start", $"{family}.SolderStartPos", "0"));
         profile.Controls.Add(Slider("Lead Search", "Solder Threshold", $"{family}.SolderThreshold", "20", 0, 255));
         profile.Controls.Add(Check("Lead Search", "Same Width / Pitch", $"{family}.SameWidthPitch", "false"));
         profile.Controls.Add(Check("Lead Search", "Use Gerber", $"{family}.UseGerber", "false"));
