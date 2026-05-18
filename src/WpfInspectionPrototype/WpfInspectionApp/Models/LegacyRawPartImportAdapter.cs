@@ -390,6 +390,30 @@ public static class LegacyRawPartImportAdapter
         {
             ApplyShapeXParameters(algorithm, element, transform);
         }
+        else if (string.Equals(algorithm.Type, "AlgoColor", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyColorParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoColorXY", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyColorXyParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoGray_Mean", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyGrayMeanParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoGray_Diff", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyGrayDiffParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoHeight_Mean", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyHeightMeanParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoHeight_Diff", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyHeightDiffParameters(algorithm, element);
+        }
     }
 
     private static void ApplyAlignParameters(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
@@ -989,6 +1013,359 @@ public static class LegacyRawPartImportAdapter
         SetBool(algorithm, "Import.ShapeXMapped", true);
     }
 
+    private static void ApplyColorParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetIntIfPresent(algorithm, $"{family}.ColorInspSetValue", element, "InspTypeColor", "InspTPClr");
+        SetIntIfPresent(algorithm, $"{family}.InspTypeColor", element, "InspTypeColor", "InspTPClr");
+        SetIntIfPresent(algorithm, $"{family}.Color", element, "ViewColor", "VwClr");
+        SetIntIfPresent(algorithm, $"{family}.ViewColor", element, "ViewColor", "VwClr");
+        SetIntIfPresent(algorithm, $"{family}.ArrayCopyCount", element, "CntPoint", "CntPt", "PolyCnt", "PolygonCnt");
+        SetIntIfPresent(algorithm, $"{family}.PolygonCount", element, "PolyCnt", "PolygonCnt");
+        SetBoolIfPresent(algorithm, $"{family}.AutoSearchROI", element, "AutoSearchROI");
+        SetBoolIfPresent(algorithm, $"{family}.UseAngleColor", element, "UseMap2", "UseColorMap2");
+        SetBoolIfPresent(algorithm, $"{family}.Invert", element, "Invert");
+        SetIntIfPresent(algorithm, $"{family}.RoiLight", element, "ColorLightType");
+        SetIntIfPresent(algorithm, $"{family}.ColorLightType", element, "ColorLightType");
+        SetBoolIfPresent(algorithm, $"{family}.ColorJudge", element, "UseRange", "UseRangeBar");
+        SetBoolIfPresent(algorithm, $"{family}.UseRangeBar", element, "UseRange", "UseRangeBar");
+        SetBoolIfPresent(algorithm, $"{family}.StandardOK", element, "StandardOK", "StdOK");
+        SetIntIfPresent(algorithm, $"{family}.RangeMode", element, "RangeMode", "RMode");
+
+        if (TryReadNumberArrayLeaf(element, out var useRgb, "URGB", "UseRGB") && useRgb.Length >= 3)
+        {
+            SetBool(algorithm, $"{family}.UseR", Math.Abs(useRgb[0]) > double.Epsilon);
+            SetBool(algorithm, $"{family}.UseG", Math.Abs(useRgb[1]) > double.Epsilon);
+            SetBool(algorithm, $"{family}.UseB", Math.Abs(useRgb[2]) > double.Epsilon);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var colorRange, "CBRAG", "Range") && colorRange.Length >= 3)
+        {
+            SetInt(algorithm, $"{family}.RangeR", Round(colorRange[0]));
+            SetInt(algorithm, $"{family}.RangeG", Round(colorRange[1]));
+            SetInt(algorithm, $"{family}.RangeB", Round(colorRange[2]));
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var colorMin, "CBMIN", "ColorMin") && colorMin.Length >= 3)
+        {
+            SetInt(algorithm, $"{family}.MinR", Round(colorMin[0]));
+            SetInt(algorithm, $"{family}.MinG", Round(colorMin[1]));
+            SetInt(algorithm, $"{family}.MinB", Round(colorMin[2]));
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var colorMax, "CBMax", "CBMAX", "ColorMax") && colorMax.Length >= 3)
+        {
+            SetInt(algorithm, $"{family}.MaxR", Round(colorMax[0]));
+            SetInt(algorithm, $"{family}.MaxG", Round(colorMax[1]));
+            SetInt(algorithm, $"{family}.MaxB", Round(colorMax[2]));
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var factor, "Fator") && factor.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.FatorRed", factor[0]);
+            SetDouble(algorithm, $"{family}.FatorGreen", factor[1]);
+            SetDouble(algorithm, $"{family}.FatorBlue", factor[2]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.FatorRed", element, "FatorRed");
+            SetDoubleIfPresent(algorithm, $"{family}.FatorGreen", element, "FatorGreen");
+            SetDoubleIfPresent(algorithm, $"{family}.FatorBlue", element, "FatorBlue");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var colorRangeMinMax, "MnMxR") && colorRangeMinMax.Length >= 2)
+        {
+            SetInt(algorithm, $"{family}.RangeMin", Round(colorRangeMinMax[0]));
+            SetInt(algorithm, $"{family}.RangeMax", Round(colorRangeMinMax[1]));
+        }
+        else
+        {
+            SetIntIfPresent(algorithm, $"{family}.RangeMin", element, "RangeMin");
+            SetIntIfPresent(algorithm, $"{family}.RangeMax", element, "RangeMax");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var cieSize, "SzCIE") && cieSize.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.SizeXCIE", cieSize[0]);
+            SetDouble(algorithm, $"{family}.SizeYCIE", cieSize[1]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.SizeXCIE", element, "SizeXCIE");
+            SetDoubleIfPresent(algorithm, $"{family}.SizeYCIE", element, "SizeYCIE");
+        }
+
+        SetIntIfPresent(algorithm, $"{family}.CntHistoStd", element, "CntHistoStd", "CntHstStd");
+        SetDoubleIfPresent(algorithm, $"{family}.RateStd", element, "RateStd", "RStd");
+        SetIntIfPresent(algorithm, $"{family}.CntHistoResult", element, "CntHistoResult", "CntHstRst");
+        SetDoubleIfPresent(algorithm, $"{family}.RateResult", element, "RateResult", "RRst");
+
+        SetBool(algorithm, "Import.ColorMapped", true);
+    }
+
+    private static void ApplyColorXyParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        if (TryReadNumberArrayLeaf(element, out var avgX, "MnMxAvgX") && avgX.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.MinX", avgX[0]);
+            SetDouble(algorithm, $"{family}.MaxX", avgX[1]);
+            SetDouble(algorithm, $"{family}.AvgX", avgX[2]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.MinX", element, "ColorXYMinX");
+            SetDoubleIfPresent(algorithm, $"{family}.MaxX", element, "ColorXYMaxX");
+            SetDoubleIfPresent(algorithm, $"{family}.AvgX", element, "ColorXYAvgX");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var avgY, "MnMxAvgY") && avgY.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.MinY", avgY[0]);
+            SetDouble(algorithm, $"{family}.MaxY", avgY[1]);
+            SetDouble(algorithm, $"{family}.AvgY", avgY[2]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.MinY", element, "ColorXYMinY");
+            SetDoubleIfPresent(algorithm, $"{family}.MaxY", element, "ColorXYMaxY");
+            SetDoubleIfPresent(algorithm, $"{family}.AvgY", element, "ColorXYAvgY");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var factor, "Fator") && factor.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.FatorRed", factor[0]);
+            SetDouble(algorithm, $"{family}.FatorGreen", factor[1]);
+            SetDouble(algorithm, $"{family}.FatorBlue", factor[2]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.FatorRed", element, "FatorRed");
+            SetDoubleIfPresent(algorithm, $"{family}.FatorGreen", element, "FatorGreen");
+            SetDoubleIfPresent(algorithm, $"{family}.FatorBlue", element, "FatorBlue");
+        }
+
+        SetBool(algorithm, "Import.ColorXYMapped", true);
+    }
+
+    private static void ApplyGrayMeanParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyCommonRangeParameters(algorithm, element);
+        if (TryReadNumberArrayLeaf(element, out var grayMean, "MnMxAvg_GM") && grayMean.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.GrayRateMin", grayMean[0]);
+            SetDouble(algorithm, $"{family}.GrayRateMax", grayMean[1]);
+            SetDouble(algorithm, $"{family}.GrayAvg", grayMean[2]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.GrayRateMin", element, "GrayRateMin");
+            SetDoubleIfPresent(algorithm, $"{family}.GrayRateMax", element, "GrayRateMax");
+            SetDoubleIfPresent(algorithm, $"{family}.GrayAvg", element, "GrayAvg");
+        }
+
+        SetBool(algorithm, "Import.GrayMeanMapped", true);
+    }
+
+    private static void ApplyGrayDiffParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetDoubleIfPresent(algorithm, $"{family}.StandardGray", element, "GrayDiff", "GD");
+        SetBoolIfPresent(algorithm, $"{family}.Polarity", element, "Polarity", "Polar");
+        SetBoolIfPresent(algorithm, $"{family}.SignInversion", element, "SignInversion", "SInv");
+        SetIntIfPresent(algorithm, $"{family}.MinMaxFlag", element, "MinMaxflag", "MnMx");
+
+        if (TryReadBoolArrayLeaf(element, out var diffUpperLower, "DiffUpLo") && diffUpperLower.Length >= 2)
+        {
+            SetBool(algorithm, $"{family}.UpperStandard", diffUpperLower[0]);
+            SetBool(algorithm, $"{family}.LowerStandard", diffUpperLower[1]);
+        }
+        else
+        {
+            SetBoolIfPresent(algorithm, $"{family}.UpperStandard", element, "DiffUpper");
+            SetBoolIfPresent(algorithm, $"{family}.LowerStandard", element, "DiffLower");
+        }
+
+        ApplyDiffRoiParameters(algorithm, element, family);
+        SetBool(algorithm, "Import.GrayDiffMapped", true);
+    }
+
+    private static void ApplyHeightMeanParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyCommonRangeParameters(algorithm, element);
+        if (TryReadNumberArrayLeaf(element, out var heightMean, "MnMxAvgHei") && heightMean.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.MinHeight", heightMean[0]);
+            SetDouble(algorithm, $"{family}.MaxHeight", heightMean[1]);
+            SetDouble(algorithm, $"{family}.TargetHeight", heightMean[2]);
+            SetDouble(algorithm, $"{family}.AvgHeight3D", heightMean[2]);
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.UseHeight", element, "HeightUse", "UseHei");
+        SetBoolIfPresent(algorithm, $"{family}.UseHighest", element, "UseHighest", "UseHigh");
+        SetBoolIfPresent(algorithm, $"{family}.UseLowest", element, "UseLowest", "UseLow");
+        SetBoolIfPresent(algorithm, $"{family}.UseBW", element, "BWOption", "UseBW");
+        SetBoolIfPresent(algorithm, $"{family}.UseHeightMin3D", element, "UseHeightMin3D", "UseBWMin3D");
+        SetBoolIfPresent(algorithm, $"{family}.UseHeightMax3D", element, "UseHeightMax3D", "UseBWMax3D");
+
+        if (TryReadNumberArrayLeaf(element, out var highest, "MnMxHigh") && highest.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.HighestMin3D", highest[0]);
+            SetDouble(algorithm, $"{family}.HighestMax3D", highest[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var lowest, "MnMxLow") && lowest.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.LowestMin3D", lowest[0]);
+            SetDouble(algorithm, $"{family}.LowestMax3D", lowest[1]);
+        }
+
+        SetDoubleIfPresent(algorithm, $"{family}.HighestValue", element, "HighestValue", "HighV");
+        SetDoubleIfPresent(algorithm, $"{family}.LowestValue", element, "LowestValue", "LowV");
+
+        if (TryReadNumberArrayLeaf(element, out var addHeight, "AddH") && addHeight.Length > 0)
+        {
+            SetOptionalDouble(algorithm, $"{family}.CorrectionValue", addHeight, 0);
+            SetOptionalDouble(algorithm, $"{family}.CorrectionUpper", addHeight, 1);
+            SetOptionalDouble(algorithm, $"{family}.CorrectionLower", addHeight, 2);
+            SetOptionalDouble(algorithm, $"{family}.AddHeight", addHeight, 0);
+            SetOptionalDouble(algorithm, $"{family}.AddHighest", addHeight, 1);
+            SetOptionalDouble(algorithm, $"{family}.AddLowest", addHeight, 2);
+        }
+
+        SetBool(algorithm, "Import.HeightMeanMapped", true);
+    }
+
+    private static void ApplyHeightDiffParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetBoolIfPresent(algorithm, $"{family}.Polarity", element, "Polarity", "Polar");
+        SetBoolIfPresent(algorithm, $"{family}.SignInversion", element, "SignInversion", "SInv");
+        SetIntIfPresent(algorithm, $"{family}.MinMaxFlag", element, "MinMaxflag", "MnMx");
+        SetDoubleIfPresent(algorithm, $"{family}.AddHeight", element, "AddH");
+        SetBoolIfPresent(algorithm, $"{family}.UseErodeFilter", element, "UsEF");
+        SetIntIfPresent(algorithm, $"{family}.ErodeFilter", element, "EroF");
+        SetBoolIfPresent(algorithm, $"{family}.UseBlobRoi2", element, "UBWR2");
+
+        if (TryReadNumberArrayLeaf(element, out var heightDiff, "HDMM") && heightDiff.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.HeightDiff3D", heightDiff[0]);
+            SetDouble(algorithm, $"{family}.HeightDiff3DMax", heightDiff[1]);
+            SetDouble(algorithm, $"{family}.CurrentHeightDiff", heightDiff[0]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.HeightDiff3D", element, "HeightDiff3D", "HD_3D");
+            SetDoubleIfPresent(algorithm, $"{family}.CurrentHeightDiff", element, "HeightDiff3D", "HD_3D");
+        }
+
+        if (TryReadBoolArrayLeaf(element, out var diffUpperLower, "DiffUpLo") && diffUpperLower.Length >= 2)
+        {
+            SetBool(algorithm, $"{family}.DiffUpper", diffUpperLower[0]);
+            SetBool(algorithm, $"{family}.DiffLower", diffUpperLower[1]);
+        }
+        else
+        {
+            SetBoolIfPresent(algorithm, $"{family}.DiffUpper", element, "DiffUpper");
+            SetBoolIfPresent(algorithm, $"{family}.DiffLower", element, "DiffLower");
+        }
+
+        ApplyDiffRoiParameters(algorithm, element, family);
+        SetBool(algorithm, "Import.HeightDiffMapped", true);
+    }
+
+    private static void ApplyCommonRangeParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetBoolIfPresent(algorithm, $"{family}.InvertCheck", element, "InvChk", "InvertCheck", "bInvertCheck");
+        SetBoolIfPresent(algorithm, $"{family}.Use2D", element, "Use2D", "B2dCheck", "b2DCheck");
+        SetBoolIfPresent(algorithm, $"{family}.Use3D", element, "Use3D", "B3dCheck", "b3DCheck");
+        SetBoolIfPresent(algorithm, $"{family}.UseFilter", element, "UseFilter");
+        SetIntIfPresent(algorithm, $"{family}.Range2DType", element, "R2D", "TPR2D", "Range");
+        SetIntIfPresent(algorithm, $"{family}.Range3DType", element, "R3D", "TPR3D", "N3dRange", "Range3D");
+        SetIntIfPresent(algorithm, $"{family}.FilterIndex", element, "FilterIndex", "Filter");
+        SetDoubleIfPresent(algorithm, $"{family}.PercentOK", element, "PerOK", "PercentOK");
+        SetBoolIfPresent(algorithm, $"{family}.UseArea", element, "UseArea");
+
+        if (TryReadNumberArrayLeaf(element, out var binaryRange, "MnMx2D") && binaryRange.Length >= 2)
+        {
+            SetBinaryRange(algorithm, family, Round(binaryRange[0]), Round(binaryRange[1]));
+        }
+        else if (TryReadIntLeaf(element, out var minValue, "MinValue")
+            && TryReadIntLeaf(element, out var maxValue, "MaxValue"))
+        {
+            SetBinaryRange(algorithm, family, minValue, maxValue);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var heightRange, "MnMx3D") && heightRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.HeightMin", heightRange[0]);
+            SetDouble(algorithm, $"{family}.HeightMax", heightRange[1]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.HeightMin", element, "D3dHeightMin", "d3dMinValue");
+            SetDoubleIfPresent(algorithm, $"{family}.HeightMax", element, "D3dHeightMax", "d3dMaxValue");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var averageHeightRange, "MnMxAvgHei", "MnMxAvgHeiR", "MnMxAvg3D") && averageHeightRange.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.MinHeight", averageHeightRange[0]);
+            SetDouble(algorithm, $"{family}.MaxHeight", averageHeightRange[1]);
+            SetDouble(algorithm, $"{family}.TargetHeight", averageHeightRange[2]);
+            SetDouble(algorithm, $"{family}.HeightAvg", averageHeightRange[2]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var areaRange, "MnMxArea") && areaRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.AreaMin", areaRange[0]);
+            SetDouble(algorithm, $"{family}.AreaMax", areaRange[1]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.AreaMin", element, "AreaMin");
+            SetDoubleIfPresent(algorithm, $"{family}.AreaMax", element, "AreaMax");
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var shift, "Sft", "Shift") && shift.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.ShiftX", shift[0]);
+            SetDouble(algorithm, $"{family}.ShiftY", shift[1]);
+        }
+    }
+
+    private static void ApplyDiffRoiParameters(InspectionAlgorithmData algorithm, XElement element, string family)
+    {
+        if (TryReadLeafValue(element, out var roi1, "ROI1"))
+        {
+            algorithm.Parameters[$"{family}.Roi1.Raw"] = roi1;
+        }
+
+        if (TryReadLeafValue(element, out var roi2, "ROI2"))
+        {
+            algorithm.Parameters[$"{family}.Roi2.Raw"] = roi2;
+        }
+
+        if (TryReadLeafValue(element, out var roi1Mm, "ROI1_mm"))
+        {
+            algorithm.Parameters[$"{family}.Roi1.Mm"] = roi1Mm;
+        }
+
+        if (TryReadLeafValue(element, out var roi2Mm, "ROI2_mm"))
+        {
+            algorithm.Parameters[$"{family}.Roi2.Mm"] = roi2Mm;
+        }
+    }
+
     private static void ApplyShapeXBlobBaseParameters(
         InspectionAlgorithmData algorithm,
         string family,
@@ -1441,6 +1818,34 @@ public static class LegacyRawPartImportAdapter
             }
 
             parsed.Add(number);
+        }
+
+        values = parsed.ToArray();
+        return values.Length > 0;
+    }
+
+    private static bool TryReadBoolArrayLeaf(XElement element, out bool[] values, params string[] names)
+    {
+        values = Array.Empty<bool>();
+        if (!TryReadLeafValue(element, out var raw, names))
+        {
+            return false;
+        }
+
+        var parsed = new List<bool>();
+        foreach (var token in raw.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var trimmed = token.Trim();
+            if (bool.TryParse(trimmed, out var boolValue))
+            {
+                parsed.Add(boolValue);
+                continue;
+            }
+
+            if (TryParseDouble(trimmed, out var number))
+            {
+                parsed.Add(Math.Abs(number) > double.Epsilon);
+            }
         }
 
         values = parsed.ToArray();

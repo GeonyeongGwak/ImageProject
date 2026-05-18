@@ -168,8 +168,11 @@ public static partial class AlgorithmReferenceUiCatalog
                 AddPatternAdvanced(profile, family);
                 break;
             case "AlgoColor":
+                AddColorAdvanced(profile, family);
+                break;
             case "AlgoColorXY":
                 AddColorAdvanced(profile, family);
+                AddColorXy(profile, family);
                 break;
             case "AlgoDistance":
             case "AlgoEdgePoint":

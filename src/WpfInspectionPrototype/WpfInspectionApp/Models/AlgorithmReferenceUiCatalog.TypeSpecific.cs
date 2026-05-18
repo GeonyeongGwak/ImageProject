@@ -331,6 +331,19 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Check("Color Light", "Mid Light", $"{family}.MidLight", "false"));
     }
 
+    private static void AddColorXy(AlgorithmReferenceUiProfile profile, string family)
+    {
+        profile.Controls.Add(Number("Color XY", "X Min", $"{family}.MinX", "0"));
+        profile.Controls.Add(Number("Color XY", "X Max", $"{family}.MaxX", "0"));
+        profile.Controls.Add(Number("Color XY", "X Avg", $"{family}.AvgX", "0"));
+        profile.Controls.Add(Number("Color XY", "Y Min", $"{family}.MinY", "0"));
+        profile.Controls.Add(Number("Color XY", "Y Max", $"{family}.MaxY", "0"));
+        profile.Controls.Add(Number("Color XY", "Y Avg", $"{family}.AvgY", "0"));
+        profile.Controls.Add(Number("Color XY", "Factor Red", $"{family}.FatorRed", "0"));
+        profile.Controls.Add(Number("Color XY", "Factor Green", $"{family}.FatorGreen", "0"));
+        profile.Controls.Add(Number("Color XY", "Factor Blue", $"{family}.FatorBlue", "0"));
+    }
+
     private static void AddDistanceAdvanced(AlgorithmReferenceUiProfile profile, string family)
     {
         profile.Controls.Add(Combo("Distance Link", "Anchor Mode", $"{family}.AnchorMode", "0", ["Window", "Algorithm", "CAD"]));
