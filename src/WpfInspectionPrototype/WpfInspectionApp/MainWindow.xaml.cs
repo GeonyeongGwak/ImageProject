@@ -286,9 +286,17 @@ public partial class MainWindow : Window, IDialogOwner
             var defaultImage = _applicationPathService.FindDefaultImagePath();
             if (defaultImage != null)
             {
-                FpExceptionGuard.Diag("MainWindow.StartupLoadWork: loading default image");
-                LoadImage(defaultImage);
-                FpExceptionGuard.Diag("MainWindow.StartupLoadWork: default image loaded");
+                if (App.StartupStabilityGuardsEnabled)
+                {
+                    FpExceptionGuard.Diag("MainWindow.StartupLoadWork: default image auto-load skipped for native-debug guard");
+                    ViewModel.StatusMessage = "Default image auto-load skipped while native debugging is attached.";
+                }
+                else
+                {
+                    FpExceptionGuard.Diag("MainWindow.StartupLoadWork: loading default image");
+                    LoadImage(defaultImage);
+                    FpExceptionGuard.Diag("MainWindow.StartupLoadWork: default image loaded");
+                }
             }
             else
             {
