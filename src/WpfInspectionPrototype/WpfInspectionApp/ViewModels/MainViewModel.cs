@@ -881,6 +881,15 @@ public sealed class MainViewModel : ViewModelBase
             };
             InspectionTreeNodes.Add(windowNode);
 
+            windowNode.Children.Add(new InspectionTreeNodeViewModel
+            {
+                Header = $"ROI {FormatRoiBrief(window.Roi)}",
+                Kind = InspectionTreeNodeKind.WindowInfo,
+                Payload = window.Roi,
+                Foreground = new SolidColorBrush(Color.FromRgb(255, 210, 41)),
+                IsEnabled = false
+            });
+
             for (var algorithmIndex = 0; algorithmIndex < window.Algorithms.Count; algorithmIndex++)
             {
                 var algorithm = window.Algorithms[algorithmIndex];
@@ -896,7 +905,15 @@ public sealed class MainViewModel : ViewModelBase
                 windowNode.Children.Add(algorithmNode);
                 algorithmNode.Children.Add(new InspectionTreeNodeViewModel
                 {
-                    Header = $"Inspection Result: {result.Message} | FG {result.ForegroundPixels:N0} | {result.ElapsedMs:F3} ms",
+                    Header = $"Algorithm ROI {FormatRoiBrief(algorithm.AlgorithmRoi)}",
+                    Kind = InspectionTreeNodeKind.AlgorithmRoi,
+                    Payload = algorithm.AlgorithmRoi,
+                    Foreground = new SolidColorBrush(Color.FromRgb(128, 223, 255)),
+                    IsEnabled = false
+                });
+                algorithmNode.Children.Add(new InspectionTreeNodeViewModel
+                {
+                    Header = $"Result {result.Message} | FG {result.ForegroundPixels:N0}",
                     Kind = InspectionTreeNodeKind.InspectionResult,
                     Payload = result,
                     IsEnabled = false
@@ -932,6 +949,17 @@ public sealed class MainViewModel : ViewModelBase
     private static string FormatWindowDisplayName(int zeroBasedIndex)
     {
         return $"Window ROI {Math.Max(0, zeroBasedIndex) + 1}";
+    }
+
+    private static string FormatRoiBrief(RoiRect? roi)
+    {
+        if (!roi.HasValue)
+        {
+            return "none";
+        }
+
+        var value = roi.Value;
+        return $"X {value.X} Y {value.Y}";
     }
 
     public bool SelectTreeNode(InspectionTreeNodeViewModel? node)

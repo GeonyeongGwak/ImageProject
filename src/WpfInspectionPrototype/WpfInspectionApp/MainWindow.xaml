@@ -299,7 +299,7 @@
         <HierarchicalDataTemplate DataType="{x:Type vm:InspectionTreeNodeViewModel}"
                                   ItemsSource="{Binding Children}">
             <TextBlock Text="{Binding Header}"
-                       Foreground="{Binding Foreground}"
+                       Foreground="{Binding Foreground, TargetNullValue=#EAF6FF, FallbackValue=#EAF6FF}"
                        TextWrapping="NoWrap"
                        TextTrimming="CharacterEllipsis" />
         </HierarchicalDataTemplate>
