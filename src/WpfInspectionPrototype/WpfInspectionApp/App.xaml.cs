@@ -130,8 +130,27 @@ public partial class App : Application
         FpExceptionGuard.Diag("App.MainWindow: MainWindow created, showing");
         MainWindow.Show();
         FpExceptionGuard.Diag("App.MainWindow: MainWindow.Show() returned");
-        CloseNativeDebugParkingWindow();
-        ShutdownMode = runSmokeTest ? ShutdownMode.OnExplicitShutdown : ShutdownMode.OnMainWindowClose;
+
+        if (StartupStabilityGuardsEnabled)
+        {
+            ShutdownMode = ShutdownMode.OnExplicitShutdown;
+            if (!runSmokeTest)
+            {
+                MainWindow.Closed += (_, _) =>
+                {
+                    FpExceptionGuard.Diag("App.MainWindow closed; shutting down explicit native-debug guard app");
+                    Shutdown();
+                };
+            }
+
+            FpExceptionGuard.Diag("App.NativeDebugParkingWindow kept alive for native-debug startup guard");
+        }
+        else
+        {
+            CloseNativeDebugParkingWindow();
+            ShutdownMode = runSmokeTest ? ShutdownMode.OnExplicitShutdown : ShutdownMode.OnMainWindowClose;
+            FpExceptionGuard.Diag($"App.ShutdownMode set to {ShutdownMode}");
+        }
 
         if (runSmokeTest)
         {
