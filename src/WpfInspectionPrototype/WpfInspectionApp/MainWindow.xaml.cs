@@ -264,27 +264,17 @@ public partial class MainWindow : Window, IDialogOwner
     {
         if (App.StartupStabilityGuardsEnabled)
         {
-            FpExceptionGuard.Diag("MainWindow.Loaded entered; delaying startup work for native-debug guard");
-            _ = RunStartupLoadWorkAfterNativeDebugDelayAsync();
+            FpExceptionGuard.Diag("MainWindow.Loaded entered; running startup work immediately for native-debug guard");
+            FpExceptionGuard.TryMask();
+            IsEnabled = true;
+            IsHitTestVisible = true;
+            Focusable = true;
+            RunStartupLoadWork();
             return;
         }
 
         FpExceptionGuard.Diag("MainWindow.Loaded entered; deferring startup work");
         Dispatcher.BeginInvoke(new Action(RunStartupLoadWork), DispatcherPriority.ApplicationIdle);
-    }
-
-    private async Task RunStartupLoadWorkAfterNativeDebugDelayAsync()
-    {
-        await Task.Delay(1500).ConfigureAwait(false);
-        await Dispatcher.InvokeAsync(() =>
-        {
-            FpExceptionGuard.TryMask();
-            IsEnabled = true;
-            IsHitTestVisible = true;
-            Focusable = true;
-            FpExceptionGuard.Diag("MainWindow native-debug delayed startup work dispatching");
-            RunStartupLoadWork();
-        }, DispatcherPriority.Background);
     }
 
     private void RunStartupLoadWork()
