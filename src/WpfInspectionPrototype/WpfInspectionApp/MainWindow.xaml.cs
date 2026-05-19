@@ -33,8 +33,6 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly IRoiUiStateService _roiUiStateService;
     private readonly IPem3DViewerHostService _pem3DViewerHostService;
     private readonly IPttViewerWorkflowService _pttViewerWorkflowService;
-    private readonly IAlignPartTeachingService _alignPartTeachingService;
-    private readonly IAlignConditionService _alignConditionService;
     private readonly MainViewModel _viewModel;
     private readonly Dictionary<string, CameraDockState> _cameraDockStates = new(StringComparer.OrdinalIgnoreCase);
     private DispatcherTimer? _cameraDockPreviewTimer;
@@ -71,8 +69,6 @@ public partial class MainWindow : Window, IDialogOwner
         _roiUiStateService = App.Services.RoiUiState;
         _pem3DViewerHostService = App.Services.Pem3DViewerHost;
         _pttViewerWorkflowService = App.Services.PttViewerWorkflow;
-        _alignPartTeachingService = App.Services.AlignPartTeaching;
-        _alignConditionService = App.Services.AlignCondition;
         _viewModel = new MainViewModel(
             new InspectionModel(),
             this,
@@ -81,6 +77,8 @@ public partial class MainWindow : Window, IDialogOwner
             _applicationPathService,
             App.Services.PartImportWorkflow,
             App.Services.ImageLoadWorkflow,
+            App.Services.AlignPartTeaching,
+            App.Services.AlignCondition,
             _roiCanvasViewModel,
             _imageRuntimeStateService,
             App.Services.InspectionWorkflow,
@@ -94,6 +92,7 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.PttLoadRequested += LoadPtt;
         _viewModel.ModelViewRefreshRequested += ApplyModelAndRefreshView;
         _viewModel.ModelSyncFromUiRequested += UpdateModelFromUi;
+        _viewModel.PartTeachingStatusRequested += AlignPanel.SetPartTeachingStatus;
         _viewModel.ThresholdScheduleRequested += ScheduleThreshold;
         _viewModel.AlignSearchTabActivationRequested += AlignPanel.ActivateSearchTab;
         _viewModel.AlignRoiDrawButtonStateRequested += AlignPanel.SetWindowRoiDrawingState;

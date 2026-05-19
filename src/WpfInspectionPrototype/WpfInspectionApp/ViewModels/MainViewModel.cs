@@ -37,6 +37,8 @@ public sealed class MainViewModel : ViewModelBase
     private readonly IApplicationPathService _applicationPathService;
     private readonly IPartImportWorkflowService _partImportWorkflowService;
     private readonly IImageLoadWorkflowService _imageLoadWorkflowService;
+    private readonly IAlignPartTeachingService _alignPartTeachingService;
+    private readonly IAlignConditionService _alignConditionService;
     private readonly RoiCanvasViewModel _roi;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
@@ -56,6 +58,8 @@ public sealed class MainViewModel : ViewModelBase
         IApplicationPathService applicationPathService,
         IPartImportWorkflowService partImportWorkflowService,
         IImageLoadWorkflowService imageLoadWorkflowService,
+        IAlignPartTeachingService alignPartTeachingService,
+        IAlignConditionService alignConditionService,
         RoiCanvasViewModel roi,
         IImageRuntimeStateService imageRuntimeStateService,
         IInspectionWorkflowService inspectionWorkflowService,
@@ -72,6 +76,8 @@ public sealed class MainViewModel : ViewModelBase
         _applicationPathService = applicationPathService;
         _partImportWorkflowService = partImportWorkflowService;
         _imageLoadWorkflowService = imageLoadWorkflowService;
+        _alignPartTeachingService = alignPartTeachingService;
+        _alignConditionService = alignConditionService;
         _roi = roi;
         _imageRuntimeStateService = imageRuntimeStateService;
         _inspectionWorkflowService = inspectionWorkflowService;
@@ -205,6 +211,7 @@ public sealed class MainViewModel : ViewModelBase
     public event Action<string, bool>? PttLoadRequested;
     public event Action<string?, bool>? ModelViewRefreshRequested;
     public event Action? ModelSyncFromUiRequested;
+    public event Action<string>? PartTeachingStatusRequested;
     public event Action? ThresholdScheduleRequested;
     public event Action? AlignSearchTabActivationRequested;
     public event Action<bool>? AlignRoiDrawButtonStateRequested;
@@ -312,6 +319,60 @@ public sealed class MainViewModel : ViewModelBase
     public bool ResizeActiveRoiFromSearchInputs(int sourceWidth, int sourceHeight)
     {
         return ApplyRoiModelResult(_roi.ResizeActiveRoiFromSearchInputs(_model, sourceWidth, sourceHeight));
+    }
+
+    public void NormalizeAlignSearchSelection()
+    {
+        _model.EnsureStructure();
+        _model.AlignSearchNum = Net48Compat.Clamp(_model.AlignSearchNum, 1, 4);
+        _model.AlignActiveRoiIndex = Net48Compat.Clamp(_model.AlignActiveRoiIndex, 0, _model.AlignSearchNum - 1);
+        RefreshModelBindings();
+    }
+
+    public int CalculateMaskDensity()
+    {
+        return _alignConditionService.CalculateMaskDensity(_model);
+    }
+
+    public void TeachActiveRoiSize(Func<RoiRect?, string> formatRoi)
+    {
+        StatusMessage = $"Teach active ROI size: {formatRoi(GetActiveRoi())}";
+    }
+
+    public void CloseAlignPartTeaching()
+    {
+        ModelSyncFromUiRequested?.Invoke();
+        _model.PartTeachingStopRequested = true;
+        PartTeachingStatusRequested?.Invoke("Part Teaching closed. Stop requested.");
+        StatusMessage = "Align Part Teaching closed.";
+    }
+
+    public async Task RunAlignPartTeachingAsync(bool useGerber, Func<RoiRect?, string> formatRoi)
+    {
+        try
+        {
+            ModelSyncFromUiRequested?.Invoke();
+            var teaching = _alignPartTeachingService.Apply(_model, useGerber, formatRoi);
+            PartTeachingStatusRequested?.Invoke(teaching.Status);
+
+            if (!teaching.Success)
+            {
+                StatusMessage = "Align Part Teaching failed: Window ROI is required.";
+                return;
+            }
+
+            ModelViewRefreshRequested?.Invoke(teaching.SelectedWindowId, false);
+            StatusMessage = $"Align Part Teaching completed: {teaching.TaughtCount} Window(s).";
+            InspectionResultText = teaching.Summary;
+
+            await RunThresholdAsync(refreshTreeOnAlgorithmUpdate: true);
+        }
+        catch (Exception ex)
+        {
+            DiagnosticsLog.Write($"Align Part Teaching failed: {ex}");
+            PartTeachingStatusRequested?.Invoke($"Part Teaching failed: {ex.Message}");
+            StatusMessage = $"Align Part Teaching failed: {ex.Message}";
+        }
     }
 
     private bool ApplyRoiModelResult(RoiModelOperationResult result)

@@ -26,8 +26,7 @@ public partial class MainWindow
         HandleUiChange(() =>
         {
             UpdateModelFromUi();
-            ViewModel.Model.AlignSearchNum = Net48Compat.Clamp(ViewModel.Model.AlignSearchNum, 1, 4);
-            ViewModel.Model.AlignActiveRoiIndex = Math.Min(ViewModel.Model.AlignActiveRoiIndex, ViewModel.Model.AlignSearchNum - 1);
+            _viewModel.NormalizeAlignSearchSelection();
             UpdateActiveRoiUi();
             DrawRoiOverlays();
         });
@@ -54,8 +53,7 @@ public partial class MainWindow
 
     private void UpdateMaskDensity()
     {
-        var maskDensity = _alignConditionService.CalculateMaskDensity(ViewModel.Model);
-        AlignPanel.SetMaskDensity(maskDensity);
+        AlignPanel.SetMaskDensity(_viewModel.CalculateMaskDensity());
     }
 
     private void SyncAlignSearchNumFromViewModel(int searchNum)
