@@ -41,12 +41,11 @@ public partial class MainWindow
 
         HandleUiChange(() =>
         {
-            UpdateModelFromUi();
-
             _syncingSearchSize = true;
-            AlignPanel.MirrorSearchSizeInput(source, ViewModel.Model);
+            AlignPanel.MirrorSearchSizeInput(source);
             _syncingSearchSize = false;
 
+            UpdateModelFromUi();
             ResizeActiveRoiFromSearchInputs();
         });
     }

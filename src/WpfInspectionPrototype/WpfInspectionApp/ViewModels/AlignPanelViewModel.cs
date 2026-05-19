@@ -340,35 +340,37 @@ public sealed class AlignPanelViewModel : ViewModelBase
         PartTeachingLibraryMatchMode = model.PartTeachingLibraryMatchMode;
     }
 
-    public void ApplyToModel(InspectionModel model, int sourceWidth, int sourceHeight)
+    public AlignPanelModelState CaptureModelState(string selectedAlgorithm)
     {
-        model.Threshold2D = Threshold2D;
-        model.Threshold3D = Threshold3D;
-        model.EdgeGain = EdgeGain;
-        model.Use2D = Use2D;
-        model.Use3D = Use3D;
-        model.UseEdge = UseEdge;
-        model.AlignSearchNum = Net48Compat.Clamp(ReadInt(SearchNum, model.AlignSearchNum, 1, 4), 1, 4);
-        model.AlignSearchMargin = ReadInt(SearchMargin, model.AlignSearchMargin, 0, 100000);
-        model.AlignSearchSizeX = ReadInt(SearchSizeX, model.AlignSearchSizeX, 1, Math.Max(1, sourceWidth));
-        model.AlignSearchSizeY = ReadInt(SearchSizeY, model.AlignSearchSizeY, 1, Math.Max(1, sourceHeight));
-        model.AlignSameSize = SameSize;
-        model.AlignShiftEnabled = ShiftEnabled;
-        model.AlignShiftX = ReadDouble(ShiftX, model.AlignShiftX);
-        model.AlignShiftY = ReadDouble(ShiftY, model.AlignShiftY);
-        model.AlignAngleEnabled = AngleEnabled;
-        model.AlignAngle = ReadDouble(Angle, model.AlignAngle);
-        model.AlignFillHole = FillHole;
-        model.AlignFilter = ReadInt(Filter, model.AlignFilter, 0, 100000);
-        model.AlignInspectionAreaCount = InspectionAreaCount;
-        model.IpcUse = IpcUse;
-        model.IpcClass = IpcClass;
-        model.IpcPercent = ReadDouble(IpcPercent, model.IpcPercent);
-        model.PartTeachingUseCommonLibrary = PartTeachingUseCommonLibrary;
-        model.PartTeachingUseLibraryPart = PartTeachingUseLibraryPart;
-        model.PartTeachingUseAutoTeaching = PartTeachingUseAutoTeaching;
-        model.PartTeachingUseCadMatching = PartTeachingUseCadMatching;
-        model.PartTeachingLibraryMatchMode = PartTeachingLibraryMatchMode;
+        return new AlignPanelModelState(
+            selectedAlgorithm,
+            Threshold2D,
+            Threshold3D,
+            EdgeGain,
+            Use2D,
+            Use3D,
+            UseEdge,
+            SearchNum,
+            SearchMargin,
+            SearchSizeX,
+            SearchSizeY,
+            SameSize,
+            ShiftEnabled,
+            ShiftX,
+            ShiftY,
+            AngleEnabled,
+            Angle,
+            FillHole,
+            Filter,
+            InspectionAreaCount,
+            IpcUse,
+            IpcClass,
+            IpcPercent,
+            PartTeachingUseCommonLibrary,
+            PartTeachingUseLibraryPart,
+            PartTeachingUseAutoTeaching,
+            PartTeachingUseCadMatching,
+            PartTeachingLibraryMatchMode);
     }
 
     public void SetWindowRoiDrawingState(bool isDrawingWindow)
@@ -435,13 +437,4 @@ public sealed class AlignPanelViewModel : ViewModelBase
         return new RelayCommand(() => ActionRequested?.Invoke(this, new AlignPanelActionRequestedEventArgs(kind)));
     }
 
-    private static int ReadInt(string text, int fallback, int min, int max)
-    {
-        return int.TryParse(text, out var value) ? Net48Compat.Clamp(value, min, max) : fallback;
-    }
-
-    private static double ReadDouble(string text, double fallback)
-    {
-        return double.TryParse(text, out var value) ? value : fallback;
-    }
 }

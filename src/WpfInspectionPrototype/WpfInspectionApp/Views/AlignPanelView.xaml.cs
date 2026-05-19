@@ -30,11 +30,9 @@ public partial class AlignPanelView : UserControl
         AlignTabControl.SelectedIndex = 0;
     }
 
-    public void ApplyToModel(InspectionModel model, string algorithm, int sourceWidth, int sourceHeight)
+    public AlignPanelModelState CaptureModelState(string selectedAlgorithm)
     {
-        model.Algorithm = algorithm;
-        _viewModel.ApplyToModel(model, sourceWidth, sourceHeight);
-        _viewModel.LoadFromModel(model);
+        return _viewModel.CaptureModelState(selectedAlgorithm);
     }
 
     public void LoadFromModel(InspectionModel model)
@@ -57,7 +55,7 @@ public partial class AlignPanelView : UserControl
         _viewModel.SetSearchSize(width, height);
     }
 
-    public void MirrorSearchSizeInput(object? sender, InspectionModel model)
+    public void MirrorSearchSizeInput(object? sender)
     {
         if (!_viewModel.SameSize)
         {
@@ -67,12 +65,10 @@ public partial class AlignPanelView : UserControl
         if (sender == SearchSizeXBox)
         {
             _viewModel.MirrorSearchSizeFromX();
-            model.AlignSearchSizeY = model.AlignSearchSizeX;
         }
         else if (sender == SearchSizeYBox)
         {
             _viewModel.MirrorSearchSizeFromY();
-            model.AlignSearchSizeX = model.AlignSearchSizeY;
         }
     }
 

@@ -329,6 +329,51 @@ public sealed class MainViewModel : ViewModelBase
         RefreshModelBindings();
     }
 
+    public void NormalizeModelForView()
+    {
+        _model.EnsureStructure();
+        _model.AlignSearchNum = Net48Compat.Clamp(_model.AlignSearchNum, 1, 4);
+        _model.AlignActiveRoiIndex = Net48Compat.Clamp(_model.AlignActiveRoiIndex, 0, _model.AlignSearchNum - 1);
+        SelectedAlgorithm = _model.Algorithm;
+        RefreshModelBindings();
+    }
+
+    public void ApplyAlignPanelState(AlignPanelModelState state, int sourceWidth, int sourceHeight)
+    {
+        _model.EnsureStructure();
+        SelectedAlgorithm = state.SelectedAlgorithm;
+        _model.Part.Name = _model.ModelName;
+        _model.Threshold2D = state.Threshold2D;
+        _model.Threshold3D = state.Threshold3D;
+        _model.EdgeGain = state.EdgeGain;
+        _model.Use2D = state.Use2D;
+        _model.Use3D = state.Use3D;
+        _model.UseEdge = state.UseEdge;
+        _model.AlignSearchNum = Net48Compat.Clamp(ReadInt(state.SearchNum, _model.AlignSearchNum, 1, 4), 1, 4);
+        _model.AlignSearchMargin = ReadInt(state.SearchMargin, _model.AlignSearchMargin, 0, 100000);
+        _model.AlignSearchSizeX = ReadInt(state.SearchSizeX, _model.AlignSearchSizeX, 1, Math.Max(1, sourceWidth));
+        _model.AlignSearchSizeY = ReadInt(state.SearchSizeY, _model.AlignSearchSizeY, 1, Math.Max(1, sourceHeight));
+        _model.AlignSameSize = state.SameSize;
+        _model.AlignShiftEnabled = state.ShiftEnabled;
+        _model.AlignShiftX = ReadDouble(state.ShiftX, _model.AlignShiftX);
+        _model.AlignShiftY = ReadDouble(state.ShiftY, _model.AlignShiftY);
+        _model.AlignAngleEnabled = state.AngleEnabled;
+        _model.AlignAngle = ReadDouble(state.Angle, _model.AlignAngle);
+        _model.AlignFillHole = state.FillHole;
+        _model.AlignFilter = ReadInt(state.Filter, _model.AlignFilter, 0, 100000);
+        _model.AlignInspectionAreaCount = state.InspectionAreaCount;
+        _model.IpcUse = state.IpcUse;
+        _model.IpcClass = state.IpcClass;
+        _model.IpcPercent = ReadDouble(state.IpcPercent, _model.IpcPercent);
+        _model.PartTeachingUseCommonLibrary = state.PartTeachingUseCommonLibrary;
+        _model.PartTeachingUseLibraryPart = state.PartTeachingUseLibraryPart;
+        _model.PartTeachingUseAutoTeaching = state.PartTeachingUseAutoTeaching;
+        _model.PartTeachingUseCadMatching = state.PartTeachingUseCadMatching;
+        _model.PartTeachingLibraryMatchMode = state.PartTeachingLibraryMatchMode;
+
+        RefreshModelBindings();
+    }
+
     public int CalculateMaskDensity()
     {
         return _alignConditionService.CalculateMaskDensity(_model);
@@ -623,6 +668,16 @@ public sealed class MainViewModel : ViewModelBase
     {
         OverlayRefreshRequested?.Invoke();
         ThresholdScheduleRequested?.Invoke();
+    }
+
+    private static int ReadInt(string text, int fallback, int min, int max)
+    {
+        return int.TryParse(text, out var value) ? Net48Compat.Clamp(value, min, max) : fallback;
+    }
+
+    private static double ReadDouble(string text, double fallback)
+    {
+        return double.TryParse(text, out var value) ? value : fallback;
     }
 
     public InspectionModel Model

@@ -16,20 +16,17 @@ public partial class MainWindow
 
     private void UpdateModelFromUi()
     {
-        ViewModel.Model.EnsureStructure();
-        ViewModel.Model.Part.Name = ViewModel.Model.ModelName;
-        AlignPanel.ApplyToModel(ViewModel.Model, SelectedAlgorithm(), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
+        _viewModel.ApplyAlignPanelState(
+            AlignPanel.CaptureModelState(SelectedAlgorithm()),
+            _imageRuntimeStateService.SourceWidth,
+            _imageRuntimeStateService.SourceHeight);
+        AlignPanel.LoadFromModel(ViewModel.Model);
     }
 
     private void ApplyModelToUi()
     {
         _applyingModel = true;
-        ViewModel.Model.EnsureStructure();
-        ViewModel.Model.AlignSearchNum = Net48Compat.Clamp(ViewModel.Model.AlignSearchNum, 1, 4);
-        ViewModel.Model.AlignActiveRoiIndex = Net48Compat.Clamp(ViewModel.Model.AlignActiveRoiIndex, 0, ViewModel.Model.AlignSearchNum - 1);
-
-        ViewModel.RefreshModelBindings();
-        ViewModel.SelectedAlgorithm = ViewModel.Model.Algorithm;
+        _viewModel.NormalizeModelForView();
         AlignPanel.LoadFromModel(ViewModel.Model);
 
         _applyingModel = false;
