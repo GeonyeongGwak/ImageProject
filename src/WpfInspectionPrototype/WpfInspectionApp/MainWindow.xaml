@@ -988,42 +988,37 @@
                                             Orientation="Horizontal"
                                             VerticalAlignment="Center"
                                             Margin="8,0,0,0">
+                                    <!--
+                                      Move-Window 버튼들. 색상 하드코딩 제거 - 전역 Button 기본
+                                      스타일 (ControlBackground / ControlBorder / PrimaryText, 모두
+                                      DynamicResource) 에 위임. 테마 (Dark/Light/Pink) 가 바뀌면
+                                      자동으로 색이 따라감.
+                                      AccentBlue / Foreground=White 같은 직접 색은 사용 안 함.
+                                    -->
                                     <Button Content="&#x25BC;"
                                             ToolTip="Move selected Window down"
                                             Command="{Binding MoveSelectedWindowDownCommand}"
                                             Width="26" Height="26" MinHeight="26"
                                             Margin="0,0,2,0" Padding="0"
-                                            FontSize="10"
-                                            Foreground="#FFFFFF"
-                                            Background="{DynamicResource AccentBlue}"
-                                            BorderBrush="{DynamicResource AccentBlue}" />
+                                            FontSize="10" />
                                     <Button Content="&#x25B2;"
                                             ToolTip="Move selected Window up"
                                             Command="{Binding MoveSelectedWindowUpCommand}"
                                             Width="26" Height="26" MinHeight="26"
                                             Margin="0,0,6,0" Padding="0"
-                                            FontSize="10"
-                                            Foreground="#FFFFFF"
-                                            Background="{DynamicResource AccentBlue}"
-                                            BorderBrush="{DynamicResource AccentBlue}" />
+                                            FontSize="10" />
                                     <Button Content="&#x21E9;"
                                             ToolTip="Move selected Window to bottom"
                                             Command="{Binding MoveSelectedWindowToBottomCommand}"
                                             Width="26" Height="26" MinHeight="26"
                                             Margin="0,0,2,0" Padding="0"
-                                            FontSize="12"
-                                            Foreground="#FFFFFF"
-                                            Background="{DynamicResource AccentBlue}"
-                                            BorderBrush="{DynamicResource AccentBlue}" />
+                                            FontSize="12" />
                                     <Button Content="&#x21E7;"
                                             ToolTip="Move selected Window to top"
                                             Command="{Binding MoveSelectedWindowToTopCommand}"
                                             Width="26" Height="26" MinHeight="26"
                                             Margin="0" Padding="0"
-                                            FontSize="12"
-                                            Foreground="#FFFFFF"
-                                            Background="{DynamicResource AccentBlue}"
-                                            BorderBrush="{DynamicResource AccentBlue}" />
+                                            FontSize="12" />
                                 </StackPanel>
                             </Grid>
                             <Border Margin="0,0,0,8"
