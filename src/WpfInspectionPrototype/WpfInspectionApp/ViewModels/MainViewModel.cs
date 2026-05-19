@@ -246,6 +246,20 @@ public sealed class MainViewModel : ViewModelBase
 
     public bool IsAlignSearchActive => IsAlignSelected && _alignSearchTabActive;
 
+    public bool CanApplyWheelZoom => WheelZoomEnabled && _imageRuntimeStateService.HasSourceImage;
+
+    public double CreateWheelZoom(int wheelDelta)
+    {
+        var direction = wheelDelta > 0 ? 1 : -1;
+        var step = Net48Compat.Clamp(_model.WheelZoomStep, 0.01, 1.0);
+        return CurrentImageZoom + direction * step;
+    }
+
+    public double ClampImageZoom(double zoom)
+    {
+        return Net48Compat.Clamp(zoom, 1.0, ImageZoomMaximum);
+    }
+
     public void SetAlignSearchTabActive(bool active)
     {
         _alignSearchTabActive = active;
@@ -373,6 +387,11 @@ public sealed class MainViewModel : ViewModelBase
         _model.AlignActiveRoiIndex = Net48Compat.Clamp(_model.AlignActiveRoiIndex, 0, _model.AlignSearchNum - 1);
         SelectedAlgorithm = _model.Algorithm;
         RefreshModelBindings();
+    }
+
+    public AlignPanelModelState CreateAlignPanelModelState()
+    {
+        return AlignPanelModelState.FromModel(_model, SelectedAlgorithm);
     }
 
     public void ApplyAlignPanelState(AlignPanelModelState state, int sourceWidth, int sourceHeight)

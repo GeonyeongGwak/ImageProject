@@ -20,14 +20,14 @@ public partial class MainWindow
             AlignPanel.CaptureModelState(ViewModel.SelectedAlgorithm),
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight);
-        AlignPanel.LoadFromModel(ViewModel.Model);
+        AlignPanel.LoadState(_viewModel.CreateAlignPanelModelState());
     }
 
     private void ApplyModelToUi()
     {
         _applyingModel = true;
         _viewModel.NormalizeModelForView();
-        AlignPanel.LoadFromModel(ViewModel.Model);
+        AlignPanel.LoadState(_viewModel.CreateAlignPanelModelState());
 
         _applyingModel = false;
         _viewModel.UpdateAlgorithmPanels();

@@ -1,7 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
-using WpfInspectionApp.Models;
 using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp.Views;
@@ -35,14 +34,9 @@ public partial class AlignPanelView : UserControl
         return _viewModel.CaptureModelState(selectedAlgorithm);
     }
 
-    public void LoadFromModel(InspectionModel model)
+    public void LoadState(AlignPanelModelState state)
     {
-        _viewModel.LoadFromModel(model);
-    }
-
-    public void UpdateConditionUi(InspectionModel model)
-    {
-        _viewModel.LoadFromModel(model);
+        _viewModel.LoadState(state);
     }
 
     public void SetSearchNum(int value)

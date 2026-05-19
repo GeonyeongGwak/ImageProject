@@ -7,14 +7,12 @@ public partial class MainWindow
 {
     private void ImageOverlay_MouseWheel(object sender, MouseWheelEventArgs e)
     {
-        if (!ViewModel.Model.WheelZoomEnabled || !_imageRuntimeStateService.HasSourceImage)
+        if (!ViewModel.CanApplyWheelZoom)
         {
             return;
         }
 
-        var direction = e.Delta > 0 ? 1 : -1;
-        var step = Net48Compat.Clamp(ViewModel.Model.WheelZoomStep, 0.01, 1.0);
-        var next = ViewModel.Model.ImageZoom + direction * step;
+        var next = ViewModel.CreateWheelZoom(e.Delta);
         if (sender is FrameworkElement surface)
         {
             SetImageZoomAtPoint(next, surface, e.GetPosition(surface));
@@ -49,7 +47,7 @@ public partial class MainWindow
 
     private void SetImageZoom(double zoom)
     {
-        var nextZoom = Net48Compat.Clamp(zoom, 1.0, Math.Max(1.0, ViewModel.Model.WheelZoomMax));
+        var nextZoom = ViewModel.ClampImageZoom(zoom);
         ApplyImageZoomValue(nextZoom);
         SetImagePan(
             nextZoom <= 1.0001 ? 0 : _imagePanX,
@@ -61,7 +59,7 @@ public partial class MainWindow
     private void SetImageZoomAtPoint(double zoom, FrameworkElement surface, Point anchorPoint)
     {
         var previousZoom = _viewModel.CurrentImageZoom;
-        var nextZoom = Net48Compat.Clamp(zoom, 1.0, Math.Max(1.0, ViewModel.Model.WheelZoomMax));
+        var nextZoom = ViewModel.ClampImageZoom(zoom);
         if (Math.Abs(previousZoom - nextZoom) < 0.0001)
         {
             return;

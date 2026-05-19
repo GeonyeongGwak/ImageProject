@@ -3,7 +3,6 @@ using System.Windows.Input;
 using System.Windows.Media;
 using WpfInspectionApp.Commands;
 using WpfInspectionApp.Infrastructure;
-using WpfInspectionApp.Models;
 
 namespace WpfInspectionApp.ViewModels;
 
@@ -309,35 +308,35 @@ public sealed class AlignPanelViewModel : ViewModelBase
         set => SetProperty(ref _partTeachingOkVisibility, value);
     }
 
-    public void LoadFromModel(InspectionModel model)
+    public void LoadState(AlignPanelModelState state)
     {
-        Threshold2D = model.Threshold2D;
-        Threshold3D = model.Threshold3D;
-        EdgeGain = model.EdgeGain;
-        Use2D = model.Use2D;
-        Use3D = model.Use3D;
-        UseEdge = model.UseEdge;
-        SearchNum = Net48Compat.Clamp(model.AlignSearchNum, 1, 4).ToString();
-        SearchMargin = model.AlignSearchMargin.ToString();
-        SearchSizeX = model.AlignSearchSizeX.ToString();
-        SearchSizeY = model.AlignSearchSizeY.ToString();
-        SameSize = model.AlignSameSize;
-        ShiftEnabled = model.AlignShiftEnabled;
-        ShiftX = model.AlignShiftX.ToString("0.00");
-        ShiftY = model.AlignShiftY.ToString("0.00");
-        AngleEnabled = model.AlignAngleEnabled;
-        Angle = model.AlignAngle.ToString("0.##");
-        FillHole = model.AlignFillHole;
-        Filter = model.AlignFilter.ToString();
-        InspectionAreaCount = model.AlignInspectionAreaCount;
-        IpcUse = model.IpcUse;
-        IpcClass = model.IpcClass;
-        IpcPercent = model.IpcPercent.ToString("0.00");
-        PartTeachingUseCommonLibrary = model.PartTeachingUseCommonLibrary;
-        PartTeachingUseLibraryPart = model.PartTeachingUseLibraryPart;
-        PartTeachingUseAutoTeaching = model.PartTeachingUseAutoTeaching;
-        PartTeachingUseCadMatching = model.PartTeachingUseCadMatching;
-        PartTeachingLibraryMatchMode = model.PartTeachingLibraryMatchMode;
+        Threshold2D = state.Threshold2D;
+        Threshold3D = state.Threshold3D;
+        EdgeGain = state.EdgeGain;
+        Use2D = state.Use2D;
+        Use3D = state.Use3D;
+        UseEdge = state.UseEdge;
+        SearchNum = state.SearchNum;
+        SearchMargin = state.SearchMargin;
+        SearchSizeX = state.SearchSizeX;
+        SearchSizeY = state.SearchSizeY;
+        SameSize = state.SameSize;
+        ShiftEnabled = state.ShiftEnabled;
+        ShiftX = state.ShiftX;
+        ShiftY = state.ShiftY;
+        AngleEnabled = state.AngleEnabled;
+        Angle = state.Angle;
+        FillHole = state.FillHole;
+        Filter = state.Filter;
+        InspectionAreaCount = state.InspectionAreaCount;
+        IpcUse = state.IpcUse;
+        IpcClass = state.IpcClass;
+        IpcPercent = state.IpcPercent;
+        PartTeachingUseCommonLibrary = state.PartTeachingUseCommonLibrary;
+        PartTeachingUseLibraryPart = state.PartTeachingUseLibraryPart;
+        PartTeachingUseAutoTeaching = state.PartTeachingUseAutoTeaching;
+        PartTeachingUseCadMatching = state.PartTeachingUseCadMatching;
+        PartTeachingLibraryMatchMode = state.PartTeachingLibraryMatchMode;
     }
 
     public AlignPanelModelState CaptureModelState(string selectedAlgorithm)
