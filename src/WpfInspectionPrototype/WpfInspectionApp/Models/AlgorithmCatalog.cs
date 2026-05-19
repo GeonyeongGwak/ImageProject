@@ -65,7 +65,7 @@ public static class AlgorithmCatalog
         Extended("AlgoShapeX", "Shape X", 1 << 14, "ShapeX", "ShapeX"),
         Extended("AlgoPadArray", "Pad Array", 1 << 15, "PadArray", "PadArray"),
         Extended("AlgoWire", "Wire", 1 << 11, "GWire", "GWire"),
-        Extended("AlgoFoot", "Foot", 1 << 4, "Fillet", "Fillet"),
+        Extended("AlgoFoot", "Foot", 1 << 4, "Foot", "Foot"),
         Extended("AlgoForeignOCV", "Foreign OCV", 1 << 12, "PatternDiff", "PatternDiff"),
         Extended("AlgoEdgePoint", "Edge Point", 1 << 10, "Distance", "Distance"),
         Extended("AlgoLQBGA", "LQ BGA", 1 << 5, "BGA", "BGA")

@@ -438,6 +438,12 @@ public static partial class AlgorithmReferenceUiCatalog
     private static void AddVolume(AlgorithmReferenceUiProfile profile, string family)
     {
         profile.Controls.Add(Check("Volume", "Use Volume", $"{family}.UseVolume", "true"));
+        profile.Controls.Add(Number("Volume", "IPC Class", $"{family}.IpcClass", "1"));
+        profile.Controls.Add(Number("Volume", "Std Body Height", $"{family}.StandardBodyHeight", "0"));
+        profile.Controls.Add(Number("Volume", "Std Width", $"{family}.StdWidth", "0"));
+        profile.Controls.Add(Number("Volume", "Std Length", $"{family}.StdLength", "0"));
+        profile.Controls.Add(Number("Volume", "Std Volume", $"{family}.StandardVolume", "0"));
+        profile.Controls.Add(Number("Volume", "Add Ref Volume", $"{family}.AddRefVolume", "0"));
         profile.Controls.Add(Number("Volume", "Volume Min", $"{family}.VolumeMin", "0"));
         profile.Controls.Add(Number("Volume", "Volume Max", $"{family}.VolumeMax", "0"));
         profile.Controls.Add(Number("Volume", "Volume Height", $"{family}.VolumeHeight", "0"));
@@ -446,7 +452,36 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Number("Volume", "Relative Height Max", $"{family}.RelativeHeightMax", "0"));
         profile.Controls.Add(Check("Volume", "Use Area Rate", $"{family}.UseAreaRate", "false"));
         profile.Controls.Add(Number("Volume", "Area Rate", $"{family}.AreaRate", "0"));
+        profile.Controls.Add(Number("Volume", "Area Rate Min", $"{family}.AreaRateMin", "0"));
+        profile.Controls.Add(Number("Volume", "Area Rate Max", $"{family}.AreaRateMax", "0"));
         profile.Controls.Add(Check("Volume", "Use Zone Based Area", $"{family}.UseZoneBasedArea", "false"));
+        profile.Controls.Add(Check("Volume", "Use BW", $"{family}.UseBW", "true"));
+        profile.Controls.Add(Check("Volume", "Use Std Max", $"{family}.UseStdMax", "false"));
+        profile.Controls.Add(Number("Volume", "Limit Upper", $"{family}.LimitUpper", "500"));
+        profile.Controls.Add(Check("Volume", "Use Cold Joint", $"{family}.UseColdJoint", "false"));
+        profile.Controls.Add(Number("Volume", "Cold Joint Area", $"{family}.ColdJointArea", "0"));
+        profile.Controls.Add(Number("Volume", "Cold Joint Area %", $"{family}.ColdJointAreaPercent", "0"));
+        profile.Controls.Add(Check("Volume", "Use Inclination", $"{family}.UseInclination", "false"));
+        profile.Controls.Add(Number("Volume", "Inclination", $"{family}.Inclination", "0"));
+        profile.Controls.Add(Number("Volume", "Removal Height", $"{family}.RemovalHeight", "0"));
+        profile.Controls.Add(Check("Volume", "Black Height", $"{family}.BlackHeight", "false"));
+        profile.Controls.Add(Check("Volume", "Fill Hole", $"{family}.FillHole", "false"));
+        profile.Controls.Add(Number("Volume", "Fill Hole Size", $"{family}.FillHoleSize", "0"));
+        profile.Controls.Add(Number("Volume", "Chip Tracking Gap", $"{family}.ChipTrackingGap", "-1"));
+    }
+
+    private static void AddWidth(AlgorithmReferenceUiProfile profile, string family)
+    {
+        profile.Controls.Add(Check("Width", "Use Width", $"{family}.UseWidth", "false"));
+        profile.Controls.Add(Number("Width", "Std Width", $"{family}.StdWidth", "0"));
+        profile.Controls.Add(Number("Width", "Width", $"{family}.Width", "0"));
+        profile.Controls.Add(Number("Width", "Width Min", $"{family}.WidthMin", "0"));
+        profile.Controls.Add(Number("Width", "Width Max", $"{family}.WidthMax", "0"));
+        profile.Controls.Add(Check("Width", "Use Length", $"{family}.UseLength", "false"));
+        profile.Controls.Add(Number("Width", "Std Length", $"{family}.StdLength", "0"));
+        profile.Controls.Add(Number("Width", "Length", $"{family}.Length", "0"));
+        profile.Controls.Add(Number("Width", "Length Min", $"{family}.LengthMin", "0"));
+        profile.Controls.Add(Number("Width", "Length Max", $"{family}.LengthMax", "0"));
     }
 
     private static void AddHeightMean(AlgorithmReferenceUiProfile profile, string family)
@@ -547,19 +582,45 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Command("Bridge", "Sorting Run", $"{family}.SortingRunRequested"));
     }
 
-    private static void AddFilletFoot(AlgorithmReferenceUiProfile profile, string family)
+    private static void AddFilletFoot(AlgorithmReferenceUiProfile profile, string family, bool includeFootFields)
     {
-        profile.Controls.Add(Check("Fillet", "Use Solder Fillet", $"{family}.UseSolderFillet", "false"));
-        profile.Controls.Add(Number("Fillet", "Fillet Interval", $"{family}.FilletInterval", "0"));
-        profile.Controls.Add(Number("Fillet", "Fillet Gap", $"{family}.FilletGap", "0"));
-        profile.Controls.Add(Command("Fillet", "Set Fillet Range", $"{family}.SetFilletRangeRequested"));
-        profile.Controls.Add(Command("Fillet", "Set Fillet Tolerance", $"{family}.SetFilletToleranceRequested"));
-        profile.Controls.Add(Number("Fillet", "Fillet Div Count", $"{family}.FilletDivCount", "0"));
-        profile.Controls.Add(Check("Fillet", "Angle Range H", $"{family}.AngleRangeH", "false"));
-        profile.Controls.Add(Number("Fillet", "Min Angle R", $"{family}.MinAngleR", "0"));
-        profile.Controls.Add(Number("Fillet", "Max Angle R", $"{family}.MaxAngleR", "0"));
-        profile.Controls.Add(Check("Fillet", "Direct", $"{family}.Direct", "false"));
-        profile.Controls.Add(Command("Fillet", "Apply Fillet", $"{family}.ApplyFilletRequested"));
+        var tab = includeFootFields ? "Foot" : "Fillet";
+        profile.Controls.Add(Check(tab, "Use Solder Fillet", $"{family}.UseSolderFillet", "false"));
+        profile.Controls.Add(Number(tab, "Fillet Interval", $"{family}.FilletInterval", "0"));
+        profile.Controls.Add(Number(tab, "Fillet Gap", $"{family}.FilletGap", "0"));
+        profile.Controls.Add(Command(tab, "Set Fillet Range", $"{family}.SetFilletRangeRequested"));
+        profile.Controls.Add(Command(tab, "Set Fillet Tolerance", $"{family}.SetFilletToleranceRequested"));
+        profile.Controls.Add(Number(tab, "Fillet Div Count", $"{family}.FilletDivCount", "0"));
+        profile.Controls.Add(Check(tab, "Angle Range H", $"{family}.AngleRangeH", "false"));
+        profile.Controls.Add(Number(tab, "Min Angle R", $"{family}.MinAngleR", "0"));
+        profile.Controls.Add(Number(tab, "Max Angle R", $"{family}.MaxAngleR", "0"));
+        profile.Controls.Add(Check(tab, "Direct", $"{family}.Direct", "false"));
+        profile.Controls.Add(Number(tab, "Tip Direction", $"{family}.TipDirection", "0"));
+        profile.Controls.Add(Check(tab, "Use Lead Tip Position", $"{family}.UseLeadTipPosition", "false"));
+        profile.Controls.Add(Number(tab, "Lead Tip Position", $"{family}.LeadTipPosition", "0"));
+        profile.Controls.Add(Command(tab, "Apply Fillet", $"{family}.ApplyFilletRequested"));
+
+        if (!includeFootFields)
+        {
+            return;
+        }
+
+        profile.Controls.Add(Number("Foot", "Foot Type", $"{family}.FootType", "0"));
+        profile.Controls.Add(Number("Foot", "Foot Direction", $"{family}.FootDirection", "0"));
+        profile.Controls.Add(Number("Foot", "Teach Foot Direction", $"{family}.TeachFootDirection", "0"));
+        profile.Controls.Add(Number("Foot", "Find Option", $"{family}.FindOption", "0"));
+        profile.Controls.Add(Number("Foot", "Find Option 2", $"{family}.FindOption2", "0"));
+        profile.Controls.Add(Check("Foot", "Use Pattern Angle", $"{family}.UsePatternAngle", "false"));
+        profile.Controls.Add(Check("Foot", "Use 2 Foot", $"{family}.Use2Foot", "false"));
+        profile.Controls.Add(Check("Foot", "Use Pad Area Auto Teach", $"{family}.UsePadAreaAutoTeach", "false"));
+        profile.Controls.Add(Number("Foot", "Pad Width", $"{family}.PadWidth", "0"));
+        profile.Controls.Add(Number("Foot", "Pad Height", $"{family}.PadHeight", "0"));
+        profile.Controls.Add(Number("Foot", "Radius", $"{family}.Radius", "0"));
+        profile.Controls.Add(Number("Foot", "Remove Wire Height", $"{family}.RemoveWireHeight", "0"));
+        profile.Controls.Add(Number("Foot", "Crack Height", $"{family}.InspCrackHeight", "0"));
+        profile.Controls.Add(Number("Foot", "Width Sub Offset", $"{family}.WidthSubOffset", "0"));
+        profile.Controls.Add(Number("Foot", "Length Sub Offset", $"{family}.LengthSubOffset", "0"));
+        profile.Controls.Add(Number("Foot", "Height Sub Offset", $"{family}.HeightSubOffset", "0"));
     }
 
     private static void AddLeadTip(AlgorithmReferenceUiProfile profile, string family)
@@ -791,6 +852,12 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Number("Solder Cone", "Teach Height", $"{family}.TeachHeight", "0"));
         profile.Controls.Add(Number("Solder Cone", "Current Height", $"{family}.CurrentHeight", "0"));
         profile.Controls.Add(Number("Solder Cone", "Current Area", $"{family}.CurrentArea", "0"));
+        profile.Controls.Add(Check("Solder Cone", "Use Highest", $"{family}.UseSolderHighest", "false"));
+        profile.Controls.Add(Check("Solder Cone", "Highest Volume Diff", $"{family}.UseSolderHighestVolumeDiff", "false"));
+        profile.Controls.Add(Number("Solder Cone", "Highest Height", $"{family}.HighestHeight", "0"));
+        profile.Controls.Add(Check("Solder Cone", "Inspect Volume Diff", $"{family}.UseInspVolumeDiff", "false"));
+        profile.Controls.Add(Check("Solder Cone", "Inspect Volume Min Length", $"{family}.UseInspVolumeMinLength", "false"));
+        profile.Controls.Add(Check("Solder Cone", "Inspect Volume Pie", $"{family}.UseInspVolumePie", "false"));
         profile.Controls.Add(Check("Solder Cone Step", "Use 1 Step", $"{family}.Use1Step", "false"));
         profile.Controls.Add(Number("Solder Cone Step", "1 Step Height", $"{family}.Height1Step", "0"));
         profile.Controls.Add(Number("Solder Cone Step", "1 Step Percent", $"{family}.Step1Percent", "0"));

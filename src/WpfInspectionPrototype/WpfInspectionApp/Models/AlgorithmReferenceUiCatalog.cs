@@ -190,6 +190,9 @@ public static partial class AlgorithmReferenceUiCatalog
             case "AlgoTab_Search":
                 AddTab(profile, family);
                 break;
+            case "AlgoWidth":
+                AddWidth(profile, family);
+                break;
             case "AlgoVolume":
                 AddVolume(profile, family);
                 break;
@@ -209,8 +212,10 @@ public static partial class AlgorithmReferenceUiCatalog
                 AddBridge(profile, family);
                 break;
             case "AlgoFillet":
+                AddFilletFoot(profile, family, includeFootFields: false);
+                break;
             case "AlgoFoot":
-                AddFilletFoot(profile, family);
+                AddFilletFoot(profile, family, includeFootFields: true);
                 break;
             case "AlgoLead_Tip":
                 AddLeadTip(profile, family);

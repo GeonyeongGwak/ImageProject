@@ -447,6 +447,26 @@ public static class LegacyRawPartImportAdapter
         {
             ApplyLeadSideSolderParameters(algorithm, element);
         }
+        else if (string.Equals(algorithm.Type, "AlgoWidth", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyWidthParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoVolume", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyVolumeParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoFillet", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyFilletParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoFoot", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyFootParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoSolderCone", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplySolderConeParameters(algorithm, element);
+        }
     }
 
     private static void ApplyAlignParameters(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
@@ -1718,6 +1738,260 @@ public static class LegacyRawPartImportAdapter
         SetBool(algorithm, "Import.LeadSideSolderMapped", true);
     }
 
+    private static void ApplyWidthParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyCommonRangeParameters(algorithm, element);
+        SetDoubleIfPresent(algorithm, $"{family}.StdWidth", element, "StdWidth", "StdW");
+        SetDoubleIfPresent(algorithm, $"{family}.StdLength", element, "StdLength", "StdLen");
+        SetBoolIfPresent(algorithm, $"{family}.UseWidth", element, "UseWidth", "UseW", "UseTCW");
+        SetBoolIfPresent(algorithm, $"{family}.UseLength", element, "UseLength", "UseL", "UseTCL");
+        SetDoubleIfPresent(algorithm, $"{family}.Width", element, "Width", "StdWidth", "StdW", "TCW");
+        SetDoubleIfPresent(algorithm, $"{family}.Length", element, "Length", "StdLength", "StdLen", "TCL");
+
+        if (TryReadNumberArrayLeaf(element, out var widthRange, "MnMxWidth", "MnMxW") && widthRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.WidthMin", widthRange[0]);
+            SetDouble(algorithm, $"{family}.WidthMax", widthRange[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var lengthRange, "MnMxLength", "MnMxLen", "MnMxL") && lengthRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.LengthMin", lengthRange[0]);
+            SetDouble(algorithm, $"{family}.LengthMax", lengthRange[1]);
+        }
+
+        SetBool(algorithm, "Import.WidthMapped", true);
+    }
+
+    private static void ApplyVolumeParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyCommonRangeParameters(algorithm, element);
+        SetIntIfPresent(algorithm, $"{family}.IpcClass", element, "ClassIPC", "CSIPC");
+        SetIntIfPresent(algorithm, $"{family}.IPCClass", element, "ClassIPC", "CSIPC");
+        SetDoubleIfPresent(algorithm, $"{family}.StandardBodyHeight", element, "StdBodyHeight", "StdBodyHei");
+        SetDoubleIfPresent(algorithm, $"{family}.StdWidth", element, "StdWidth", "StdW");
+        SetDoubleIfPresent(algorithm, $"{family}.StdLength", element, "StdLength", "StdLen");
+        SetBoolIfPresent(algorithm, $"{family}.ChipTracking", element, "ChipTracking", "ChipTrack");
+        SetBoolIfPresent(algorithm, $"{family}.UseBWOption", element, "UseBWOption", "UseBW");
+        SetBoolIfPresent(algorithm, $"{family}.UseBW", element, "UseBWOption", "UseBW");
+        SetBoolIfPresent(algorithm, $"{family}.UseStdMax", element, "UseStdMax");
+        SetDoubleIfPresent(algorithm, $"{family}.LimitUpper", element, "LimitUpper", "LimitUp");
+        SetIntIfPresent(algorithm, $"{family}.TypeSelectBlob", element, "TypeSelectBlob", "TPSelBlob");
+        SetDoubleIfPresent(algorithm, $"{family}.StandardVolume", element, "StdVolume");
+        SetDoubleIfPresent(algorithm, $"{family}.VolumeHeight", element, "StdVolume");
+        SetDoubleIfPresent(algorithm, $"{family}.AddRefVolume", element, "ARefV");
+        SetBoolIfPresent(algorithm, $"{family}.UseHeight", element, "UseHeight", "UseHei");
+        SetBoolIfPresent(algorithm, $"{family}.UseVolume", element, "UseHeight", "UseHei");
+        SetBoolIfPresent(algorithm, $"{family}.UseRelativeHeight", element, "HeightPer");
+        SetDoubleIfPresent(algorithm, $"{family}.MinHeight", element, "MinHeight");
+        SetDoubleIfPresent(algorithm, $"{family}.MaxHeight", element, "MaxHeight");
+        SetDoubleIfPresent(algorithm, $"{family}.RelativeHeightMin", element, "MinHeight");
+        SetDoubleIfPresent(algorithm, $"{family}.RelativeHeightMax", element, "MaxHeight");
+        SetDoubleIfPresent(algorithm, $"{family}.StdArea", element, "StdArea");
+        SetBoolIfPresent(algorithm, $"{family}.UseArea", element, "UseArea");
+        SetBoolIfPresent(algorithm, $"{family}.UseAreaRate", element, "UseArea");
+        SetBoolIfPresent(algorithm, $"{family}.UseColdJoint", element, "Use_CJ");
+        SetDoubleIfPresent(algorithm, $"{family}.ColdJointArea", element, "Area_CJ");
+        SetDoubleIfPresent(algorithm, $"{family}.ColdJointAreaPercent", element, "AreaP_CJ");
+        SetBoolIfPresent(algorithm, $"{family}.UseInclination", element, "UseInc");
+        SetDoubleIfPresent(algorithm, $"{family}.Inclination", element, "Inc");
+        SetDoubleIfPresent(algorithm, $"{family}.InclinationMin", element, "IncMin");
+        SetDoubleIfPresent(algorithm, $"{family}.InclinationMax", element, "IncMax");
+        SetDoubleIfPresent(algorithm, $"{family}.RemovalHeight", element, "RH");
+        SetBoolIfPresent(algorithm, $"{family}.BlackHeight", element, "BH");
+        SetBoolIfPresent(algorithm, $"{family}.FillHole", element, "FH");
+        SetIntIfPresent(algorithm, $"{family}.FillHoleSize", element, "FHS");
+        SetBoolIfPresent(algorithm, $"{family}.UseFilter", element, "UseFlt", "UseFilter");
+        SetIntIfPresent(algorithm, $"{family}.FilterStepNarrow", element, "FltStepNar");
+        SetIntIfPresent(algorithm, $"{family}.ChipTrackingGap", element, "ChipTrackGap");
+
+        if (TryReadNumberArrayLeaf(element, out var volumeHeightRange, "MnMxHei") && volumeHeightRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.VolumeMin", volumeHeightRange[0]);
+            SetDouble(algorithm, $"{family}.VolumeMax", volumeHeightRange[1]);
+            SetDouble(algorithm, $"{family}.MinHeight", volumeHeightRange[0]);
+            SetDouble(algorithm, $"{family}.MaxHeight", volumeHeightRange[1]);
+            SetDouble(algorithm, $"{family}.RelativeHeightMin", volumeHeightRange[0]);
+            SetDouble(algorithm, $"{family}.RelativeHeightMax", volumeHeightRange[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var areaRange, "MnMxArea") && areaRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.AreaMin", areaRange[0]);
+            SetDouble(algorithm, $"{family}.AreaMax", areaRange[1]);
+            SetDouble(algorithm, $"{family}.AreaRateMin", areaRange[0]);
+            SetDouble(algorithm, $"{family}.AreaRateMax", areaRange[1]);
+        }
+
+        CopyRawArrayIfPresent(algorithm, element, family, "InclinationROI", "IncROI");
+        CopyRawArrayIfPresent(algorithm, element, family, "RemovalHeightROI", "RHROI");
+
+        if (TryReadNumberArrayLeaf(element, out var arrN, "ArrN"))
+        {
+            SetInt(algorithm, $"{family}.RawNDataCount", arrN.Length);
+            SetIndexedDoubles(algorithm, family, "ArrN", arrN);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var arrF, "ArrF"))
+        {
+            SetInt(algorithm, $"{family}.RawFDataCount", arrF.Length);
+            SetIndexedDoubles(algorithm, family, "ArrF", arrF);
+        }
+
+        SetBool(algorithm, "Import.VolumeMapped", true);
+    }
+
+    private static void ApplyFilletParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyCommonRangeParameters(algorithm, element);
+        SetBoolIfPresent(algorithm, $"{family}.UseSolderFillet", element, "UseFilletInsp");
+        SetBoolIfPresent(algorithm, $"{family}.UseFilletInsp", element, "UseFilletInsp");
+        SetBoolIfPresent(algorithm, $"{family}.AngleRangeH", element, "UARH");
+        SetBoolIfPresent(algorithm, $"{family}.ChipTracking", element, "ChipTracking", "ChipTrack");
+        SetDoubleIfPresent(algorithm, $"{family}.FilletGap", element, "Gap");
+        SetDoubleIfPresent(algorithm, $"{family}.FilletInterval", element, "Interval");
+        SetIntIfPresent(algorithm, $"{family}.FilletDivCount", element, "DivCnt");
+        SetIntIfPresent(algorithm, $"{family}.TipDirection", element, "TipDir");
+        SetDoubleIfPresent(algorithm, $"{family}.MinAngleR", element, "MnA");
+        SetDoubleIfPresent(algorithm, $"{family}.MaxAngleR", element, "MxA");
+        SetDoubleIfPresent(algorithm, $"{family}.MinAngleSpec", element, "MnAS");
+        SetDoubleIfPresent(algorithm, $"{family}.MaxAngleSpec", element, "MxAS");
+        SetBoolIfPresent(algorithm, $"{family}.Direct", element, "UDir");
+        SetBoolIfPresent(algorithm, $"{family}.UseLeadTipPosition", element, "ULTP");
+        SetDoubleIfPresent(algorithm, $"{family}.LeadTipPosition", element, "LTP");
+
+        CopyPrefixedLeafValues(algorithm, element, family, "HeightOption", "HgtOptVal");
+        CopyPrefixedLeafValues(algorithm, element, family, "AngleOption", "AngOptVal");
+        CopyPrefixedLeafValues(algorithm, element, family, "AngleRangeEnable", "ARHEnb");
+        CopyPrefixedLeafValues(algorithm, element, family, "HeightOptionUse", "HOpt");
+        CopyPrefixedLeafValues(algorithm, element, family, "AngleOptionUse", "AOpt");
+        CopyContainerLeafValues(algorithm, element, family, "HeightOption", "HgtOptVal");
+        CopyContainerLeafValues(algorithm, element, family, "AngleOption", "AngOptVal");
+        CopyContainerLeafValues(algorithm, element, family, "AngleRangeEnable", "ARHEnb");
+        CopyContainerLeafValues(algorithm, element, family, "HeightOptionUse", "HOpt");
+        CopyContainerLeafValues(algorithm, element, family, "AngleOptionUse", "AOpt");
+
+        SetBool(algorithm, "Import.FilletMapped", true);
+    }
+
+    private static void ApplyFootParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        ApplyCommonRangeParameters(algorithm, element);
+        if (TryReadNumberArrayLeaf(element, out var useOptions, "UOpt"))
+        {
+            SetOptionalDouble(algorithm, $"{family}.UseOption", useOptions, 0);
+            SetOptionalDouble(algorithm, $"{family}.UseOption2", useOptions, 1);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var refArea, "ROIF") && refArea.Length >= 4)
+        {
+            SetDouble(algorithm, $"{family}.FootRefLeft", refArea[0]);
+            SetDouble(algorithm, $"{family}.FootRefRight", refArea[1]);
+            SetDouble(algorithm, $"{family}.FootRefTop", refArea[2]);
+            SetDouble(algorithm, $"{family}.FootRefBottom", refArea[3]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var specRect, "SrchF", "SpcR") && specRect.Length >= 4)
+        {
+            SetDouble(algorithm, $"{family}.SpecLeft", specRect[0]);
+            SetDouble(algorithm, $"{family}.SpecRight", specRect[1]);
+            SetDouble(algorithm, $"{family}.SpecTop", specRect[2]);
+            SetDouble(algorithm, $"{family}.SpecBottom", specRect[3]);
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.WindowOffset", element, "WndOffsetF");
+        SetIntIfPresent(algorithm, $"{family}.FindOption", element, "FOpt");
+        SetIntIfPresent(algorithm, $"{family}.FindOption2", element, "FOpt2");
+        SetBoolIfPresent(algorithm, $"{family}.UsePatternAngle", element, "UPatAgl");
+        SetBoolIfPresent(algorithm, $"{family}.Use2Foot", element, "U2Foot");
+        SetBoolIfPresent(algorithm, $"{family}.UsePadAreaAutoTeach", element, "UPadAutoT");
+        SetIntIfPresent(algorithm, $"{family}.FootType", element, "FType");
+        SetIntIfPresent(algorithm, $"{family}.FootDirection", element, "FDir");
+        SetIntIfPresent(algorithm, $"{family}.TipDirection", element, "FDir");
+        SetIntIfPresent(algorithm, $"{family}.TeachFootDirection", element, "TchFDir");
+        SetBoolIfPresent(algorithm, $"{family}.UseRemovedPadArea", element, "URmvPA");
+        SetBoolIfPresent(algorithm, $"{family}.Use2DImageForInspWidth", element, "U2DImgFIW");
+        SetIntIfPresent(algorithm, $"{family}.RemoveWireHeight", element, "RmvWireH");
+        SetIntIfPresent(algorithm, $"{family}.InspCrackHeight", element, "CrkH");
+        SetDoubleIfPresent(algorithm, $"{family}.WidthSubOffset", element, "WSOffset");
+        SetDoubleIfPresent(algorithm, $"{family}.LengthSubOffset", element, "LSOffset");
+        SetDoubleIfPresent(algorithm, $"{family}.HeightSubOffset", element, "HSOffset");
+        SetIntIfPresent(algorithm, $"{family}.FootSobelMin", element, "FSbMn");
+        SetIntIfPresent(algorithm, $"{family}.FootSobelMax", element, "FSbMx");
+        SetIntIfPresent(algorithm, $"{family}.WireSpecDiameter", element, "FSPDIA");
+        SetIntIfPresent(algorithm, $"{family}.FootPadSizeX", element, "PadX");
+        SetIntIfPresent(algorithm, $"{family}.FootPadSizeY", element, "PadY");
+        SetIntIfPresent(algorithm, $"{family}.PadEdgeMinRatio", element, "PEMR");
+        SetBoolIfPresent(algorithm, $"{family}.UseDBCShapeTeaching", element, "UST");
+        SetBoolIfPresent(algorithm, $"{family}.UseTeachRect", element, "UTchPRe");
+        SetIntIfPresent(algorithm, $"{family}.PadWidth", element, "PadW");
+        SetIntIfPresent(algorithm, $"{family}.PadHeight", element, "PadH");
+        SetIntIfPresent(algorithm, $"{family}.Radius", element, "Rdi");
+
+        CopyPrefixedLeafValues(algorithm, element, family, "OptionValue", "OptVal");
+        CopyPrefixedLeafValues(algorithm, element, family, "FindOptionOrder", "FdOptOdr");
+        CopyPrefixedLeafValues(algorithm, element, family, "FindOptionOrder2", "FdOptOdr2");
+        CopyPrefixedLeafValues(algorithm, element, family, "Bin", "SetData_", "SetData2_", "LV_", "H_", "LtData_", "Set_", "Mop_");
+        CopyContainerLeafValues(algorithm, element, family, "Point", "Pnt");
+        CopyContainerLeafValues(algorithm, element, family, "OptionValue", "OptVal");
+        CopyContainerLeafValues(algorithm, element, family, "FindOptionOrder", "FdOptOdr");
+        CopyContainerLeafValues(algorithm, element, family, "FindOptionOrder2", "FdOptOdr2");
+        CopyContainerLeafValues(algorithm, element, family, "Bin", "ArBin");
+
+        SetBool(algorithm, "Import.FootMapped", true);
+    }
+
+    private static void ApplySolderConeParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetDoubleIfPresent(algorithm, $"{family}.TeachHeight", element, "TeachHeight", "TCHei");
+        SetDoubleIfPresent(algorithm, $"{family}.Height1Step", element, "HeightLv1");
+        SetDoubleIfPresent(algorithm, $"{family}.Height2Step", element, "HeightLv2");
+        SetDoubleIfPresent(algorithm, $"{family}.Height3Step", element, "HeightLv3");
+        SetBoolIfPresent(algorithm, $"{family}.UseSolderHighest", element, "UseSolderHighest");
+        SetBoolIfPresent(algorithm, $"{family}.UseSolderHighestVolumeDiff", element, "UHstVD");
+        SetBoolIfPresent(algorithm, $"{family}.UseInspVolumeDiff", element, "UIVD");
+        SetBoolIfPresent(algorithm, $"{family}.UseInspVolumeMinLength", element, "UIVML");
+        SetBoolIfPresent(algorithm, $"{family}.UseInspVolumePie", element, "UIVP");
+        SetDoubleIfPresent(algorithm, $"{family}.HighestHeight", element, "HestH");
+        SetDoubleIfPresent(algorithm, $"{family}.CurrentHeight", element, "HestH");
+        SetDoubleIfPresent(algorithm, $"{family}.GapHeight", element, "GapH");
+        SetIntIfPresent(algorithm, $"{family}.LevelCount", element, "LvlCnt");
+        SetDoubleIfPresent(algorithm, $"{family}.PieHeightDiff", element, "PieHD");
+
+        if (TryReadNumberArrayLeaf(element, out var heights, "Hei") && heights.Length >= 3)
+        {
+            SetDouble(algorithm, $"{family}.Height1Step", heights[0]);
+            SetDouble(algorithm, $"{family}.Height2Step", heights[1]);
+            SetDouble(algorithm, $"{family}.Height3Step", heights[2]);
+            SetBool(algorithm, $"{family}.Use1Step", true);
+            SetBool(algorithm, $"{family}.Use2Step", true);
+            SetBool(algorithm, $"{family}.Use3Step", true);
+        }
+        else
+        {
+            SetBoolIfPresent(algorithm, $"{family}.Use1Step", element, "HeightLv1");
+            SetBoolIfPresent(algorithm, $"{family}.Use2Step", element, "HeightLv2");
+            SetBoolIfPresent(algorithm, $"{family}.Use3Step", element, "HeightLv3");
+        }
+
+        CopyPrefixedLeafValues(algorithm, element, family, "VolumeDiffOption", "DifOpt");
+        CopyPrefixedLeafValues(algorithm, element, family, "VolumeDiffEnable", "DifEnb");
+        CopyContainerLeafValues(algorithm, element, family, "VolumeDiffOption", "DifOpt");
+        CopyContainerLeafValues(algorithm, element, family, "VolumeDiffEnable", "DifEnb");
+
+        SetBool(algorithm, "Import.SolderConeMapped", true);
+    }
+
     private static void ApplyCommonRangeParameters(InspectionAlgorithmData algorithm, XElement element)
     {
         var family = algorithm.ParameterFamily;
@@ -1848,6 +2122,66 @@ public static class LegacyRawPartImportAdapter
         if (TryReadLeafValue(element, out var value, names))
         {
             algorithm.Parameters[$"{family}.{key}.Raw"] = value;
+        }
+    }
+
+    private static void CopyPrefixedLeafValues(
+        InspectionAlgorithmData algorithm,
+        XElement element,
+        string family,
+        string targetPrefix,
+        params string[] legacyPrefixes)
+    {
+        var copied = 0;
+        foreach (var leaf in element.Descendants().Where(candidate => !candidate.HasElements && !string.IsNullOrWhiteSpace(candidate.Value)))
+        {
+            foreach (var legacyPrefix in legacyPrefixes)
+            {
+                var name = leaf.Name.LocalName;
+                if (!name.StartsWith(legacyPrefix, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                var suffix = name.Substring(legacyPrefix.Length).TrimStart('_');
+                var key = string.IsNullOrWhiteSpace(suffix)
+                    ? $"{family}.{targetPrefix}"
+                    : $"{family}.{targetPrefix}.{suffix}";
+                algorithm.Parameters[key] = leaf.Value.Trim();
+                copied++;
+                break;
+            }
+        }
+
+        if (copied > 0)
+        {
+            SetInt(algorithm, $"{family}.{targetPrefix}.Count", copied);
+        }
+    }
+
+    private static void CopyContainerLeafValues(
+        InspectionAlgorithmData algorithm,
+        XElement element,
+        string family,
+        string targetPrefix,
+        params string[] containerNames)
+    {
+        var copied = 0;
+        var containers = element.Descendants()
+            .Where(candidate => containerNames.Any(name => string.Equals(candidate.Name.LocalName, name, StringComparison.OrdinalIgnoreCase)));
+
+        foreach (var container in containers)
+        {
+            foreach (var leaf in container.Descendants().Where(candidate => !candidate.HasElements && !string.IsNullOrWhiteSpace(candidate.Value)))
+            {
+                algorithm.Parameters[$"{family}.{targetPrefix}.{leaf.Name.LocalName}"] = leaf.Value.Trim();
+                copied++;
+            }
+        }
+
+        if (copied > 0)
+        {
+            SetInt(algorithm, $"{family}.{targetPrefix}.Count", copied);
         }
     }
 
