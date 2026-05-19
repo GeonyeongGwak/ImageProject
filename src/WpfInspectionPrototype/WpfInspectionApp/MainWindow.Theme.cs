@@ -53,7 +53,14 @@ public partial class MainWindow
 
     private void SetThemeBrush(object key, Color color)
     {
-        if (Resources.Contains(key) && Resources[key] is SolidColorBrush brush)
+        // WPF 가 SolidColorBrush 를 freeze 하는 경우가 있음 (StaticResource 다회 참조,
+        // ControlTemplate 안 default-style, SystemColors override 등). Frozen brush 의
+        // .Color 를 mutation 하면 InvalidOperationException("읽기 전용 상태...") 던짐.
+        // 따라서 frozen 이면 새 instance 로 교체 — DynamicResource 소비자들은 Resources
+        // dictionary 의 값 교체를 자동 추적하므로 색상 갱신은 그대로 동작.
+        if (Resources.Contains(key)
+            && Resources[key] is SolidColorBrush brush
+            && !brush.IsFrozen)
         {
             brush.Color = color;
             return;
