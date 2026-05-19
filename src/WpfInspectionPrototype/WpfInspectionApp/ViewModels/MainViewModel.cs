@@ -40,6 +40,7 @@ public sealed class MainViewModel : ViewModelBase
     private readonly IAlignPartTeachingService _alignPartTeachingService;
     private readonly IAlignConditionService _alignConditionService;
     private readonly RoiCanvasViewModel _roi;
+    private readonly IRoiUiStateService _roiUiStateService;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
     private readonly IInspectionFlowService _inspectionFlowService;
@@ -61,6 +62,7 @@ public sealed class MainViewModel : ViewModelBase
         IAlignPartTeachingService alignPartTeachingService,
         IAlignConditionService alignConditionService,
         RoiCanvasViewModel roi,
+        IRoiUiStateService roiUiStateService,
         IImageRuntimeStateService imageRuntimeStateService,
         IInspectionWorkflowService inspectionWorkflowService,
         IInspectionFlowService inspectionFlowService,
@@ -79,6 +81,7 @@ public sealed class MainViewModel : ViewModelBase
         _alignPartTeachingService = alignPartTeachingService;
         _alignConditionService = alignConditionService;
         _roi = roi;
+        _roiUiStateService = roiUiStateService;
         _imageRuntimeStateService = imageRuntimeStateService;
         _inspectionWorkflowService = inspectionWorkflowService;
         _inspectionFlowService = inspectionFlowService;
@@ -292,6 +295,40 @@ public sealed class MainViewModel : ViewModelBase
     public RoiRect? GetActiveRoi()
     {
         return _roi.GetActiveRoi(_model);
+    }
+
+    public RoiOverlayState CreateRoiOverlayState(int sourceWidth, int sourceHeight)
+    {
+        return new RoiOverlayState(
+            _model,
+            ActiveAlgorithm?.Id,
+            _roi.PreviewRoi,
+            _roi.Target == RoiDrawTarget.Algorithm,
+            sourceWidth,
+            sourceHeight,
+            CurrentImageZoom);
+    }
+
+    public string CreateRoiText(int sourceWidth, int sourceHeight, Func<RoiRect?, string> formatRoi)
+    {
+        return _roiUiStateService.CreateRoiText(
+            _model,
+            SelectedAlgorithm,
+            _roi.PreviewRoi,
+            sourceWidth,
+            sourceHeight,
+            formatRoi);
+    }
+
+    public RoiUiSyncState CreateRoiUiSyncState(int sourceWidth, int sourceHeight, Func<RoiRect?, string> formatRoi)
+    {
+        return _roiUiStateService.CreateSyncState(
+            _model,
+            SelectedAlgorithm,
+            _roi.PreviewRoi,
+            sourceWidth,
+            sourceHeight,
+            formatRoi);
     }
 
     public bool UpsertActiveWindowRoi(RoiRect roi)

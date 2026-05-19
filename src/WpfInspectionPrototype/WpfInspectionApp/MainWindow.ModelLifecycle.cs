@@ -17,7 +17,7 @@ public partial class MainWindow
     private void UpdateModelFromUi()
     {
         _viewModel.ApplyAlignPanelState(
-            AlignPanel.CaptureModelState(SelectedAlgorithm()),
+            AlignPanel.CaptureModelState(ViewModel.SelectedAlgorithm),
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight);
         AlignPanel.LoadFromModel(ViewModel.Model);

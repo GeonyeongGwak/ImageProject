@@ -30,7 +30,6 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IRoiGeometryService _roiGeometryService;
     private readonly RoiCanvasViewModel _roiCanvasViewModel;
-    private readonly IRoiUiStateService _roiUiStateService;
     private readonly IPem3DViewerHostService _pem3DViewerHostService;
     private readonly IPttViewerWorkflowService _pttViewerWorkflowService;
     private readonly MainViewModel _viewModel;
@@ -66,7 +65,6 @@ public partial class MainWindow : Window, IDialogOwner
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
         _roiGeometryService = App.Services.RoiGeometry;
         _roiCanvasViewModel = new RoiCanvasViewModel(App.Services.RoiInteraction, App.Services.RoiModel);
-        _roiUiStateService = App.Services.RoiUiState;
         _pem3DViewerHostService = App.Services.Pem3DViewerHost;
         _pttViewerWorkflowService = App.Services.PttViewerWorkflow;
         _viewModel = new MainViewModel(
@@ -80,6 +78,7 @@ public partial class MainWindow : Window, IDialogOwner
             App.Services.AlignPartTeaching,
             App.Services.AlignCondition,
             _roiCanvasViewModel,
+            App.Services.RoiUiState,
             _imageRuntimeStateService,
             App.Services.InspectionWorkflow,
             App.Services.InspectionFlow,
@@ -971,11 +970,6 @@ public partial class MainWindow : Window, IDialogOwner
 
         _thresholdTimer.Stop();
         _thresholdTimer.Start();
-    }
-
-    private string SelectedAlgorithm()
-    {
-        return ViewModel.SelectedAlgorithm;
     }
 
 }

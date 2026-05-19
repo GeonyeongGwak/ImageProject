@@ -1,18 +1,9 @@
 using System.Windows;
 using System.Windows.Controls;
-using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
+using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp.Views;
-
-public sealed record RoiOverlayState(
-    InspectionModel Model,
-    string? ActiveAlgorithmId,
-    RoiRect? PreviewRoi,
-    bool PreviewIsAlgorithmRoi,
-    int SourceWidth,
-    int SourceHeight,
-    double ImageZoom);
 
 public sealed class RoiOverlayCoordinator
 {

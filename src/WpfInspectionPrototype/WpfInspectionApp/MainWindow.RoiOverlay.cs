@@ -1,6 +1,5 @@
 using WpfInspectionApp.Models;
-using WpfInspectionApp.Services;
-using WpfInspectionApp.Views;
+using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp;
 
@@ -14,22 +13,14 @@ public partial class MainWindow
 
     private RoiOverlayState CreateRoiOverlayState()
     {
-        return new RoiOverlayState(
-            ViewModel.Model,
-            ActiveAlgorithm?.Id,
-            _roiCanvasViewModel.PreviewRoi,
-            _roiCanvasViewModel.Target == RoiDrawTarget.Algorithm,
+        return _viewModel.CreateRoiOverlayState(
             _imageRuntimeStateService.SourceWidth,
-            _imageRuntimeStateService.SourceHeight,
-            _viewModel.CurrentImageZoom);
+            _imageRuntimeStateService.SourceHeight);
     }
 
     private void UpdateRoiText()
     {
-        var text = _roiUiStateService.CreateRoiText(
-            ViewModel.Model,
-            SelectedAlgorithm(),
-            _roiCanvasViewModel.PreviewRoi,
+        var text = _viewModel.CreateRoiText(
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
             FormatRoi);
@@ -38,10 +29,7 @@ public partial class MainWindow
 
     private void ApplyRoiUiSyncState()
     {
-        var state = _roiUiStateService.CreateSyncState(
-            ViewModel.Model,
-            SelectedAlgorithm(),
-            _roiCanvasViewModel.PreviewRoi,
+        var state = _viewModel.CreateRoiUiSyncState(
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
             FormatRoi);
