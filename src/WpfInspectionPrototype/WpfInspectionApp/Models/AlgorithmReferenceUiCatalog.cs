@@ -164,8 +164,11 @@ public static partial class AlgorithmReferenceUiCatalog
                 AddOcr(profile, family);
                 break;
             case "AlgoPattern":
+                AddPatternAdvanced(profile, family);
+                break;
             case "AlgoPatternDiff":
                 AddPatternAdvanced(profile, family);
+                AddPatternDiff(profile, family);
                 break;
             case "AlgoColor":
                 AddColorAdvanced(profile, family);
@@ -185,6 +188,12 @@ public static partial class AlgorithmReferenceUiCatalog
                 break;
             case "AlgoGrid":
                 AddGrid(profile, family);
+                break;
+            case "AlgoLine":
+                AddLine(profile, family);
+                break;
+            case "AlgoEdge":
+                AddEdgeAdvanced(profile, family);
                 break;
             case "AlgoTab":
             case "AlgoTab_Search":

@@ -229,6 +229,13 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Command("Barcode", "Teach Align", $"{family}.TeachAlignRequested"));
         profile.Controls.Add(Check("Barcode", "PN Validation", $"{family}.PNValidation", "false"));
         profile.Controls.Add(Check("Barcode", "Split Image Save", $"{family}.SplitImageSave", "false"));
+        profile.Controls.Add(Number("Barcode Legacy", "Barcode Type Flags", $"{family}.BarcodeTypeFlags", "0"));
+        profile.Controls.Add(Number("Barcode Legacy", "Option Flags", $"{family}.OptionFlags", "0"));
+        profile.Controls.Add(Number("Barcode Legacy", "Char Count Min", $"{family}.CharCountMin", "0"));
+        profile.Controls.Add(Number("Barcode Legacy", "Char Count Max", $"{family}.CharCountMax", "0"));
+        profile.Controls.Add(Number("Barcode Legacy", "Angle Tolerance", $"{family}.AngleTolerance", "0"));
+        profile.Controls.Add(Number("Barcode Legacy", "Data Count", $"{family}.BarDataCount", "0"));
+        profile.Controls.Add(Number("Barcode Legacy", "String Count", $"{family}.BarStringCount", "0"));
         profile.Controls.Add(Command("Barcode Items", "Save Item", $"{family}.SaveItemRequested"));
         profile.Controls.Add(Command("Barcode Items", "Clear Item", $"{family}.ClearItemRequested"));
         profile.Controls.Add(Command("Barcode Items", "Add Label Item", $"{family}.AddLabelItemRequested"));
@@ -305,6 +312,31 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Check("Pattern Search", "Detail Search", $"{family}.DetailSearch", "false"));
         profile.Controls.Add(Check("Pattern Search", "Character", $"{family}.Character", "false"));
         profile.Controls.Add(Combo("Pattern Search", "Algorithm", $"{family}.Algorithm", "0", ["Algo 1", "Algo 2", "Algo 3", "Algo 4", "Algo 5"]));
+    }
+
+    private static void AddPatternDiff(AlgorithmReferenceUiProfile profile, string family)
+    {
+        profile.Controls.Add(Number("Pattern Diff", "Layer Count", $"{family}.LayerCount", "0"));
+        profile.Controls.Add(Number("Pattern Diff", "Model Count", $"{family}.ModelAddCount", "0"));
+        profile.Controls.Add(Check("Pattern Diff", "Use Pattern", $"{family}.UsePattern", "false"));
+        profile.Controls.Add(Check("Pattern Diff", "Use Dark Foreign", $"{family}.UseDarkForeign", "false"));
+        profile.Controls.Add(Number("Pattern Diff", "Theta", $"{family}.Theta", "0"));
+        profile.Controls.Add(Number("Pattern Diff", "Model Name Count", $"{family}.ModelNameCount", "0"));
+        profile.Controls.Add(Check("Pattern Diff Except", "Use Except Pattern", $"{family}.UseExceptPattern", "false"));
+        profile.Controls.Add(Number("Pattern Diff Except", "Except Model Count", $"{family}.ExceptModelAddCount", "0"));
+        profile.Controls.Add(Number("Pattern Diff Except", "Except Score", $"{family}.ExceptPatternScore", "0"));
+        profile.Controls.Add(Number("Pattern Diff Except", "Except Name Count", $"{family}.ExceptModelNameCount", "0"));
+        profile.Controls.Add(Check("Pattern Diff Align", "Use Align Area", $"{family}.UseAlignArea", "false"));
+        profile.Controls.Add(Number("Pattern Diff Align", "Align Accept Score", $"{family}.AlignAcceptScore", "0"));
+        profile.Controls.Add(Check("Pattern Diff Align", "Use Align Matching", $"{family}.UseAlignMatching", "false"));
+        profile.Controls.Add(Number("Pattern Diff Data", "Layer Type Count", $"{family}.LayerTypeCount", "0"));
+        profile.Controls.Add(Number("Pattern Diff Data", "BW Data Count", $"{family}.BWDataCount", "0"));
+        profile.Controls.Add(Number("Pattern Diff Data", "Teach Area Count", $"{family}.TeachAreaCount", "0"));
+        profile.Controls.Add(Number("Pattern Diff Data", "Histogram Count", $"{family}.HistogramCount", "0"));
+        profile.Controls.Add(Number("Pattern Diff Data", "Light Data Count", $"{family}.LightDataCount", "0"));
+        profile.Controls.Add(Check("Pattern Diff Mask", "Use Mask Filter", $"{family}.UseMaskFilter", "false"));
+        profile.Controls.Add(Number("Pattern Diff Mask", "Mask Filter Size", $"{family}.MaskFilterSize", "0"));
+        profile.Controls.Add(Number("Pattern Diff Mask", "Mask BW Count", $"{family}.MaskBWDataCount", "0"));
     }
 
     private static void AddColorAdvanced(AlgorithmReferenceUiProfile profile, string family)
@@ -406,12 +438,64 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Number("Grid", "Pixel Length", $"{family}.PixelLength", "0"));
         profile.Controls.Add(Number("Grid", "MM Width", $"{family}.MMWidth", "0"));
         profile.Controls.Add(Number("Grid", "MM Length", $"{family}.MMLength", "0"));
+        profile.Controls.Add(Number("Grid", "Ignore Color", $"{family}.IgnoreColor", "3"));
+        profile.Controls.Add(Number("Grid", "Std Dev", $"{family}.StdDev", "0"));
+        profile.Controls.Add(Check("Grid", "Use Standard", $"{family}.UseStandard", "true"));
+        profile.Controls.Add(Check("Grid", "Use Image Mix", $"{family}.UseImageMix", "false"));
+        profile.Controls.Add(Number("Grid", "Image Mix Count", $"{family}.ImageMixCount", "0"));
         profile.Controls.Add(Command("Grid", "Convert", $"{family}.ConvertRequested"));
         profile.Controls.Add(Check("Grid Except", "Include", $"{family}.ExceptInclude", "true"));
         profile.Controls.Add(Check("Grid Except", "Gray", $"{family}.UseGray", "false"));
         profile.Controls.Add(Check("Grid Except", "Color", $"{family}.UseColor", "false"));
         profile.Controls.Add(Number("Grid Except", "Except Area", $"{family}.ExceptAreaCount", "0"));
         profile.Controls.Add(Command("Grid Except", "Except Area Save", $"{family}.ExceptAreaSaveRequested"));
+    }
+
+    private static void AddLine(AlgorithmReferenceUiProfile profile, string family)
+    {
+        profile.Controls.Add(Check("Line", "Invert", $"{family}.Invert", "false"));
+        profile.Controls.Add(Check("Line", "Use Filter", $"{family}.UseFilter", "false"));
+        profile.Controls.Add(Number("Line", "Filter Step Narrow", $"{family}.FilterStepNarrow", "4"));
+        profile.Controls.Add(Check("Line", "Use Shift", $"{family}.UseShift", "true"));
+        profile.Controls.Add(Check("Line", "Use ROI", $"{family}.UseROI", "false"));
+        profile.Controls.Add(Check("Line Measure", "Is Horizon", $"{family}.IsHorizon", "false"));
+        profile.Controls.Add(Number("Line Measure", "Measure Direction", $"{family}.MeasureDirection", "0"));
+        profile.Controls.Add(Check("Line Measure", "Use Angle", $"{family}.UseAngle", "false"));
+        profile.Controls.Add(Number("Line Measure", "Teach Rotate", $"{family}.TeachRotate", "0"));
+        profile.Controls.Add(Number("Line Measure", "Teach Center X", $"{family}.TeachCenterX", "0"));
+        profile.Controls.Add(Number("Line Measure", "Teach Center Y", $"{family}.TeachCenterY", "0"));
+        profile.Controls.Add(Check("Line Cross", "Use Cross", $"{family}.UseCross", "false"));
+        profile.Controls.Add(Check("Line Cross", "Use Fix", $"{family}.UseFix", "false"));
+        profile.Controls.Add(Number("Line Cross", "Cross Option", $"{family}.CrossOption", "0"));
+        profile.Controls.Add(Check("Line Cross", "Use End Position", $"{family}.UseEndPosition", "false"));
+        profile.Controls.Add(Number("Line Data", "Line Data", $"{family}.LineData", "0"));
+        profile.Controls.Add(Number("Line Data", "Perpendicular 1", $"{family}.Perpendicular1", "0"));
+        profile.Controls.Add(Number("Line Data", "Perpendicular 2", $"{family}.Perpendicular2", "0"));
+    }
+
+    private static void AddEdgeAdvanced(AlgorithmReferenceUiProfile profile, string family)
+    {
+        AddLine(profile, family);
+        profile.Controls.Add(Number("Edge", "Set Line Count", $"{family}.SetLineCount", "0"));
+        profile.Controls.Add(Check("Edge", "Group", $"{family}.Group", "false"));
+        profile.Controls.Add(Number("Edge", "Line Find Type", $"{family}.LineFindType", "0"));
+        profile.Controls.Add(Number("Edge", "Line Find Rate", $"{family}.LineFindRate", "100"));
+        profile.Controls.Add(Number("Edge", "Inspection Option", $"{family}.InspectionOption", "0"));
+        profile.Controls.Add(Check("Edge", "Find Center", $"{family}.FindCenter", "false"));
+        profile.Controls.Add(Check("Edge Cross", "Use Cross Center", $"{family}.UseCrossCenter", "false"));
+        profile.Controls.Add(Number("Edge Cross", "Std Teach Rotate", $"{family}.StdTeachRotate", "0"));
+        profile.Controls.Add(Check("Edge Distance", "Use Distance X", $"{family}.UseDistanceX", "false"));
+        profile.Controls.Add(Number("Edge Distance", "Distance X", $"{family}.DistanceX", "0"));
+        profile.Controls.Add(Number("Edge Distance", "Distance X Min", $"{family}.DistanceXMin", "0"));
+        profile.Controls.Add(Number("Edge Distance", "Distance X Max", $"{family}.DistanceXMax", "0"));
+        profile.Controls.Add(Check("Edge Distance", "Use Distance Y", $"{family}.UseDistanceY", "false"));
+        profile.Controls.Add(Number("Edge Distance", "Distance Y", $"{family}.DistanceY", "0"));
+        profile.Controls.Add(Number("Edge Distance", "Distance Y Min", $"{family}.DistanceYMin", "0"));
+        profile.Controls.Add(Number("Edge Distance", "Distance Y Max", $"{family}.DistanceYMax", "0"));
+        profile.Controls.Add(Number("Edge Lines", "Line 1 Length", $"{family}.Line1.TeachLength", "0"));
+        profile.Controls.Add(Number("Edge Lines", "Line 2 Length", $"{family}.Line2.TeachLength", "0"));
+        profile.Controls.Add(Number("Edge Lines", "Line 3 Length", $"{family}.Line3.TeachLength", "0"));
+        profile.Controls.Add(Number("Edge Lines", "Line 4 Length", $"{family}.Line4.TeachLength", "0"));
     }
 
     private static void AddTab(AlgorithmReferenceUiProfile profile, string family)
@@ -737,6 +821,20 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Check("Pad Array", "Use Distance", $"{family}.UseDistance", "false"));
         profile.Controls.Add(Number("Pad Array", "Distance X", $"{family}.DistanceX", "0"));
         profile.Controls.Add(Number("Pad Array", "Distance Y", $"{family}.DistanceY", "0"));
+        profile.Controls.Add(Number("Pad Array", "Data Flags", $"{family}.DataFlags", "0"));
+        profile.Controls.Add(Number("Pad Array", "NData Count", $"{family}.NDataCount", "0"));
+        profile.Controls.Add(Number("Pad Array", "FData Count", $"{family}.FDataCount", "0"));
+        profile.Controls.Add(Check("Pad Array", "Use Width", $"{family}.UseWidth", "false"));
+        profile.Controls.Add(Check("Pad Array", "Use Length", $"{family}.UseLength", "false"));
+        profile.Controls.Add(Number("Pad Array Size", "Width", $"{family}.Width", "0"));
+        profile.Controls.Add(Number("Pad Array Size", "Width Min", $"{family}.WidthMin", "0"));
+        profile.Controls.Add(Number("Pad Array Size", "Width Max", $"{family}.WidthMax", "0"));
+        profile.Controls.Add(Number("Pad Array Size", "Length", $"{family}.Length", "0"));
+        profile.Controls.Add(Number("Pad Array Size", "Length Min", $"{family}.LengthMin", "0"));
+        profile.Controls.Add(Number("Pad Array Size", "Length Max", $"{family}.LengthMax", "0"));
+        profile.Controls.Add(Number("Pad Array Height", "Height Min", $"{family}.HeightMin", "0"));
+        profile.Controls.Add(Number("Pad Array Height", "Height Max", $"{family}.HeightMax", "0"));
+        profile.Controls.Add(Number("Pad Array Height", "Height Avg", $"{family}.HeightAvg", "0"));
         profile.Controls.Add(Command("Pad Array", "Set ROI 1", $"{family}.SetRoi1Requested"));
         profile.Controls.Add(Command("Pad Array", "Set ROI 2", $"{family}.SetRoi2Requested"));
         profile.Controls.Add(Combo("Pad Array", "Pad Select", $"{family}.PadSelect", "0", ["All", "Pad 1", "Pad 2"]));

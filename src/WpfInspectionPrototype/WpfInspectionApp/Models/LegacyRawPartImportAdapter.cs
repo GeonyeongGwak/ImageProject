@@ -467,6 +467,30 @@ public static class LegacyRawPartImportAdapter
         {
             ApplySolderConeParameters(algorithm, element);
         }
+        else if (string.Equals(algorithm.Type, "AlgoGrid", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyGridParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoLine", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyLineParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoEdge", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyEdgeParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoBarcode", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyBarcodeParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoPatternDiff", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyPatternDiffParameters(algorithm, element);
+        }
+        else if (string.Equals(algorithm.Type, "AlgoPadArray", StringComparison.OrdinalIgnoreCase))
+        {
+            ApplyPadArrayParameters(algorithm, element);
+        }
     }
 
     private static void ApplyAlignParameters(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
@@ -1992,6 +2016,490 @@ public static class LegacyRawPartImportAdapter
         SetBool(algorithm, "Import.SolderConeMapped", true);
     }
 
+    private static void ApplyGridParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+        ApplyCommonRangeParameters(algorithm, element);
+
+        SetIntIfPresent(algorithm, $"{family}.Column", element, "Column", "Col");
+        SetIntIfPresent(algorithm, $"{family}.Row", element, "Row");
+        SetIntIfPresent(algorithm, $"{family}.IgnoreColor", element, "IgnoreColor", "IgnClr");
+        SetDoubleIfPresent(algorithm, $"{family}.StdDev", element, "StdDev");
+
+        if (TryReadDoubleLeaf(element, out var detectWidth, "DetectWidth", "DetW"))
+        {
+            SetDouble(algorithm, $"{family}.DetectWidth", detectWidth);
+            SetDouble(algorithm, $"{family}.PixelWidth", detectWidth);
+        }
+
+        if (TryReadDoubleLeaf(element, out var detectLength, "DetectLength", "DetLen"))
+        {
+            SetDouble(algorithm, $"{family}.DetectLength", detectLength);
+            SetDouble(algorithm, $"{family}.PixelLength", detectLength);
+        }
+
+        if (TryReadBoolLeaf(element, out var ignoreUse, "IgnoreUse", "UseIgn"))
+        {
+            SetBool(algorithm, $"{family}.IgnoreUse", ignoreUse);
+            SetBool(algorithm, $"{family}.ExceptInclude", ignoreUse);
+        }
+
+        if (TryReadBoolLeaf(element, out var stdUse, "StdUse", "UseStd"))
+        {
+            SetBool(algorithm, $"{family}.StdUse", stdUse);
+            SetBool(algorithm, $"{family}.UseStandard", stdUse);
+        }
+
+        if (TryReadLeafValue(element, out var exceptArea, "EA"))
+        {
+            algorithm.Parameters[$"{family}.ExceptArea.Raw"] = exceptArea;
+            SetInt(algorithm, $"{family}.ExceptAreaCount", CountDelimitedTokens(exceptArea));
+        }
+
+        CopyRawArrayIfPresent(algorithm, element, family, "Color", "Color", "Clr");
+        SetBoolIfPresent(algorithm, $"{family}.UseImageMix", element, "UseImageMix");
+        SetIntIfPresent(algorithm, $"{family}.ImageMixCount", element, "ImageMixCount");
+        SetBool(algorithm, "Import.GridMapped", true);
+    }
+
+    private static void ApplyLineParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        ApplyLineEdgeCommonParameters(algorithm, element);
+        SetBool(algorithm, "Import.LineMapped", true);
+    }
+
+    private static void ApplyEdgeParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+        ApplyLineEdgeCommonParameters(algorithm, element);
+
+        SetIntIfPresent(algorithm, $"{family}.SetLineCount", element, "SetLineCnt");
+        SetBoolIfPresent(algorithm, $"{family}.Group", element, "Group", "Grp");
+        SetIntIfPresent(algorithm, $"{family}.LineFindType", element, "LineFindType");
+        SetDoubleIfPresent(algorithm, $"{family}.LineFindRate", element, "LineFindRate");
+        SetIntIfPresent(algorithm, $"{family}.InspectionOption", element, "InspOption");
+        SetBoolIfPresent(algorithm, $"{family}.FindCenter", element, "FC");
+        SetBoolIfPresent(algorithm, $"{family}.UseFillHole", element, "FH");
+        SetBoolIfPresent(algorithm, $"{family}.FillHole", element, "FH");
+
+        if (TryReadNumberArrayLeaf(element, out var setInspCond, "SetInspCond"))
+        {
+            SetIndexedDoubles(algorithm, family, "SetInspCondition", setInspCond);
+        }
+        else
+        {
+            SetIntIfPresent(algorithm, $"{family}.SetInspCondition1", element, "ArrSetInspCondition1");
+            SetIntIfPresent(algorithm, $"{family}.SetInspCondition2", element, "ArrSetInspCondition2");
+            SetIntIfPresent(algorithm, $"{family}.SetInspCondition3", element, "ArrSetInspCondition3");
+        }
+
+        for (var index = 1; index <= 4; index++)
+        {
+            ApplyEdgeLineSlotParameters(algorithm, element, family, index);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var distanceX, "DisX") && distanceX.Length >= 2)
+        {
+            SetBool(algorithm, $"{family}.UseDistanceX", Math.Abs(distanceX[0]) > double.Epsilon);
+            SetDouble(algorithm, $"{family}.DistanceX", distanceX[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var distanceXRange, "DisXMnMx") && distanceXRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.DistanceXMin", distanceXRange[0]);
+            SetDouble(algorithm, $"{family}.DistanceXMax", distanceXRange[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var distanceY, "DisY") && distanceY.Length >= 2)
+        {
+            SetBool(algorithm, $"{family}.UseDistanceY", Math.Abs(distanceY[0]) > double.Epsilon);
+            SetDouble(algorithm, $"{family}.DistanceY", distanceY[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var distanceYRange, "DisYMnMx") && distanceYRange.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.DistanceYMin", distanceYRange[0]);
+            SetDouble(algorithm, $"{family}.DistanceYMax", distanceYRange[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var crossCenter, "CC"))
+        {
+            if (crossCenter.Length > 0)
+            {
+                SetBool(algorithm, $"{family}.UseCrossCenter", Math.Abs(crossCenter[0]) > double.Epsilon);
+            }
+
+            if (crossCenter.Length > 1)
+            {
+                SetDouble(algorithm, $"{family}.StdTeachRotate", crossCenter[1]);
+            }
+        }
+
+        SetBool(algorithm, "Import.EdgeMapped", true);
+    }
+
+    private static void ApplyLineEdgeCommonParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+        ApplyCommonRangeParameters(algorithm, element);
+
+        if (TryReadBoolLeaf(element, out var invert, "Invert", "Inv"))
+        {
+            SetBool(algorithm, $"{family}.Invert", invert);
+            SetBool(algorithm, $"{family}.InvertCheck", invert);
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.UseFilter", element, "FilterIsUse", "UseFlt");
+        SetIntIfPresent(algorithm, $"{family}.FilterStepNarrow", element, "FilterStepNarrow", "FltStepNar");
+        SetBoolIfPresent(algorithm, $"{family}.UseShift", element, "ShiftIsUse", "UseSft");
+        SetBoolIfPresent(algorithm, $"{family}.UseArea", element, "AreaIsUse", "UseArea");
+        SetDoubleIfPresent(algorithm, $"{family}.AreaCurrent", element, "AreaCurrent", "AreaCur");
+        SetIntIfPresent(algorithm, $"{family}.TypeSelectBlob", element, "TypeSelectBlob", "TPSelBlob");
+        SetBoolIfPresent(algorithm, $"{family}.Use2D", element, "Insp2D", "Use2D");
+        SetBoolIfPresent(algorithm, $"{family}.Use3D", element, "Insp3D", "Use3D");
+        SetIntIfPresent(algorithm, $"{family}.Range2DType", element, "TypeRange2D", "TPR2D");
+        SetIntIfPresent(algorithm, $"{family}.Range3DType", element, "TypeRange3D", "TPR3D");
+
+        if (TryReadNumberArrayLeaf(element, out var teachCenter, "TechC") && teachCenter.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.TeachCenterX", teachCenter[0]);
+            SetDouble(algorithm, $"{family}.TeachCenterY", teachCenter[1]);
+            SetDouble(algorithm, $"{family}.CenterX", teachCenter[0]);
+            SetDouble(algorithm, $"{family}.CenterY", teachCenter[1]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, $"{family}.TeachCenterX", element, "TechCenterX");
+            SetDoubleIfPresent(algorithm, $"{family}.TeachCenterY", element, "TechCenterY");
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.UseIPC", element, "UseIPC");
+        SetIntIfPresent(algorithm, $"{family}.IpcClass", element, "ClassIPC", "CSIPC");
+        SetIntIfPresent(algorithm, $"{family}.TypeStdIPC", element, "TypeStdIPC", "TPStdIPC");
+        SetBoolIfPresent(algorithm, $"{family}.TeachWidthUse", element, "TeachWidthUse", "TCWUse");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachWidth", element, "TeachWidth", "TCW");
+        SetBoolIfPresent(algorithm, $"{family}.TeachLengthUse", element, "TeachLengthUse", "TCLenUse");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachLength", element, "TeachLength", "TCLen");
+
+        if (TryReadNumberArrayLeaf(element, out var teachWidthRate, "MnMxTCWR") && teachWidthRate.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.TeachWidthRateMin", teachWidthRate[0]);
+            SetDouble(algorithm, $"{family}.TeachWidthRateMax", teachWidthRate[1]);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var teachLengthRate, "MnMxTCLen") && teachLengthRate.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.TeachLengthRateMin", teachLengthRate[0]);
+            SetDouble(algorithm, $"{family}.TeachLengthRateMax", teachLengthRate[1]);
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.ShiftXUse", element, "ShiftXUse", "UseSftX");
+        SetBoolIfPresent(algorithm, $"{family}.ShiftYUse", element, "ShiftYUse", "UseSftY");
+        SetBoolIfPresent(algorithm, $"{family}.IsHorizon", element, "IsHorizon");
+        SetIntIfPresent(algorithm, $"{family}.MeasureDirection", element, "MeasureDirection", "MeasureDir");
+        SetBoolIfPresent(algorithm, $"{family}.UseAngle", element, "UseAngle", "UseAng");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachRotate", element, "TeachRotate", "TCRot");
+        SetDoubleIfPresent(algorithm, $"{family}.TeachAngle", element, "TeachRotate", "TCRot");
+        SetBoolIfPresent(algorithm, $"{family}.UseCross", element, "Cross");
+        SetBoolIfPresent(algorithm, $"{family}.UseFix", element, "C_Fix");
+        SetIntIfPresent(algorithm, $"{family}.CrossOption", element, "C_Opt");
+        SetBoolIfPresent(algorithm, $"{family}.UseFillHole", element, "FH");
+        SetBoolIfPresent(algorithm, $"{family}.FillHole", element, "FH");
+        SetBoolIfPresent(algorithm, $"{family}.UseEndPosition", element, "EP");
+        SetBoolIfPresent(algorithm, $"{family}.UseROI", element, "UseROI");
+
+        if (TryReadNumberArrayLeaf(element, out var lineFindOption, "LFO"))
+        {
+            SetIndexedDoubles(algorithm, family, "LineFindType", lineFindOption);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var data, "Data"))
+        {
+            algorithm.Parameters[$"{family}.Data.Raw"] = string.Join(",", data.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture)));
+            if (data.Length > 0)
+            {
+                SetInt(algorithm, $"{family}.LineData", Round(data[0]));
+            }
+
+            for (var index = 1; index < Math.Min(data.Length, 6); index++)
+            {
+                SetDouble(algorithm, $"{family}.Perpendicular{index}", data[index]);
+            }
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var roi, "ROI") && roi.Length >= 4)
+        {
+            SetDouble(algorithm, $"{family}.RoiLeft", roi[0]);
+            SetDouble(algorithm, $"{family}.RoiRight", roi[1]);
+            SetDouble(algorithm, $"{family}.RoiTop", roi[2]);
+            SetDouble(algorithm, $"{family}.RoiBottom", roi[3]);
+        }
+    }
+
+    private static void ApplyEdgeLineSlotParameters(InspectionAlgorithmData algorithm, XElement element, string family, int index)
+    {
+        if (TryReadNumberArrayLeaf(element, out var setLine, $"SetLine{index}") && setLine.Length >= 5)
+        {
+            SetBool(algorithm, $"{family}.Line{index}.IsHorizon", Math.Abs(setLine[0]) > double.Epsilon);
+            SetInt(algorithm, $"{family}.Line{index}.MeasureDirection", Round(setLine[1]));
+            SetDouble(algorithm, $"{family}.Line{index}.TeachLength", setLine[2]);
+            SetDouble(algorithm, $"{family}.Line{index}.TeachCenterX", setLine[3]);
+            SetDouble(algorithm, $"{family}.Line{index}.TeachCenterY", setLine[4]);
+            return;
+        }
+
+        SetBoolIfPresent(algorithm, $"{family}.Line{index}.IsHorizon", element, $"ArrIsHorizon{index}");
+        SetIntIfPresent(algorithm, $"{family}.Line{index}.MeasureDirection", element, $"ArrMeasureDirection{index}");
+        SetDoubleIfPresent(algorithm, $"{family}.Line{index}.TeachLength", element, $"ArrTeachLength{index}");
+
+        if (TryReadNumberArrayLeaf(element, out var teachCenter, $"ArrSetTeachCenter{index}") && teachCenter.Length >= 2)
+        {
+            SetDouble(algorithm, $"{family}.Line{index}.TeachCenterX", teachCenter[0]);
+            SetDouble(algorithm, $"{family}.Line{index}.TeachCenterY", teachCenter[1]);
+        }
+    }
+
+    private static void ApplyBarcodeParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        if (TryReadNumberArrayLeaf(element, out var barData, "Bar_N"))
+        {
+            SetIndexedDoubles(algorithm, family, "BarData", barData);
+            SetInt(algorithm, $"{family}.BarDataCount", barData.Length);
+            SetInt(algorithm, $"{family}.BarcodeTypeFlags", ReadArrayInt(barData, 0));
+            SetInt(algorithm, $"{family}.OptionFlags", ReadArrayInt(barData, 1));
+            SetInt(algorithm, $"{family}.Retry", ReadArrayInt(barData, 2));
+            SetInt(algorithm, $"{family}.EssentialPosition", ReadArrayInt(barData, 3));
+            SetInt(algorithm, $"{family}.PartialFirst", ReadArrayInt(barData, 4));
+            SetInt(algorithm, $"{family}.PartialSecond", ReadArrayInt(barData, 5));
+            SetInt(algorithm, $"{family}.CharCountMin", ReadArrayInt(barData, 6));
+            SetInt(algorithm, $"{family}.CharCountMax", ReadArrayInt(barData, 7));
+            SetBool(algorithm, $"{family}.UseAngle", ReadArrayInt(barData, 8) != 0);
+            SetInt(algorithm, $"{family}.Angle", ReadArrayInt(barData, 9));
+            SetInt(algorithm, $"{family}.AngleTolerance", ReadArrayInt(barData, 10));
+            SetInt(algorithm, $"{family}.KeyName", ReadArrayInt(barData, 11));
+            SetInt(algorithm, $"{family}.KeyName2", ReadArrayInt(barData, 12));
+            SetInt(algorithm, $"{family}.Quality1DOffsetX", ReadArrayInt(barData, 13));
+            SetInt(algorithm, $"{family}.Quality1DOffsetY", ReadArrayInt(barData, 14));
+            SetInt(algorithm, $"{family}.Quality1DTolerance", ReadArrayInt(barData, 15));
+            SetInt(algorithm, $"{family}.Quality2DGrade", ReadArrayInt(barData, 16));
+            SetInt(algorithm, $"{family}.Contrast2D", ReadArrayInt(barData, 17));
+            SetInt(algorithm, $"{family}.DefectCount2D", ReadArrayInt(barData, 18));
+            SetInt(algorithm, $"{family}.AlterAction", ReadArrayInt(barData, 19));
+
+            var flags1 = ReadArrayInt(barData, 0);
+            var flags2 = ReadArrayInt(barData, 1);
+            SetBool(algorithm, $"{family}.Flip", HasFlag(flags1, 0x400000) || HasFlag(flags1, 0x800000));
+            SetBool(algorithm, $"{family}.UseEssentialWords", HasFlag(flags2, 0x01));
+            SetBool(algorithm, $"{family}.UseStandardWords", HasFlag(flags2, 0x02));
+            SetBool(algorithm, $"{family}.UsePartialDisplay", HasFlag(flags2, 0x04));
+            SetBool(algorithm, $"{family}.QualityCheck", HasFlag(flags2, 0x200));
+            SetBool(algorithm, $"{family}.UseRecognitionWord", HasFlag(flags2, 0x10000));
+            SetBool(algorithm, $"{family}.UseTargetWord", HasFlag(flags2, 0x20000));
+            SetBool(algorithm, $"{family}.PNValidation", HasFlag(flags2, 0x40000));
+            SetBool(algorithm, $"{family}.SplitImageSave", HasFlag(flags2, 0x80000));
+        }
+
+        if (TryReadLeafValue(element, out var barString, "Bar_S"))
+        {
+            var values = barString.Split(',').Select(value => value.Trim()).ToArray();
+            SetInt(algorithm, $"{family}.BarStringCount", CountDelimitedTokens(barString));
+            SetStringIfAvailable(algorithm, $"{family}.EssentialWords", values, 0);
+            SetStringIfAvailable(algorithm, $"{family}.StandardWords", values, 1);
+            SetStringIfAvailable(algorithm, $"{family}.MixWords", values, 2);
+            SetStringIfAvailable(algorithm, $"{family}.SourceFilter", values, 4);
+            SetStringIfAvailable(algorithm, $"{family}.TargetFilter", values, 5);
+            SetStringIfAvailable(algorithm, $"{family}.SourceFilter2", values, 6);
+            SetStringIfAvailable(algorithm, $"{family}.TargetFilter2", values, 7);
+            SetStringIfAvailable(algorithm, $"{family}.CrossTarget", values, 8);
+            SetStringIfAvailable(algorithm, $"{family}.CrossTarget2", values, 9);
+            SetStringIfAvailable(algorithm, $"{family}.DefectConditionWidth", values, 10);
+            SetStringIfAvailable(algorithm, $"{family}.DefectConditionLength", values, 11);
+            SetStringIfAvailable(algorithm, $"{family}.DefectConditionCount", values, 12);
+            SetStringIfAvailable(algorithm, $"{family}.DefectArea2D", values, 13);
+            SetStringIfAvailable(algorithm, $"{family}.ModuleRecognizeTarget", values, 14);
+            SetStringIfAvailable(algorithm, $"{family}.ModuleCharLength", values, 15);
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var alignData, "Bar_A"))
+        {
+            SetBool(algorithm, $"{family}.UseAlign", alignData.Length > 0 && Math.Abs(alignData[0]) > double.Epsilon);
+            if (alignData.Length > 1)
+            {
+                SetDouble(algorithm, $"{family}.TeachCenterX", alignData[1]);
+            }
+
+            if (alignData.Length > 2)
+            {
+                SetDouble(algorithm, $"{family}.TeachCenterY", alignData[2]);
+            }
+
+            if (alignData.Length > 3)
+            {
+                SetDouble(algorithm, $"{family}.TeachAngle", alignData[3]);
+            }
+
+            if (alignData.Length > 4)
+            {
+                SetBool(algorithm, $"{family}.QualityCheck", Math.Abs(alignData[4]) > double.Epsilon);
+            }
+        }
+
+        SetBool(algorithm, "Import.BarcodeMapped", true);
+    }
+
+    private static void ApplyPatternDiffParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        SetIntIfPresent(algorithm, $"{family}.LayerCount", element, "LayerCnt");
+        SetIntIfPresent(algorithm, $"{family}.ModelAddCount", element, "ModelAddCnt");
+        SetBoolIfPresent(algorithm, $"{family}.UsePattern", element, "UsePattern");
+        SetStringIfPresent(algorithm, $"{family}.ModelPath", element, "ModelPath");
+        SetDoubleIfPresent(algorithm, $"{family}.Theta", element, "Theta");
+        SetBoolIfPresent(algorithm, $"{family}.UseDarkForeign", element, "UseDarkForeign");
+        SetBoolIfPresent(algorithm, $"{family}.UseExceptPattern", element, "UseExcPattern");
+        SetIntIfPresent(algorithm, $"{family}.ExceptModelAddCount", element, "ExcModelAddCnt");
+        SetIntIfPresent(algorithm, $"{family}.ExceptPatternScore", element, "ExcPatternScore");
+        SetBoolIfPresent(algorithm, $"{family}.UseAlignArea", element, "UseArrAlignArea");
+        SetIntIfPresent(algorithm, $"{family}.AlignAcceptScore", element, "AlignAcceptScore");
+        SetBoolIfPresent(algorithm, $"{family}.UseAlignMatching", element, "bMth");
+        SetBoolIfPresent(algorithm, $"{family}.UseMaskFilter", element, "UseF_Mask");
+        SetIntIfPresent(algorithm, $"{family}.MaskFilterSize", element, "FS_Mask");
+
+        ApplyPatternArray(algorithm, element, family, "LayerType", "LayerType_");
+        ApplyPatternArray(algorithm, element, family, "PolygonAreaCount", "PolyAreaCnt_");
+        ApplyPatternArray(algorithm, element, family, "PolygonPointCount", "PolyPtrCnt_");
+        ApplyPatternArray(algorithm, element, family, "PolygonDirection", "PolyDir_");
+        ApplyPatternArray(algorithm, element, family, "PolygonPointX", "PolyPtrX_");
+        ApplyPatternArray(algorithm, element, family, "PolygonPointY", "PolyPtrY_");
+        ApplyPatternArray(algorithm, element, family, "BWData", "BWData_");
+        ApplyPatternArray(algorithm, element, family, "TeachLength", "TeachLength");
+        ApplyPatternArray(algorithm, element, family, "TeachWidth", "TeachWidth");
+        ApplyPatternArray(algorithm, element, family, "TeachArea", "TeachArea");
+        ApplyPatternArray(algorithm, element, family, "Filter", "Filter");
+        ApplyPatternArray(algorithm, element, family, "MatchingArea", "MatchingArea");
+        ApplyPatternArray(algorithm, element, family, "NGBlobMode", "NGBlobMode");
+        ApplyPatternArray(algorithm, element, family, "Histogram", "HistoData");
+        ApplyPatternArray(algorithm, element, family, "SizeAnd", "SizeAnd");
+        ApplyPatternArray(algorithm, element, family, "LightData", "LightData");
+        ApplyPatternArray(algorithm, element, family, "MergeLayer", "MergeLayer");
+        ApplyPatternArray(algorithm, element, family, "EdgeFilter", "EdgeFilter");
+        ApplyPatternArray(algorithm, element, family, "FilterSize", "FilterSize");
+        ApplyPatternArray(algorithm, element, family, "EdgeFilterLevel", "EdgeFilterLevel");
+        ApplyPatternArray(algorithm, element, family, "AlignArea", "ArrAlignArea");
+        ApplyPatternArray(algorithm, element, family, "UseMaskBW", "UseMaskBW");
+        ApplyPatternArray(algorithm, element, family, "MaskBWData", "BWData_Mask");
+
+        if (TryReadLeafValue(element, out var modelNames, "ArrModelName"))
+        {
+            SetInt(algorithm, $"{family}.ModelNameCount", CountDelimitedTokens(modelNames));
+            algorithm.Parameters[$"{family}.ModelName.Raw"] = modelNames;
+        }
+
+        if (TryReadLeafValue(element, out var exceptModelNames, "ArrExcModelName"))
+        {
+            SetInt(algorithm, $"{family}.ExceptModelNameCount", CountDelimitedTokens(exceptModelNames));
+            algorithm.Parameters[$"{family}.ExceptModelName.Raw"] = exceptModelNames;
+        }
+
+        SetBool(algorithm, "Import.PatternDiffMapped", true);
+    }
+
+    private static void ApplyPatternArray(InspectionAlgorithmData algorithm, XElement element, string family, string targetName, string legacyName)
+    {
+        if (TryReadNumberArrayLeaf(element, out var values, legacyName))
+        {
+            SetInt(algorithm, $"{family}.{targetName}Count", values.Length);
+            SetIndexedDoubles(algorithm, family, targetName, values);
+            return;
+        }
+
+        CopyRawArrayIfPresent(algorithm, element, family, targetName, legacyName);
+    }
+
+    private static void ApplyPadArrayParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        var family = algorithm.ParameterFamily;
+
+        if (TryReadNumberArrayLeaf(element, out var nData, "NData"))
+        {
+            SetIndexedDoubles(algorithm, family, "NData", nData);
+            SetInt(algorithm, $"{family}.NDataCount", nData.Length);
+            SetInt(algorithm, $"{family}.DataFlags", ReadArrayInt(nData, 0));
+            SetInt(algorithm, $"{family}.FilterIndex", ReadArrayInt(nData, 1));
+            SetBinaryRange(algorithm, family, ReadArrayInt(nData, 2), ReadArrayInt(nData, 3, 255));
+            SetInt(algorithm, $"{family}.Range2DType", ReadArrayInt(nData, 4));
+            SetInt(algorithm, $"{family}.Range3DType", ReadArrayInt(nData, 5));
+            SetInt(algorithm, $"{family}.Row", ReadArrayInt(nData, 6, 1));
+            SetInt(algorithm, $"{family}.Column", ReadArrayInt(nData, 7, 1));
+
+            var flags = ReadArrayInt(nData, 0);
+            SetBool(algorithm, $"{family}.Use2D", HasFlag(flags, 1 << 0));
+            SetBool(algorithm, $"{family}.Use3D", HasFlag(flags, 1 << 1));
+            SetBool(algorithm, $"{family}.UseFilter", HasFlag(flags, 1 << 2));
+            SetBool(algorithm, $"{family}.UseFillHole", HasFlag(flags, 1 << 3));
+            SetBool(algorithm, $"{family}.UseShift", HasFlag(flags, 1 << 4));
+            SetBool(algorithm, $"{family}.ShiftXUse", HasFlag(flags, 1 << 5));
+            SetBool(algorithm, $"{family}.ShiftYUse", HasFlag(flags, 1 << 6));
+            SetBool(algorithm, $"{family}.UseWidth", HasFlag(flags, 1 << 7));
+            SetBool(algorithm, $"{family}.UseLength", HasFlag(flags, 1 << 8));
+            SetBool(algorithm, $"{family}.UseDistanceX", HasFlag(flags, 1 << 9));
+            SetBool(algorithm, $"{family}.UseDistanceY", HasFlag(flags, 1 << 10));
+        }
+
+        if (TryReadNumberArrayLeaf(element, out var fData, "FData"))
+        {
+            SetIndexedDoubles(algorithm, family, "FData", fData);
+            SetInt(algorithm, $"{family}.FDataCount", fData.Length);
+            SetDouble(algorithm, $"{family}.HeightMin", ReadArrayDouble(fData, 0));
+            SetDouble(algorithm, $"{family}.HeightMax", ReadArrayDouble(fData, 1));
+            SetDouble(algorithm, $"{family}.ShiftX", ReadArrayDouble(fData, 2));
+            SetDouble(algorithm, $"{family}.ShiftY", ReadArrayDouble(fData, 3));
+            SetDouble(algorithm, $"{family}.CenterX", ReadArrayDouble(fData, 4));
+            SetDouble(algorithm, $"{family}.CenterY", ReadArrayDouble(fData, 5));
+            SetDouble(algorithm, $"{family}.Width", ReadArrayDouble(fData, 6));
+            SetDouble(algorithm, $"{family}.WidthMin", ReadArrayDouble(fData, 7));
+            SetDouble(algorithm, $"{family}.WidthMax", ReadArrayDouble(fData, 8));
+            SetDouble(algorithm, $"{family}.Length", ReadArrayDouble(fData, 9));
+            SetDouble(algorithm, $"{family}.LengthMin", ReadArrayDouble(fData, 10));
+            SetDouble(algorithm, $"{family}.LengthMax", ReadArrayDouble(fData, 11));
+            SetDouble(algorithm, $"{family}.DistanceX", ReadArrayDouble(fData, 12));
+            SetDouble(algorithm, $"{family}.DistanceXMin", ReadArrayDouble(fData, 13));
+            SetDouble(algorithm, $"{family}.DistanceXMax", ReadArrayDouble(fData, 14));
+            SetDouble(algorithm, $"{family}.DistanceY", ReadArrayDouble(fData, 15));
+            SetDouble(algorithm, $"{family}.DistanceYMin", ReadArrayDouble(fData, 16));
+            SetDouble(algorithm, $"{family}.DistanceYMax", ReadArrayDouble(fData, 17));
+            SetDouble(algorithm, $"{family}.HeightAvg", ReadArrayDouble(fData, 18));
+            SetDouble(algorithm, $"{family}.HeightDiffMin", ReadArrayDouble(fData, 19));
+            SetDouble(algorithm, $"{family}.HeightDiffMax", ReadArrayDouble(fData, 20));
+        }
+
+        SetIntIfPresent(algorithm, $"{family}.UseData", element, "UseData");
+
+        for (var index = 1; index <= 6; index++)
+        {
+            ApplyPadArrayRoiParameters(algorithm, element, family, $"FirstROI{index}", $"ROIF{index}");
+            ApplyPadArrayRoiParameters(algorithm, element, family, $"SecondROI{index}", $"ROIS{index}");
+        }
+
+        SetBool(algorithm, "Import.PadArrayMapped", true);
+    }
+
+    private static void ApplyPadArrayRoiParameters(InspectionAlgorithmData algorithm, XElement element, string family, string targetName, string legacyName)
+    {
+        if (!TryReadNumberArrayLeaf(element, out var roi, legacyName) || roi.Length < 4)
+        {
+            return;
+        }
+
+        SetDouble(algorithm, $"{family}.{targetName}.Left", roi[0]);
+        SetDouble(algorithm, $"{family}.{targetName}.Top", roi[1]);
+        SetDouble(algorithm, $"{family}.{targetName}.Right", roi[2]);
+        SetDouble(algorithm, $"{family}.{targetName}.Bottom", roi[3]);
+    }
+
     private static void ApplyCommonRangeParameters(InspectionAlgorithmData algorithm, XElement element)
     {
         var family = algorithm.ParameterFamily;
@@ -2567,6 +3075,28 @@ public static class LegacyRawPartImportAdapter
         {
             SetDouble(algorithm, key, value);
         }
+    }
+
+    private static void SetStringIfPresent(InspectionAlgorithmData algorithm, string key, XElement element, params string[] names)
+    {
+        if (TryReadLeafValue(element, out var value, names))
+        {
+            algorithm.Parameters[key] = value;
+        }
+    }
+
+    private static void SetStringIfAvailable(InspectionAlgorithmData algorithm, string key, IReadOnlyList<string> values, int index)
+    {
+        if (index >= 0 && index < values.Count && !string.IsNullOrWhiteSpace(values[index]))
+        {
+            algorithm.Parameters[key] = values[index];
+        }
+    }
+
+    private static int CountDelimitedTokens(string value)
+    {
+        return value.Split(new[] { ',' }, StringSplitOptions.RemoveEmptyEntries)
+            .Count(token => !string.IsNullOrWhiteSpace(token));
     }
 
     private static void SetBinaryRange(InspectionAlgorithmData algorithm, string family, int minValue, int maxValue)
