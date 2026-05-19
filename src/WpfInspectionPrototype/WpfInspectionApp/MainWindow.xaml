@@ -1007,18 +1007,24 @@
                                             Width="26" Height="26" MinHeight="26"
                                             Margin="0,0,6,0" Padding="0"
                                             FontSize="10" />
-                                    <Button Content="&#x21E9;"
+                                    <!--
+                                      U+23EC / U+23EB 는 ▼ / ▲ 의 더블 트라이앵글 버전 -
+                                      single arrow 와 시각적 일관성이 있고 "맨 끝으로 이동"
+                                      의미가 자연스럽게 전달됨. 이전 ⇩ / ⇧ (U+21E9/E7) 의
+                                      이중-막대 스타일은 모양이 어색해서 교체.
+                                    -->
+                                    <Button Content="&#x23EC;"
                                             ToolTip="Move selected Window to bottom"
                                             Command="{Binding MoveSelectedWindowToBottomCommand}"
                                             Width="26" Height="26" MinHeight="26"
                                             Margin="0,0,2,0" Padding="0"
-                                            FontSize="12" />
-                                    <Button Content="&#x21E7;"
+                                            FontSize="10" />
+                                    <Button Content="&#x23EB;"
                                             ToolTip="Move selected Window to top"
                                             Command="{Binding MoveSelectedWindowToTopCommand}"
                                             Width="26" Height="26" MinHeight="26"
                                             Margin="0" Padding="0"
-                                            FontSize="12" />
+                                            FontSize="10" />
                                 </StackPanel>
                             </Grid>
                             <Border Margin="0,0,0,8"
