@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Windows;
 using System.Windows.Media;
 
@@ -39,34 +38,51 @@ public partial class MainWindow
 
         if (_pttViewerPanel != null)
         {
+            // WinForms hosted control — DynamicResource 가 안 통하므로 매번 수동 갱신 필요.
             _pttViewerPanel.BackColor = System.Drawing.Color.FromArgb(
                 palette.SurfaceBackground.R,
                 palette.SurfaceBackground.G,
                 palette.SurfaceBackground.B);
         }
 
-        foreach (var floatingWindow in _cameraDockStates.Values.Select(state => state.FloatingWindow).Where(window => window != null))
-        {
-            floatingWindow!.Background = Resources["WindowBackground"] as Brush ?? new SolidColorBrush(palette.WindowBackground);
-        }
+        // 플로팅 카메라 창들은 SetResourceReference(WindowBackground) 로 DynamicResource
+        // binding 이 걸려있어 ApplyBrush 가 Application.Resources["WindowBackground"] 를
+        // 갱신하면 자동 repaint. 별도 수동 propagation 불필요.
     }
 
     private void SetThemeBrush(object key, Color color)
     {
-        // WPF 가 SolidColorBrush 를 freeze 하는 경우가 있음 (StaticResource 다회 참조,
-        // ControlTemplate 안 default-style, SystemColors override 등). Frozen brush 의
-        // .Color 를 mutation 하면 InvalidOperationException("읽기 전용 상태...") 던짐.
-        // 따라서 frozen 이면 새 instance 로 교체 — DynamicResource 소비자들은 Resources
-        // dictionary 의 값 교체를 자동 추적하므로 색상 갱신은 그대로 동작.
-        if (Resources.Contains(key)
-            && Resources[key] is SolidColorBrush brush
+        // 대부분의 theme brush 는 App.xaml 의 Application.Resources 에 있어 모든 윈도우
+        // (MainWindow + 플로팅 카메라 창들) 가 DynamicResource lookup 으로 찾는다.
+        // 그래서 Application.Current.Resources 를 우선 대상으로 변경하고, 만약 거기
+        // 없으면 (SystemColors override 처럼 window-scope 에 있는 키) MainWindow.Resources
+        // 도 갱신한다.
+        //
+        // WPF 가 SolidColorBrush 를 freeze 하는 경우 (StaticResource 다회 참조, default-
+        // style binding, SystemColors override 등) 가 있어 frozen 이면 새 instance 로
+        // 교체 — DynamicResource 소비자들은 Resources dictionary 의 값 교체를 자동
+        // 추적하므로 색상 갱신은 그대로 동작.
+        var appResources = Application.Current?.Resources;
+        if (appResources != null && appResources.Contains(key))
+        {
+            ApplyBrush(appResources, key, color);
+            return;
+        }
+
+        ApplyBrush(Resources, key, color);
+    }
+
+    private static void ApplyBrush(ResourceDictionary resources, object key, Color color)
+    {
+        if (resources.Contains(key)
+            && resources[key] is SolidColorBrush brush
             && !brush.IsFrozen)
         {
             brush.Color = color;
             return;
         }
 
-        Resources[key] = new SolidColorBrush(color);
+        resources[key] = new SolidColorBrush(color);
     }
 
     private sealed record ThemePalette(

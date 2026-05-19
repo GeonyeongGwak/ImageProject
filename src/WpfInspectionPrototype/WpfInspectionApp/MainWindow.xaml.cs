@@ -514,10 +514,14 @@ public partial class MainWindow : Window, IDialogOwner
             MinWidth = 520,
             MinHeight = 360,
             ResizeMode = ResizeMode.CanResizeWithGrip,
-            WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = Resources["WindowBackground"] as Brush ?? new SolidColorBrush(Color.FromRgb(7, 11, 18)),
-            Content = state.Panel
+            WindowStartupLocation = WindowStartupLocation.CenterOwner
         };
+        // DynamicResource binding: Application.Resources["WindowBackground"] 이 갱신되면
+        // (ApplyTheme 호출 시) 자동으로 이 윈도우 Background 도 repaint 됨. 정적 할당
+        // 보다 안전 — 매 ApplyTheme 마다 수동 동기화 불필요.
+        floatingWindow.SetResourceReference(System.Windows.Controls.Control.BackgroundProperty, "WindowBackground");
+        // OS chrome 제거 + 커스텀 타이틀바 그리기. MainWindow 와 동일한 chrome 패턴.
+        ApplyFloatingWindowChrome(floatingWindow, state.Panel, state.Title);
 
         if (positionNearCursor)
         {

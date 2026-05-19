@@ -19,6 +19,98 @@
                  unfamiliar code during the first render (which had been observed to
                  trigger fp-inexact SEH under VS native debugging). -->
             <swc:BooleanToVisibilityConverter x:Key="BoolToVis" />
+
+            <!--
+                Theme brushes live at Application scope (not Window scope) so that ANY
+                Window in the app (MainWindow + floating camera windows) finds them via
+                DynamicResource lookup. SetThemeBrush in MainWindow.Theme.cs writes to
+                Application.Current.Resources for the same reason — a single mutation
+                propagates to every window.
+            -->
+            <SolidColorBrush x:Key="WindowBackground" Color="#070B12" />
+            <SolidColorBrush x:Key="TopBarBackground" Color="#111827" />
+            <SolidColorBrush x:Key="TopBarBorder" Color="#1F70B8" />
+            <SolidColorBrush x:Key="PrimaryText" Color="#E4F3FF" />
+            <SolidColorBrush x:Key="SecondaryText" Color="#D6ECFF" />
+            <SolidColorBrush x:Key="MutedText" Color="#8BA5C4" />
+            <SolidColorBrush x:Key="DisabledText" Color="#63748A" />
+            <SolidColorBrush x:Key="SurfaceBackground" Color="#02050A" />
+            <SolidColorBrush x:Key="ControlBackground" Color="#10243D" />
+            <SolidColorBrush x:Key="ControlHover" Color="#10243D" />
+            <SolidColorBrush x:Key="ControlBorder" Color="#236EA8" />
+            <SolidColorBrush x:Key="TreeHeaderBackground" Color="#0D2038" />
+            <SolidColorBrush x:Key="TreeSelectedBackground" Color="#123A5C" />
+            <SolidColorBrush x:Key="PanelBackground" Color="#0B1320" />
+            <SolidColorBrush x:Key="BorderBlue" Color="#155FA4" />
+            <SolidColorBrush x:Key="AccentBlue" Color="#27A6FF" />
+            <SolidColorBrush x:Key="AccentGreen" Color="#18E07B" />
+            <SolidColorBrush x:Key="AccentYellow" Color="#FFB020" />
+            <SolidColorBrush x:Key="ComboDarkBackground" Color="#07101C" />
+            <SolidColorBrush x:Key="ComboDarkHover" Color="#10243D" />
+            <SolidColorBrush x:Key="ComboDarkSelected" Color="#0E5EA8" />
+
+            <!--
+                Chrome system buttons (Min/Max/Close). Defined at app scope so both the
+                MainWindow's TopBar and floating camera windows' custom title bars can
+                reference them. All colors are DynamicResource → ApplyTheme repaints
+                them automatically along with everything else.
+            -->
+            <Style x:Key="ChromeSystemButton" TargetType="Button">
+                <Setter Property="Width" Value="36" />
+                <Setter Property="Height" Value="28" />
+                <Setter Property="Margin" Value="0" />
+                <Setter Property="Padding" Value="0" />
+                <Setter Property="Background" Value="Transparent" />
+                <Setter Property="BorderThickness" Value="0" />
+                <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+                <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+                <Setter Property="FontSize" Value="11" />
+                <Setter Property="Cursor" Value="Hand" />
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="ChromeBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderThickness="0">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ChromeBorder" Property="Background" Value="{DynamicResource ControlHover}" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="ChromeBorder" Property="Background" Value="{DynamicResource ControlBackground}" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
+
+            <Style x:Key="ChromeSystemCloseButton" TargetType="Button" BasedOn="{StaticResource ChromeSystemButton}">
+                <Setter Property="Template">
+                    <Setter.Value>
+                        <ControlTemplate TargetType="Button">
+                            <Border x:Name="ChromeBorder"
+                                    Background="{TemplateBinding Background}"
+                                    BorderThickness="0">
+                                <ContentPresenter HorizontalAlignment="Center"
+                                                  VerticalAlignment="Center" />
+                            </Border>
+                            <ControlTemplate.Triggers>
+                                <Trigger Property="IsMouseOver" Value="True">
+                                    <Setter TargetName="ChromeBorder" Property="Background" Value="#E81123" />
+                                    <Setter Property="Foreground" Value="#FFFFFF" />
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="ChromeBorder" Property="Background" Value="#C50F1F" />
+                                </Trigger>
+                            </ControlTemplate.Triggers>
+                        </ControlTemplate>
+                    </Setter.Value>
+                </Setter>
+            </Style>
         </ResourceDictionary>
     </Application.Resources>
 </Application>

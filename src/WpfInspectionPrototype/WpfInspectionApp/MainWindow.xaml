@@ -29,27 +29,13 @@
                       UseAeroCaptionButtons="False" />
     </WindowChrome.WindowChrome>
     <Window.Resources>
-        <SolidColorBrush x:Key="WindowBackground" Color="#070B12" />
-        <SolidColorBrush x:Key="TopBarBackground" Color="#111827" />
-        <SolidColorBrush x:Key="TopBarBorder" Color="#1F70B8" />
-        <SolidColorBrush x:Key="PrimaryText" Color="#E4F3FF" />
-        <SolidColorBrush x:Key="SecondaryText" Color="#D6ECFF" />
-        <SolidColorBrush x:Key="MutedText" Color="#8BA5C4" />
-        <SolidColorBrush x:Key="DisabledText" Color="#63748A" />
-        <SolidColorBrush x:Key="SurfaceBackground" Color="#02050A" />
-        <SolidColorBrush x:Key="ControlBackground" Color="#10243D" />
-        <SolidColorBrush x:Key="ControlHover" Color="#10243D" />
-        <SolidColorBrush x:Key="ControlBorder" Color="#236EA8" />
-        <SolidColorBrush x:Key="TreeHeaderBackground" Color="#0D2038" />
-        <SolidColorBrush x:Key="TreeSelectedBackground" Color="#123A5C" />
-        <SolidColorBrush x:Key="PanelBackground" Color="#0B1320" />
-        <SolidColorBrush x:Key="BorderBlue" Color="#155FA4" />
-        <SolidColorBrush x:Key="AccentBlue" Color="#27A6FF" />
-        <SolidColorBrush x:Key="AccentGreen" Color="#18E07B" />
-        <SolidColorBrush x:Key="AccentYellow" Color="#FFB020" />
-        <SolidColorBrush x:Key="ComboDarkBackground" Color="#07101C" />
-        <SolidColorBrush x:Key="ComboDarkHover" Color="#10243D" />
-        <SolidColorBrush x:Key="ComboDarkSelected" Color="#0E5EA8" />
+        <!--
+            Theme color brushes (WindowBackground, PanelBackground, PrimaryText, ...)
+            moved to App.xaml so floating camera windows can find them too via the
+            DynamicResource lookup chain. SetThemeBrush writes to Application.Current.
+            Resources accordingly. SystemColors overrides stay at window scope because
+            they're meant to override the system's own keyed brush.
+        -->
         <SolidColorBrush x:Key="{x:Static SystemColors.WindowBrushKey}" Color="#07101C" />
         <SolidColorBrush x:Key="{x:Static SystemColors.WindowTextBrushKey}" Color="#E4F3FF" />
         <SolidColorBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" Color="#0E5EA8" />
@@ -553,69 +539,8 @@
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
-        <!--
-            Themed window-chrome system buttons (Min/Max/Close). Override the base Button
-            style to remove the default chrome and use Segoe MDL2 glyph font. Colors are
-            all DynamicResource so theme switching repaints them along with everything
-            else.
-        -->
-        <Style x:Key="ChromeSystemButton" TargetType="Button">
-            <Setter Property="Width" Value="36" />
-            <Setter Property="Height" Value="28" />
-            <Setter Property="Margin" Value="0" />
-            <Setter Property="Padding" Value="0" />
-            <Setter Property="Background" Value="Transparent" />
-            <Setter Property="BorderThickness" Value="0" />
-            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
-            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
-            <Setter Property="FontSize" Value="11" />
-            <Setter Property="Cursor" Value="Hand" />
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="ChromeBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderThickness="0">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ChromeBorder" Property="Background" Value="{DynamicResource ControlHover}" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ChromeBorder" Property="Background" Value="{DynamicResource ControlBackground}" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
-
-        <Style x:Key="ChromeSystemCloseButton" TargetType="Button" BasedOn="{StaticResource ChromeSystemButton}">
-            <!-- Close 만 hover 시 빨강 강조 -->
-            <Setter Property="Template">
-                <Setter.Value>
-                    <ControlTemplate TargetType="Button">
-                        <Border x:Name="ChromeBorder"
-                                Background="{TemplateBinding Background}"
-                                BorderThickness="0">
-                            <ContentPresenter HorizontalAlignment="Center"
-                                              VerticalAlignment="Center" />
-                        </Border>
-                        <ControlTemplate.Triggers>
-                            <Trigger Property="IsMouseOver" Value="True">
-                                <Setter TargetName="ChromeBorder" Property="Background" Value="#E81123" />
-                                <Setter Property="Foreground" Value="#FFFFFF" />
-                            </Trigger>
-                            <Trigger Property="IsPressed" Value="True">
-                                <Setter TargetName="ChromeBorder" Property="Background" Value="#C50F1F" />
-                            </Trigger>
-                        </ControlTemplate.Triggers>
-                    </ControlTemplate>
-                </Setter.Value>
-            </Setter>
-        </Style>
+        <!-- ChromeSystemButton / ChromeSystemCloseButton 스타일은 App.xaml 로 이동
+             (플로팅 카메라 창의 커스텀 타이틀바가 같은 스타일을 사용하기 위함). -->
 
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
