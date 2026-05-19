@@ -35,6 +35,8 @@ public sealed class MainViewModel : ViewModelBase
     private readonly IFileDialogService _fileDialogService;
     private readonly IModelWorkflowService _modelWorkflowService;
     private readonly IApplicationPathService _applicationPathService;
+    private readonly IPartImportWorkflowService _partImportWorkflowService;
+    private readonly IImageLoadWorkflowService _imageLoadWorkflowService;
     private readonly RoiCanvasViewModel _roi;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
@@ -52,6 +54,8 @@ public sealed class MainViewModel : ViewModelBase
         IFileDialogService fileDialogService,
         IModelWorkflowService modelWorkflowService,
         IApplicationPathService applicationPathService,
+        IPartImportWorkflowService partImportWorkflowService,
+        IImageLoadWorkflowService imageLoadWorkflowService,
         RoiCanvasViewModel roi,
         IImageRuntimeStateService imageRuntimeStateService,
         IInspectionWorkflowService inspectionWorkflowService,
@@ -66,6 +70,8 @@ public sealed class MainViewModel : ViewModelBase
         _fileDialogService = fileDialogService;
         _modelWorkflowService = modelWorkflowService;
         _applicationPathService = applicationPathService;
+        _partImportWorkflowService = partImportWorkflowService;
+        _imageLoadWorkflowService = imageLoadWorkflowService;
         _roi = roi;
         _imageRuntimeStateService = imageRuntimeStateService;
         _inspectionWorkflowService = inspectionWorkflowService;
@@ -196,10 +202,8 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
-    public event Action<string>? ImageLoadRequested;
-    public event Action<string>? PttLoadRequested;
-    public event Action<string>? PartImportRequested;
-    public event Action<InspectionModel, string>? ModelLoaded;
+    public event Action<string, bool>? PttLoadRequested;
+    public event Action<string?, bool>? ModelViewRefreshRequested;
     public event Action? ModelSyncFromUiRequested;
     public event Action? ThresholdScheduleRequested;
     public event Action? AlignSearchTabActivationRequested;
@@ -276,6 +280,59 @@ public sealed class MainViewModel : ViewModelBase
     public void UpdateRoiDrawButtonState()
     {
         AlignRoiDrawButtonStateRequested?.Invoke(_roi.IsEnabled && _roi.Target == RoiDrawTarget.Window);
+    }
+
+    public RoiRect? GetActiveRoi()
+    {
+        return _roi.GetActiveRoi(_model);
+    }
+
+    public bool UpsertActiveWindowRoi(RoiRect roi)
+    {
+        return ApplyRoiModelResult(_roi.UpsertActiveWindow(_model, roi));
+    }
+
+    public bool CommitDrawingRoi(
+        Point surfacePoint,
+        int imageWidth,
+        int imageHeight,
+        double zoom,
+        Func<RoiRect?, string> formatRoi)
+    {
+        return ApplyRoiModelResult(_roi.CommitToModel(
+            _model,
+            surfacePoint,
+            imageWidth,
+            imageHeight,
+            zoom,
+            SelectedAlgorithm,
+            formatRoi));
+    }
+
+    public bool ResizeActiveRoiFromSearchInputs(int sourceWidth, int sourceHeight)
+    {
+        return ApplyRoiModelResult(_roi.ResizeActiveRoiFromSearchInputs(_model, sourceWidth, sourceHeight));
+    }
+
+    private bool ApplyRoiModelResult(RoiModelOperationResult result)
+    {
+        if (!result.Changed)
+        {
+            return false;
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.SelectedId))
+        {
+            RefreshInspectionTree(result.SelectedId);
+        }
+
+        if (!string.IsNullOrWhiteSpace(result.StatusMessage))
+        {
+            StatusMessage = result.StatusMessage!;
+        }
+
+        RefreshModelBindings();
+        return true;
     }
 
     private RoiRect? ActiveInspectionRoi => _roi.GetActiveInspectionRoi(_model, SelectedAlgorithm);
@@ -390,7 +447,7 @@ public sealed class MainViewModel : ViewModelBase
         var path = _fileDialogService.BrowseImage(_dialogOwner.GetDialogOwner());
         if (!string.IsNullOrWhiteSpace(path))
         {
-            ImageLoadRequested?.Invoke(path!);
+            LoadImageFromPath(path!);
         }
     }
 
@@ -399,7 +456,7 @@ public sealed class MainViewModel : ViewModelBase
         var path = _fileDialogService.BrowsePtt(_dialogOwner.GetDialogOwner());
         if (!string.IsNullOrWhiteSpace(path))
         {
-            PttLoadRequested?.Invoke(path!);
+            PttLoadRequested?.Invoke(path!, true);
         }
     }
 
@@ -425,7 +482,9 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        ModelLoaded?.Invoke(result.Model, result.StatusMessage);
+        Model = result.Model;
+        StatusMessage = result.StatusMessage;
+        ModelViewRefreshRequested?.Invoke(null, true);
     }
 
     private void BrowseAndImportPart()
@@ -433,8 +492,76 @@ public sealed class MainViewModel : ViewModelBase
         var path = _fileDialogService.BrowsePart(_dialogOwner.GetDialogOwner(), _applicationPathService.GetModelDirectory());
         if (!string.IsNullOrWhiteSpace(path))
         {
-            PartImportRequested?.Invoke(path!);
+            ImportPartFromPath(path!);
         }
+    }
+
+    public bool LoadImageFromPath(string path)
+    {
+        var result = _imageLoadWorkflowService.Load(path);
+        if (!result.Success || result.SourceImage == null || result.BinaryImage == null)
+        {
+            StatusMessage = result.StatusMessage;
+            return false;
+        }
+
+        ApplyImageLoad(result.SourceImage, result.BinaryImage, result.Width, result.Height, result.StatusMessage);
+        RequestOverlayAndThresholdRefresh();
+        return true;
+    }
+
+    public bool ImportPartFromPath(string path)
+    {
+        try
+        {
+            ModelSyncFromUiRequested?.Invoke();
+            var result = _partImportWorkflowService.ImportIntoModel(_model, path);
+            if (!result.Success)
+            {
+                StatusMessage = result.StatusMessage;
+                return false;
+            }
+
+            _roi.ResetDrawing();
+            DisableRoiDrawing();
+            ModelViewRefreshRequested?.Invoke(result.SelectedWindowId, false);
+
+            if (!string.IsNullOrWhiteSpace(result.Summary))
+            {
+                InspectionResultText = result.Summary!;
+            }
+
+            if (!string.IsNullOrWhiteSpace(result.PttPath))
+            {
+                PttLoadRequested?.Invoke(result.PttPath!, false);
+            }
+
+            var loadedImportImage = false;
+            if (!string.IsNullOrWhiteSpace(result.ImagePath))
+            {
+                loadedImportImage = LoadImageFromPath(result.ImagePath!);
+            }
+
+            if (!loadedImportImage)
+            {
+                RequestOverlayAndThresholdRefresh();
+            }
+
+            StatusMessage = result.StatusMessage;
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DiagnosticsLog.Write($"Part import failed: {ex}");
+            StatusMessage = $"Part import failed: {ex.Message}";
+            return false;
+        }
+    }
+
+    private void RequestOverlayAndThresholdRefresh()
+    {
+        OverlayRefreshRequested?.Invoke();
+        ThresholdScheduleRequested?.Invoke();
     }
 
     public InspectionModel Model

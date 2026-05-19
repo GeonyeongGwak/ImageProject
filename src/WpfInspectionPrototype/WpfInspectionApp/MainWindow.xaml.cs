@@ -27,8 +27,6 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly AlgorithmPanelFactory _algorithmPanelFactory = new();
     private readonly RoiOverlayCoordinator _roiOverlayCoordinator;
     private readonly IApplicationPathService _applicationPathService;
-    private readonly IPartImportWorkflowService _partImportWorkflowService;
-    private readonly IImageLoadWorkflowService _imageLoadWorkflowService;
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IRoiGeometryService _roiGeometryService;
     private readonly RoiCanvasViewModel _roiCanvasViewModel;
@@ -67,8 +65,6 @@ public partial class MainWindow : Window, IDialogOwner
         SubscribeAlignPanelEvents();
         _roiOverlayCoordinator = new RoiOverlayCoordinator(App.Services.RoiGeometry);
         _applicationPathService = App.Services.ApplicationPath;
-        _partImportWorkflowService = App.Services.PartImportWorkflow;
-        _imageLoadWorkflowService = App.Services.ImageLoadWorkflow;
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
         _roiGeometryService = App.Services.RoiGeometry;
         _roiCanvasViewModel = new RoiCanvasViewModel(App.Services.RoiInteraction, App.Services.RoiModel);
@@ -83,6 +79,8 @@ public partial class MainWindow : Window, IDialogOwner
             App.Services.FileDialog,
             App.Services.ModelWorkflow,
             _applicationPathService,
+            App.Services.PartImportWorkflow,
+            App.Services.ImageLoadWorkflow,
             _roiCanvasViewModel,
             _imageRuntimeStateService,
             App.Services.InspectionWorkflow,
@@ -93,10 +91,8 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.ConfigureCommands(ZoomOne, ZoomFit);
         _viewModel.TreeRefreshRequested += RefreshInspectionView;
         _viewModel.SelectionChanged += OnViewModelSelectionChanged;
-        _viewModel.ImageLoadRequested += LoadImage;
-        _viewModel.PttLoadRequested += path => LoadPtt(path);
-        _viewModel.PartImportRequested += ImportPartFromPath;
-        _viewModel.ModelLoaded += OnModelLoaded;
+        _viewModel.PttLoadRequested += LoadPtt;
+        _viewModel.ModelViewRefreshRequested += ApplyModelAndRefreshView;
         _viewModel.ModelSyncFromUiRequested += UpdateModelFromUi;
         _viewModel.ThresholdScheduleRequested += ScheduleThreshold;
         _viewModel.AlignSearchTabActivationRequested += AlignPanel.ActivateSearchTab;
@@ -796,7 +792,7 @@ public partial class MainWindow : Window, IDialogOwner
                 else
                 {
                     FpExceptionGuard.Diag("MainWindow.StartupLoadWork: loading default image");
-                    LoadImage(defaultImage);
+                    ViewModel.LoadImageFromPath(defaultImage);
                     FpExceptionGuard.Diag("MainWindow.StartupLoadWork: default image loaded");
                 }
             }
@@ -811,7 +807,7 @@ public partial class MainWindow : Window, IDialogOwner
             if (importPath != null)
             {
                 FpExceptionGuard.Diag("MainWindow.StartupLoadWork: importing startup path");
-                ImportPartFromPath(importPath);
+                ViewModel.ImportPartFromPath(importPath);
                 FpExceptionGuard.Diag("MainWindow.StartupLoadWork: startup path imported");
             }
         }

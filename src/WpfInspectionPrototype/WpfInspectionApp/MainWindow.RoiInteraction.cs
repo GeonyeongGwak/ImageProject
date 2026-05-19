@@ -171,44 +171,9 @@ public partial class MainWindow
         BinaryOverlayPanTransform.Y = _imagePanY;
     }
 
-    private RoiRect? ActiveRoi
-    {
-        get
-        {
-            return _roiCanvasViewModel.GetActiveRoi(ViewModel.Model);
-        }
-        set
-        {
-            if (value.HasValue)
-            {
-                ApplyRoiModelResult(_roiCanvasViewModel.UpsertActiveWindow(ViewModel.Model, value.Value));
-            }
-        }
-    }
+    private InspectionWindowData? ActiveWindow => ViewModel.ActiveWindow;
 
-    private RoiRect? ActiveInspectionRoi => _roiCanvasViewModel.GetActiveInspectionRoi(ViewModel.Model, SelectedAlgorithm());
-
-    private InspectionWindowData? ActiveWindow => _roiCanvasViewModel.GetActiveWindow(ViewModel.Model);
-
-    private InspectionAlgorithmData? ActiveAlgorithm => _roiCanvasViewModel.GetActiveAlgorithm(ViewModel.Model, SelectedAlgorithm());
-
-    private void ApplyRoiModelResult(RoiModelOperationResult result)
-    {
-        if (!result.Changed)
-        {
-            return;
-        }
-
-        if (!string.IsNullOrWhiteSpace(result.SelectedId))
-        {
-            _viewModel.RefreshInspectionTree(result.SelectedId);
-        }
-
-        if (!string.IsNullOrWhiteSpace(result.StatusMessage))
-        {
-            ViewModel.StatusMessage = result.StatusMessage!;
-        }
-    }
+    private InspectionAlgorithmData? ActiveAlgorithm => ViewModel.ActiveAlgorithm;
 
     private void CommitCurrentDrawingRoi()
     {
@@ -229,14 +194,12 @@ public partial class MainWindow
             return;
         }
 
-        ApplyRoiModelResult(_roiCanvasViewModel.CommitToModel(
-            ViewModel.Model,
+        _viewModel.CommitDrawingRoi(
             surfacePoint,
             _imageRuntimeStateService.SourceWidth,
             _imageRuntimeStateService.SourceHeight,
             _viewModel.CurrentImageZoom,
-            SelectedAlgorithm(),
-            FormatRoi));
+            FormatRoi);
 
         SyncSearchSizeInputsFromActiveRoi();
         RefreshRoiOverlaysAndThreshold();

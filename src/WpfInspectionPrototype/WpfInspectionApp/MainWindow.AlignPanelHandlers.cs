@@ -73,14 +73,12 @@ public partial class MainWindow
 
     private void ResizeActiveRoiFromSearchInputs()
     {
-        var result = _roiCanvasViewModel.ResizeActiveRoiFromSearchInputs(ViewModel.Model, _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight);
-        if (!result.Changed)
+        if (!_viewModel.ResizeActiveRoiFromSearchInputs(_imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight))
         {
             DrawRoiOverlays();
             return;
         }
 
-        ApplyRoiModelResult(result);
         RefreshRoiOverlaysAndThreshold();
     }
 

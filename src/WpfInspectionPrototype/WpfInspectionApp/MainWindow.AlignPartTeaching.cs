@@ -5,7 +5,7 @@ public partial class MainWindow
     private void TeachActiveRoiSize()
     {
         SyncSearchSizeInputsFromActiveRoi();
-        ViewModel.StatusMessage = $"Teach active ROI size: {FormatRoi(ActiveRoi)}";
+        ViewModel.StatusMessage = $"Teach active ROI size: {FormatRoi(_viewModel.GetActiveRoi())}";
     }
 
     private void CloseAlignPartTeaching()
