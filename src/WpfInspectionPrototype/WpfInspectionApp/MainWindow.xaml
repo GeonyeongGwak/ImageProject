@@ -932,35 +932,98 @@
 
                     <Border Style="{StaticResource RightPanelBorder}">
                         <StackPanel>
-                            <Grid>
+                            <!--
+                              인스펙션 트리 툴바.
+                              + : 모든 노드 펼치기
+                              - : 모든 노드 접기
+                              Window List ComboBox : Window TypeName 필터 ("All" 또는 특정 타입)
+                              ▼ / ▲ : 선택된 Window 한 칸 아래/위로 이동
+                              ▼▼ / ▲▲ : 맨 아래/위로 이동
+                              모든 색상은 DynamicResource 로 테마 따름.
+                            -->
+                            <Grid Margin="0,0,0,6">
                                 <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="Auto" />
                                     <ColumnDefinition Width="*" />
                                     <ColumnDefinition Width="Auto" />
                                 </Grid.ColumnDefinitions>
-                                <TextBlock x:Name="PartTreeTitle"
-                                           Grid.Column="0"
-                                           Text="{Binding PartTitle}"
-                                           Style="{StaticResource PanelTitle}" />
-                                <!--
-                                  Expand-all / Collapse-all - InspectionTreeNodeViewModel.IsExpanded
-                                  를 재귀적으로 set. SetProperty(...) 를 통해 INPC 가 발생하므로
-                                  TreeViewItem.IsExpanded TwoWay 바인딩이 UI 에 반영함.
-                                -->
-                                <StackPanel Grid.Column="1"
+
+                                <Button Grid.Column="0"
+                                        Content="+"
+                                        ToolTip="Expand all nodes"
+                                        Command="{Binding ExpandAllTreeNodesCommand}"
+                                        Width="28" Height="26" MinHeight="26"
+                                        Margin="0,0,4,0" Padding="0"
+                                        FontWeight="Bold" FontSize="14"
+                                        Foreground="#FFFFFF"
+                                        Background="{DynamicResource AccentBlue}"
+                                        BorderBrush="{DynamicResource AccentBlue}" />
+                                <Button Grid.Column="1"
+                                        Content="-"
+                                        ToolTip="Collapse all nodes"
+                                        Command="{Binding CollapseAllTreeNodesCommand}"
+                                        Width="28" Height="26" MinHeight="26"
+                                        Margin="0" Padding="0"
+                                        FontWeight="Bold" FontSize="14"
+                                        Foreground="#1A0F00"
+                                        Background="{DynamicResource AccentYellow}"
+                                        BorderBrush="{DynamicResource AccentYellow}" />
+
+                                <TextBlock Grid.Column="3"
+                                           Text="Window List"
+                                           VerticalAlignment="Center"
+                                           Margin="0,0,6,0"
+                                           Foreground="{DynamicResource SecondaryText}"
+                                           FontWeight="SemiBold" />
+                                <ComboBox Grid.Column="4"
+                                          Height="26" MinHeight="26"
+                                          ItemsSource="{Binding WindowTypeFilters}"
+                                          SelectedItem="{Binding SelectedWindowTypeFilter, Mode=TwoWay}"
+                                          FontWeight="SemiBold" />
+
+                                <StackPanel Grid.Column="5"
                                             Orientation="Horizontal"
-                                            VerticalAlignment="Center">
-                                    <Button Content="Expand All"
-                                            Command="{Binding ExpandAllTreeNodesCommand}"
-                                            MinHeight="24"
-                                            Padding="8,2"
-                                            Margin="0,0,4,0"
-                                            FontSize="11" />
-                                    <Button Content="Collapse All"
-                                            Command="{Binding CollapseAllTreeNodesCommand}"
-                                            MinHeight="24"
-                                            Padding="8,2"
-                                            Margin="0"
-                                            FontSize="11" />
+                                            VerticalAlignment="Center"
+                                            Margin="8,0,0,0">
+                                    <Button Content="&#x25BC;"
+                                            ToolTip="Move selected Window down"
+                                            Command="{Binding MoveSelectedWindowDownCommand}"
+                                            Width="26" Height="26" MinHeight="26"
+                                            Margin="0,0,2,0" Padding="0"
+                                            FontSize="10"
+                                            Foreground="#FFFFFF"
+                                            Background="{DynamicResource AccentBlue}"
+                                            BorderBrush="{DynamicResource AccentBlue}" />
+                                    <Button Content="&#x25B2;"
+                                            ToolTip="Move selected Window up"
+                                            Command="{Binding MoveSelectedWindowUpCommand}"
+                                            Width="26" Height="26" MinHeight="26"
+                                            Margin="0,0,6,0" Padding="0"
+                                            FontSize="10"
+                                            Foreground="#FFFFFF"
+                                            Background="{DynamicResource AccentBlue}"
+                                            BorderBrush="{DynamicResource AccentBlue}" />
+                                    <Button Content="&#x21E9;"
+                                            ToolTip="Move selected Window to bottom"
+                                            Command="{Binding MoveSelectedWindowToBottomCommand}"
+                                            Width="26" Height="26" MinHeight="26"
+                                            Margin="0,0,2,0" Padding="0"
+                                            FontSize="12"
+                                            Foreground="#FFFFFF"
+                                            Background="{DynamicResource AccentBlue}"
+                                            BorderBrush="{DynamicResource AccentBlue}" />
+                                    <Button Content="&#x21E7;"
+                                            ToolTip="Move selected Window to top"
+                                            Command="{Binding MoveSelectedWindowToTopCommand}"
+                                            Width="26" Height="26" MinHeight="26"
+                                            Margin="0" Padding="0"
+                                            FontSize="12"
+                                            Foreground="#FFFFFF"
+                                            Background="{DynamicResource AccentBlue}"
+                                            BorderBrush="{DynamicResource AccentBlue}" />
                                 </StackPanel>
                             </Grid>
                             <Border Margin="0,0,0,8"

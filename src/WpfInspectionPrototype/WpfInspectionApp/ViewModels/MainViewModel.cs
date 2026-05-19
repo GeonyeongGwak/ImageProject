@@ -31,6 +31,8 @@ public sealed class MainViewModel : ViewModelBase
     private ImageSource? _sourceImage;
     private ImageSource? _binaryImage;
     private object? _activeAlgorithmPanelContent;
+    private string _selectedWindowTypeFilter = AllWindowTypesFilter;
+    private const string AllWindowTypesFilter = "All";
 
     private readonly IDialogOwner _dialogOwner;
     private readonly IFileDialogService _fileDialogService;
@@ -119,6 +121,11 @@ public sealed class MainViewModel : ViewModelBase
         SelectThemeCommand = new RelayCommand(parameter => SetSelectedTheme(parameter?.ToString() ?? "Dark"));
         ExpandAllTreeNodesCommand = new RelayCommand(() => SetAllTreeNodesExpanded(true));
         CollapseAllTreeNodesCommand = new RelayCommand(() => SetAllTreeNodesExpanded(false));
+        MoveSelectedWindowDownCommand = new RelayCommand(() => MoveSelectedWindow(+1));
+        MoveSelectedWindowUpCommand = new RelayCommand(() => MoveSelectedWindow(-1));
+        MoveSelectedWindowToBottomCommand = new RelayCommand(() => MoveSelectedWindow(int.MaxValue));
+        MoveSelectedWindowToTopCommand = new RelayCommand(() => MoveSelectedWindow(int.MinValue));
+        WindowTypeFilters = new ObservableCollection<string> { AllWindowTypesFilter };
         ZoomOneCommand = DisabledCommand();
         ZoomFitCommand = DisabledCommand();
     }
@@ -1038,10 +1045,32 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand AddAlgorithmCommand { get; private set; }
     public ICommand ExpandAllTreeNodesCommand { get; private set; } = null!;
     public ICommand CollapseAllTreeNodesCommand { get; private set; } = null!;
+    public ICommand MoveSelectedWindowUpCommand { get; private set; } = null!;
+    public ICommand MoveSelectedWindowDownCommand { get; private set; } = null!;
+    public ICommand MoveSelectedWindowToTopCommand { get; private set; } = null!;
+    public ICommand MoveSelectedWindowToBottomCommand { get; private set; } = null!;
 
-    // PartTreeTitle 옆 Expand/Collapse 버튼이 호출. 모든 노드(재귀)의 IsExpanded 를
-    // 일괄 변경. InspectionTreeNodeViewModel.IsExpanded 가 INPC 를 raise 하므로
-    // TreeViewItem 의 IsExpanded TwoWay 바인딩이 자동으로 UI 에 반영됨.
+    // 인스펙션 트리 툴바: Window 타입 필터 ComboBox 의 항목들 ("All" + 현재 모델에
+    // 존재하는 모든 distinct TypeName). RebuildInspectionTree 가 매번 갱신.
+    public ObservableCollection<string> WindowTypeFilters { get; }
+
+    public string SelectedWindowTypeFilter
+    {
+        get => _selectedWindowTypeFilter;
+        set
+        {
+            var next = string.IsNullOrWhiteSpace(value) ? AllWindowTypesFilter : value;
+            if (SetProperty(ref _selectedWindowTypeFilter, next))
+            {
+                // 필터 변경 시 트리 재구성 (재구성 안에서 필터링 로직 적용).
+                TreeRefreshRequested?.Invoke(Model.SelectedWindowId);
+            }
+        }
+    }
+
+    // 트리 헤더 Expand/Collapse: 재귀로 모든 노드의 IsExpanded 일괄 변경.
+    // InspectionTreeNodeViewModel.IsExpanded 가 INPC 를 raise 하므로 TreeViewItem
+    // 의 IsExpanded TwoWay 바인딩이 자동으로 UI 에 반영됨.
     private void SetAllTreeNodesExpanded(bool expanded)
     {
         foreach (var node in InspectionTreeNodes)
@@ -1057,6 +1086,29 @@ public sealed class MainViewModel : ViewModelBase
         {
             SetTreeNodeExpandedRecursive(child, expanded);
         }
+    }
+
+    // 선택된 Window 를 delta 칸만큼 이동. delta=±1 은 인접 위치, int.MaxValue/
+    // MinValue 는 맨 끝으로 이동. Model.Part.Windows 순서를 바꾸고 TreeRefresh.
+    private void MoveSelectedWindow(int delta)
+    {
+        Model.EnsureStructure();
+        var windows = Model.Part.Windows;
+        if (windows.Count <= 1) return;
+
+        var idx = windows.FindIndex(w => w.Id == Model.SelectedWindowId);
+        if (idx < 0) return;
+
+        int newIdx;
+        if (delta == int.MinValue)      newIdx = 0;
+        else if (delta == int.MaxValue) newIdx = windows.Count - 1;
+        else                            newIdx = Math.Max(0, Math.Min(windows.Count - 1, idx + delta));
+        if (newIdx == idx) return;
+
+        var item = windows[idx];
+        windows.RemoveAt(idx);
+        windows.Insert(newIdx, item);
+        TreeRefreshRequested?.Invoke(item.Id);
     }
     public ICommand RunInspectionCommand { get; private set; }
     public ICommand RunFlowCommand { get; private set; }
@@ -1227,12 +1279,28 @@ public sealed class MainViewModel : ViewModelBase
         Model.EnsureStructure();
         selectedId ??= Model.SelectedWindowId;
         InspectionTreeNodes.Clear();
+        RefreshWindowTypeFilters();
+
+        // 활성 필터. "All" 또는 빈 문자열이면 모든 Window 노출.
+        var activeFilter = string.IsNullOrWhiteSpace(_selectedWindowTypeFilter) ? null : _selectedWindowTypeFilter;
+        if (string.Equals(activeFilter, AllWindowTypesFilter, StringComparison.OrdinalIgnoreCase))
+        {
+            activeFilter = null;
+        }
 
         for (var index = 0; index < Model.Part.Windows.Count; index++)
         {
             var window = Model.Part.Windows[index];
             window.TypeName = string.IsNullOrWhiteSpace(window.TypeName) ? "Mount" : window.TypeName;
             window.GroupId = string.IsNullOrWhiteSpace(window.GroupId) ? (index + 1).ToString() : window.GroupId;
+
+            // 필터: 선택된 타입과 일치하지 않는 윈도우는 트리에 노출 안 함 (데이터는
+            // 모델에 그대로 — 필터 해제 시 다시 보임).
+            if (activeFilter != null && !string.Equals(window.TypeName, activeFilter, StringComparison.OrdinalIgnoreCase))
+            {
+                continue;
+            }
+
             var windowNode = new InspectionTreeNodeViewModel
             {
                 Header = FormatWindowGridName(window, index),
@@ -1290,6 +1358,37 @@ public sealed class MainViewModel : ViewModelBase
     private static string FormatWindowDisplayName(int zeroBasedIndex)
     {
         return $"Window ROI {Math.Max(0, zeroBasedIndex) + 1}";
+    }
+
+    // 트리 툴바의 Window List ComboBox 항목 갱신. 현재 모델의 Window TypeName 들을
+    // distinct 로 모은 뒤 항상 "All" 을 맨 앞에 둠. 이전 선택값이 새 목록에 남아
+    // 있으면 유지, 아니면 "All" 로 재설정.
+    private void RefreshWindowTypeFilters()
+    {
+        var types = Model.Part.Windows
+            .Select(w => string.IsNullOrWhiteSpace(w.TypeName) ? "Mount" : w.TypeName)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(t => t, StringComparer.OrdinalIgnoreCase)
+            .ToList();
+
+        var desired = new List<string> { AllWindowTypesFilter };
+        desired.AddRange(types);
+
+        // 변경 없을 때 컬렉션 noop. WPF ComboBox 가 이상 동작 안 하도록 in-place 갱신.
+        var changed = WindowTypeFilters.Count != desired.Count
+            || !WindowTypeFilters.SequenceEqual(desired, StringComparer.OrdinalIgnoreCase);
+        if (changed)
+        {
+            WindowTypeFilters.Clear();
+            foreach (var t in desired) WindowTypeFilters.Add(t);
+        }
+
+        // 현재 선택값이 새 리스트에 없으면 "All" 로.
+        if (!WindowTypeFilters.Contains(_selectedWindowTypeFilter, StringComparer.OrdinalIgnoreCase))
+        {
+            _selectedWindowTypeFilter = AllWindowTypesFilter;
+            OnPropertyChanged(nameof(SelectedWindowTypeFilter));
+        }
     }
 
     private static string FormatWindowGridName(InspectionWindowData window, int zeroBasedIndex)
