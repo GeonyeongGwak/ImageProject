@@ -932,7 +932,37 @@
 
                     <Border Style="{StaticResource RightPanelBorder}">
                         <StackPanel>
-                            <TextBlock x:Name="PartTreeTitle" Text="{Binding PartTitle}" Style="{StaticResource PanelTitle}" />
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock x:Name="PartTreeTitle"
+                                           Grid.Column="0"
+                                           Text="{Binding PartTitle}"
+                                           Style="{StaticResource PanelTitle}" />
+                                <!--
+                                  Expand-all / Collapse-all - InspectionTreeNodeViewModel.IsExpanded
+                                  를 재귀적으로 set. SetProperty(...) 를 통해 INPC 가 발생하므로
+                                  TreeViewItem.IsExpanded TwoWay 바인딩이 UI 에 반영함.
+                                -->
+                                <StackPanel Grid.Column="1"
+                                            Orientation="Horizontal"
+                                            VerticalAlignment="Center">
+                                    <Button Content="Expand All"
+                                            Command="{Binding ExpandAllTreeNodesCommand}"
+                                            MinHeight="24"
+                                            Padding="8,2"
+                                            Margin="0,0,4,0"
+                                            FontSize="11" />
+                                    <Button Content="Collapse All"
+                                            Command="{Binding CollapseAllTreeNodesCommand}"
+                                            MinHeight="24"
+                                            Padding="8,2"
+                                            Margin="0"
+                                            FontSize="11" />
+                                </StackPanel>
+                            </Grid>
                             <Border Margin="0,0,0,8"
                                     MinHeight="190"
                                     MaxHeight="280"

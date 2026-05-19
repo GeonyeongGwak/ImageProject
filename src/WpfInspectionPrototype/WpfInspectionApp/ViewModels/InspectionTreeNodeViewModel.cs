@@ -181,7 +181,15 @@ public sealed class InspectionTreeNodeViewModel : ViewModelBase
 
     public bool IsEnabled { get; init; } = true;
 
-    public bool IsExpanded { get; set; } = true;
+    private bool _isExpanded = true;
+    public bool IsExpanded
+    {
+        // INPC 필요: ExpandAllNodes/CollapseAllNodes 명령이 코드에서 이 값을 바꿀 때
+        // TreeViewItem.IsExpanded TwoWay 바인딩이 알림을 받아 트리가 실제로 펼침/접힘
+        // 되어야 함. 단순 auto-property 면 setter 호출이 무시되어 UI 가 안 바뀜.
+        get => _isExpanded;
+        set => SetProperty(ref _isExpanded, value);
+    }
 
     public Brush? Foreground { get; init; }
 

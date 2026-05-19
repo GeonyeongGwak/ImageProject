@@ -117,6 +117,8 @@ public sealed class MainViewModel : ViewModelBase
         RunInspectionCommand = new AsyncRelayCommand(RunInspectionAsync, () => CanRunInspection);
         RunFlowCommand = new AsyncRelayCommand(RunFlowAsync, () => !IsInspectionRunning);
         SelectThemeCommand = new RelayCommand(parameter => SetSelectedTheme(parameter?.ToString() ?? "Dark"));
+        ExpandAllTreeNodesCommand = new RelayCommand(() => SetAllTreeNodesExpanded(true));
+        CollapseAllTreeNodesCommand = new RelayCommand(() => SetAllTreeNodesExpanded(false));
         ZoomOneCommand = DisabledCommand();
         ZoomFitCommand = DisabledCommand();
     }
@@ -1034,6 +1036,28 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand LoadModelCommand { get; private set; }
     public ICommand ImportPartCommand { get; private set; }
     public ICommand AddAlgorithmCommand { get; private set; }
+    public ICommand ExpandAllTreeNodesCommand { get; private set; } = null!;
+    public ICommand CollapseAllTreeNodesCommand { get; private set; } = null!;
+
+    // PartTreeTitle 옆 Expand/Collapse 버튼이 호출. 모든 노드(재귀)의 IsExpanded 를
+    // 일괄 변경. InspectionTreeNodeViewModel.IsExpanded 가 INPC 를 raise 하므로
+    // TreeViewItem 의 IsExpanded TwoWay 바인딩이 자동으로 UI 에 반영됨.
+    private void SetAllTreeNodesExpanded(bool expanded)
+    {
+        foreach (var node in InspectionTreeNodes)
+        {
+            SetTreeNodeExpandedRecursive(node, expanded);
+        }
+    }
+
+    private static void SetTreeNodeExpandedRecursive(InspectionTreeNodeViewModel node, bool expanded)
+    {
+        node.IsExpanded = expanded;
+        foreach (var child in node.Children)
+        {
+            SetTreeNodeExpandedRecursive(child, expanded);
+        }
+    }
     public ICommand RunInspectionCommand { get; private set; }
     public ICommand RunFlowCommand { get; private set; }
     public ICommand SelectThemeCommand { get; private set; }
@@ -1312,6 +1336,19 @@ public sealed class MainViewModel : ViewModelBase
         if (node?.Payload is InspectionWindowData window)
         {
             Model.SelectedWindowId = window.Id;
+
+            // Window 선택 시 그 윈도우의 첫 algorithm 의 Type 으로 SelectedAlgorithm 을
+            // 동기화. 그러면 UpdateAlgorithmPanels (OnViewModelSelectionChanged 가
+            // 호출) 가 그 algorithm 의 패널을 띄움. 이전 SelectedAlgorithm 이 다른
+            // 타입이었으면 ActiveAlgorithm 의 LastOrDefault fallback 으로 표면적으로는
+            // 그 윈도우의 마지막 algorithm 이 보이지만 패널 종류는 stale 상태로 남아
+            // 있었기에 명시적 sync 가 필요.
+            var firstAlgorithm = window.Algorithms.FirstOrDefault();
+            if (firstAlgorithm != null && AlgorithmTypes.Contains(firstAlgorithm.Type))
+            {
+                SelectedAlgorithm = firstAlgorithm.Type;
+            }
+
             RefreshModelBindings();
             SelectionChanged?.Invoke();
             return true;
