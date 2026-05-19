@@ -147,7 +147,7 @@ public sealed class PartInspectionRuntime
                     LegacyName = algorithm.LegacyName,
                     AlgorithmRoi = algorithm.AlgorithmRoi,
                     InspectionRoi = inspectionRoi,
-                    Enabled = ReadBoolean(algorithm.Parameters, "Common.bAlgoEnable", true),
+                    Enabled = window.IsEnabled && ReadBoolean(algorithm.Parameters, "Common.bAlgoEnable", true),
                     Required = ReadBoolean(algorithm.Parameters, "Common.IsRequired", false),
                     Parameters = new Dictionary<string, string>(algorithm.Parameters, StringComparer.OrdinalIgnoreCase),
                     Source = algorithm

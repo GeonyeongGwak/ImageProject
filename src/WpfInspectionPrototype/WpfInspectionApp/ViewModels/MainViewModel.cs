@@ -871,56 +871,46 @@ public sealed class MainViewModel : ViewModelBase
         for (var index = 0; index < Model.Part.Windows.Count; index++)
         {
             var window = Model.Part.Windows[index];
-            var windowDisplayName = FormatWindowDisplayName(index);
+            window.TypeName = string.IsNullOrWhiteSpace(window.TypeName) ? "Mount" : window.TypeName;
+            window.GroupId = string.IsNullOrWhiteSpace(window.GroupId) ? (index + 1).ToString() : window.GroupId;
             var windowNode = new InspectionTreeNodeViewModel
             {
-                Header = windowDisplayName,
+                Header = FormatWindowGridName(window, index),
+                TypeText = window.TypeName,
+                IsInspectionEnabled = window.IsEnabled,
+                IsEssential = window.Algorithms.Count > 0 && window.Algorithms.All(algorithm => InspectionTreeNodeViewModel.ReadBool(algorithm, "Common.IsRequired", false)),
+                IsGrouped = window.IsGroup,
+                GroupId = window.GroupId,
                 Kind = InspectionTreeNodeKind.Window,
                 Payload = window,
                 IsSelected = selectedId == window.Id
             };
+            foreach (var catalog in AlgorithmCatalog.All)
+            {
+                windowNode.AlgorithmMenuItems.Add(new AlgorithmMenuItemViewModel(
+                    catalog.Type,
+                    catalog.DisplayName,
+                    new RelayCommand(() => AddAlgorithmToWindow(window.Id, catalog.Type))));
+            }
+
             InspectionTreeNodes.Add(windowNode);
 
             for (var algorithmIndex = 0; algorithmIndex < window.Algorithms.Count; algorithmIndex++)
             {
                 var algorithm = window.Algorithms[algorithmIndex];
                 algorithm.ApplyCatalogDefaults();
-                var result = algorithm.Result ?? new InspectionResultData();
                 var algorithmNode = new InspectionTreeNodeViewModel
                 {
                     Header = $"Algorithm{algorithmIndex + 1}",
+                    TypeText = FormatAlgorithmDisplayName(algorithm),
+                    IsInspectionEnabled = InspectionTreeNodeViewModel.ReadBool(algorithm, "Common.bAlgoEnable", true),
+                    IsEssential = InspectionTreeNodeViewModel.ReadBool(algorithm, "Common.IsRequired", false),
+                    IsGrouped = InspectionTreeNodeViewModel.ReadBool(algorithm, "Common.bAlgoGroup", false),
                     Kind = InspectionTreeNodeKind.Algorithm,
                     Payload = algorithm,
                     IsSelected = selectedId == algorithm.Id
                 };
                 windowNode.Children.Add(algorithmNode);
-                algorithmNode.Children.Add(new InspectionTreeNodeViewModel
-                {
-                    Header = FormatAlgorithmDisplayName(algorithm),
-                    Kind = InspectionTreeNodeKind.AlgorithmRoi,
-                    Payload = algorithm,
-                    Foreground = new SolidColorBrush(Color.FromRgb(128, 223, 255)),
-                    IsEnabled = true
-                });
-                algorithmNode.Children.Add(new InspectionTreeNodeViewModel
-                {
-                    Header = $"Result {result.Message} | FG {result.ForegroundPixels:N0}",
-                    Kind = InspectionTreeNodeKind.InspectionResult,
-                    Payload = result,
-                    IsEnabled = false
-                });
-
-                foreach (var summary in FormatBridgeSummaries(algorithm))
-                {
-                    algorithmNode.Children.Add(new InspectionTreeNodeViewModel
-                    {
-                        Header = summary,
-                        Kind = InspectionTreeNodeKind.InspectionResult,
-                        Payload = algorithm,
-                        Foreground = new SolidColorBrush(Color.FromRgb(180, 240, 200)),
-                        IsEnabled = false
-                    });
-                }
             }
         }
 
@@ -940,6 +930,33 @@ public sealed class MainViewModel : ViewModelBase
     private static string FormatWindowDisplayName(int zeroBasedIndex)
     {
         return $"Window ROI {Math.Max(0, zeroBasedIndex) + 1}";
+    }
+
+    private static string FormatWindowGridName(InspectionWindowData window, int zeroBasedIndex)
+    {
+        if (!string.IsNullOrWhiteSpace(window.Name))
+        {
+            var name = window.Name.Trim();
+            var delimiterIndex = name.LastIndexOf(" - ", StringComparison.Ordinal);
+            if (delimiterIndex >= 0 && delimiterIndex + 3 < name.Length)
+            {
+                name = name.Substring(delimiterIndex + 3).Trim();
+            }
+
+            if (name.StartsWith("Window ROI ", StringComparison.OrdinalIgnoreCase))
+            {
+                name = "Window" + name.Substring("Window ROI ".Length);
+            }
+
+            if (name.StartsWith("Window ", StringComparison.OrdinalIgnoreCase))
+            {
+                name = "Window" + name.Substring("Window ".Length);
+            }
+
+            return name;
+        }
+
+        return $"Window{Math.Max(0, zeroBasedIndex) + 1}";
     }
 
     private static string FormatAlgorithmDisplayName(InspectionAlgorithmData algorithm)
@@ -988,8 +1005,16 @@ public sealed class MainViewModel : ViewModelBase
 
     private void AddAlgorithm()
     {
+        AddAlgorithmToWindow(Model.SelectedWindowId, SelectedAlgorithm);
+    }
+
+    private void AddAlgorithmToWindow(string? windowId, string? algorithmType)
+    {
         Model.EnsureStructure();
-        var window = Model.Part.Windows.FirstOrDefault(candidate => candidate.Id == Model.SelectedWindowId)
+        var window = string.IsNullOrWhiteSpace(windowId)
+            ? null
+            : Model.Part.Windows.FirstOrDefault(candidate => candidate.Id == windowId);
+        window ??= Model.Part.Windows.FirstOrDefault(candidate => candidate.Id == Model.SelectedWindowId)
             ?? Model.Part.Windows.FirstOrDefault();
         if (window == null)
         {
@@ -997,8 +1022,22 @@ public sealed class MainViewModel : ViewModelBase
             return;
         }
 
-        var catalog = AlgorithmCatalog.Find(SelectedAlgorithm);
-        var algorithm = new InspectionAlgorithmData
+        var catalog = AlgorithmCatalog.Find(algorithmType);
+        SelectedAlgorithm = catalog.Type;
+        var algorithm = CreateAlgorithm(catalog);
+        algorithm.ApplyCatalogDefaults();
+        window.Algorithms.Add(algorithm);
+        Model.SelectedWindowId = window.Id;
+
+        StatusMessage = $"{catalog.DisplayName} added to {window.Name}.";
+        TreeRefreshRequested?.Invoke(algorithm.Id);
+        UpdateAlgorithmPanels();
+        RefreshModelBindings();
+    }
+
+    private static InspectionAlgorithmData CreateAlgorithm(AlgorithmCatalogItem catalog)
+    {
+        return new InspectionAlgorithmData
         {
             Type = catalog.Type,
             DisplayName = catalog.DisplayName,
@@ -1009,14 +1048,6 @@ public sealed class MainViewModel : ViewModelBase
             PanelData = AlgorithmPanelSchema.Create(new InspectionAlgorithmData { Type = catalog.Type }),
             Result = new InspectionResultData()
         };
-        algorithm.ApplyCatalogDefaults();
-        window.Algorithms.Add(algorithm);
-        Model.SelectedWindowId = window.Id;
-
-        StatusMessage = $"{algorithm.Type} added to {window.Name}.";
-        TreeRefreshRequested?.Invoke(algorithm.Id);
-        UpdateAlgorithmPanels();
-        RefreshModelBindings();
     }
 
     private static IEnumerable<string> FormatBridgeSummaries(InspectionAlgorithmData algorithm)

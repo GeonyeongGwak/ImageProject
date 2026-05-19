@@ -101,6 +101,10 @@ public sealed class PartModelApplyService : IPartModelApplyService
         {
             Id = window.Id,
             Name = window.Name,
+            TypeName = window.TypeName,
+            IsEnabled = window.IsEnabled,
+            IsGroup = window.IsGroup,
+            GroupId = window.GroupId,
             Roi = window.Roi,
             Algorithms = (window.Algorithms ?? []).Select(algorithm => new InspectionAlgorithmData
             {
@@ -122,6 +126,8 @@ public sealed class PartModelApplyService : IPartModelApplyService
         {
             window.Id = string.IsNullOrWhiteSpace(window.Id) ? InspectionWindowData.CreateId() : window.Id;
             window.Name = string.IsNullOrWhiteSpace(window.Name) ? "Window ROI" : window.Name;
+            window.TypeName = string.IsNullOrWhiteSpace(window.TypeName) ? "Mount" : window.TypeName;
+            window.GroupId = string.IsNullOrWhiteSpace(window.GroupId) ? (clone.IndexOf(window) + 1).ToString() : window.GroupId;
             window.Algorithms ??= [];
             for (var index = 0; index < window.Algorithms.Count; index++)
             {

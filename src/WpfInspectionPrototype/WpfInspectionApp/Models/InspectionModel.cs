@@ -102,6 +102,10 @@ public sealed class InspectionWindowData
 {
     public string Id { get; set; } = CreateId();
     public string Name { get; set; } = "Window 1";
+    public string TypeName { get; set; } = "Mount";
+    public bool IsEnabled { get; set; } = true;
+    public bool IsGroup { get; set; }
+    public string GroupId { get; set; } = "";
     public RoiRect Roi { get; set; }
     public List<InspectionAlgorithmData> Algorithms { get; set; } = [];
 

@@ -294,6 +294,10 @@ public static class LegacyRawPartImportAdapter
         {
             Id = string.IsNullOrWhiteSpace(id) ? InspectionWindowData.CreateId() : id,
             Name = name.StartsWith("Window ROI", StringComparison.OrdinalIgnoreCase) ? name : $"Window ROI {index} - {name}",
+            TypeName = NormalizeWindowTypeName(FirstValue(element, "TypeNick", "Nick", "PropertyType", "Type")),
+            IsEnabled = ReadBoolValue(FirstValue(element, "ENABLE", "Enable", "Enb"), true),
+            IsGroup = ReadBoolValue(FirstValue(element, "IsGroup", "Group", "Grp"), false),
+            GroupId = FirstNonEmpty(FirstValue(element, "GroupID", "GrpID"), index.ToString()),
             Roi = ParseRoi(element.Element("RelRoi") ?? element.Element("Roi"), transform)
         };
 
@@ -3591,6 +3595,49 @@ public static class LegacyRawPartImportAdapter
         }
 
         return current;
+    }
+
+    private static string NormalizeWindowTypeName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "Mount";
+        }
+
+        return value.Trim() switch
+        {
+            "0" => "Mount",
+            "1" => "Align",
+            "2" => "OCR",
+            "3" => "Lead",
+            "4" => "Solder",
+            _ => value.Trim()
+        };
+    }
+
+    private static string FirstNonEmpty(params string[] values)
+    {
+        return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "";
+    }
+
+    private static bool ReadBoolValue(string value, bool fallback)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return fallback;
+        }
+
+        if (bool.TryParse(value, out var parsed))
+        {
+            return parsed;
+        }
+
+        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
+        {
+            return number != 0;
+        }
+
+        return fallback;
     }
 
     private readonly record struct LegacyRoiTransform(double PixelResolutionX, double PixelResolutionY, int SourceWidth, int SourceHeight)

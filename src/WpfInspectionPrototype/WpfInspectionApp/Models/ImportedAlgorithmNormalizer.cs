@@ -12,6 +12,8 @@ public static class ImportedAlgorithmNormalizer
             var window = part.Windows[windowIndex];
             window.Id = string.IsNullOrWhiteSpace(window.Id) ? InspectionWindowData.CreateId() : window.Id;
             window.Name = string.IsNullOrWhiteSpace(window.Name) ? $"Window ROI {windowIndex + 1}" : window.Name;
+            window.TypeName = string.IsNullOrWhiteSpace(window.TypeName) ? "Mount" : window.TypeName;
+            window.GroupId = string.IsNullOrWhiteSpace(window.GroupId) ? (windowIndex + 1).ToString() : window.GroupId;
             window.Algorithms ??= [];
 
             for (var algorithmIndex = 0; algorithmIndex < window.Algorithms.Count; algorithmIndex++)

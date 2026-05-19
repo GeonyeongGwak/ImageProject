@@ -1,4 +1,5 @@
 using System.IO;
+using System.ComponentModel;
 using System.Windows;
 using System.Windows.Automation.Peers;
 using System.Windows.Controls;
@@ -37,15 +38,31 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly IAlignPartTeachingService _alignPartTeachingService;
     private readonly IAlignConditionService _alignConditionService;
     private readonly MainViewModel _viewModel;
+    private readonly Dictionary<string, CameraDockState> _cameraDockStates = new(StringComparer.OrdinalIgnoreCase);
+    private DispatcherTimer? _cameraDockPreviewTimer;
+    private CameraDockState? _draggingCameraState;
     private System.Windows.Forms.Integration.WindowsFormsHost? _pttViewerHost;
     private System.Windows.Forms.Panel? _pttViewerPanel;
     private bool _uiReady;
     private bool _applyingModel;
     private bool _syncingSearchSize;
+    private bool _cameraDockOperation;
+    private bool _closingMainWindow;
+    private bool _isImagePanning;
+    private string? _pendingCameraDragKey;
+    private Point _pendingCameraDragStart;
+    private UIElement? _pendingCameraDragElement;
+    private Canvas? _imagePanSurface;
+    private Point _imagePanStartPoint;
+    private double _imagePanStartX;
+    private double _imagePanStartY;
+    private double _imagePanX;
+    private double _imagePanY;
 
     public MainWindow()
     {
         InitializeComponent();
+        InitializeCameraDocking();
         ApplyNativeDebugStartupGuards();
         SubscribeAlignPanelEvents();
         _roiOverlayCoordinator = new RoiOverlayCoordinator(App.Services.RoiGeometry);
@@ -351,6 +368,329 @@ public partial class MainWindow : Window, IDialogOwner
 
     private MainViewModel ViewModel => _viewModel;
 
+    private void InitializeCameraDocking()
+    {
+        RegisterCameraDock("CAM01", "CAM-01 | 2D SOURCE", Cam01DockHost, Cam01Panel, Cam01DockPlaceholder, Cam01DockButton);
+        RegisterCameraDock("CAM02", "CAM-02 | 3D SOURCE", Cam02DockHost, Cam02Panel, Cam02DockPlaceholder, Cam02DockButton);
+        RegisterCameraDock("CAM03", "CAM-03 | BINARY RESULT", Cam03DockHost, Cam03Panel, Cam03DockPlaceholder, Cam03DockButton);
+    }
+
+    private void RegisterCameraDock(string key, string title, Grid host, Border panel, Border placeholder, Button toggleButton)
+    {
+        _cameraDockStates[key] = new CameraDockState(key, title, host, panel, placeholder, toggleButton);
+    }
+
+    private void CameraDockButton_Click(object sender, RoutedEventArgs e)
+    {
+        if (sender is FrameworkElement { Tag: string key })
+        {
+            ToggleCameraDock(key);
+        }
+    }
+
+    private void ToggleCameraDock(string key)
+    {
+        if (!_cameraDockStates.TryGetValue(key, out var state))
+        {
+            return;
+        }
+
+        if (state.IsFloating)
+        {
+            DockCamera(key);
+            return;
+        }
+
+        FloatCamera(state);
+    }
+
+    private void CameraHeader_PreviewMouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.OriginalSource is DependencyObject source && FindVisualParent<Button>(source) != null)
+        {
+            return;
+        }
+
+        if (sender is not FrameworkElement { Tag: string key } header)
+        {
+            return;
+        }
+
+        _pendingCameraDragKey = key;
+        _pendingCameraDragStart = e.GetPosition(this);
+        _pendingCameraDragElement = header;
+        header.CaptureMouse();
+    }
+
+    private void CameraHeader_PreviewMouseMove(object sender, MouseEventArgs e)
+    {
+        if (_pendingCameraDragKey == null || _pendingCameraDragElement == null || e.LeftButton != MouseButtonState.Pressed)
+        {
+            return;
+        }
+
+        var current = e.GetPosition(this);
+        var delta = current - _pendingCameraDragStart;
+        if (Math.Abs(delta.X) < SystemParameters.MinimumHorizontalDragDistance &&
+            Math.Abs(delta.Y) < SystemParameters.MinimumVerticalDragDistance)
+        {
+            return;
+        }
+
+        var key = _pendingCameraDragKey;
+        ClearPendingCameraDrag();
+        BeginCameraDrag(key);
+        e.Handled = true;
+    }
+
+    private void CameraHeader_PreviewMouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        ClearPendingCameraDrag();
+    }
+
+    private void ClearPendingCameraDrag()
+    {
+        _pendingCameraDragElement?.ReleaseMouseCapture();
+        _pendingCameraDragElement = null;
+        _pendingCameraDragKey = null;
+    }
+
+    private void BeginCameraDrag(string key)
+    {
+        if (!_cameraDockStates.TryGetValue(key, out var state))
+        {
+            return;
+        }
+
+        if (!state.IsFloating)
+        {
+            FloatCamera(state, positionNearCursor: true);
+        }
+
+        var floatingWindow = state.FloatingWindow;
+        if (floatingWindow == null)
+        {
+            return;
+        }
+
+        StartCameraDockPreview(state);
+        try
+        {
+            floatingWindow.Activate();
+            floatingWindow.DragMove();
+        }
+        catch (InvalidOperationException)
+        {
+            // DragMove can throw if Windows has already ended the mouse capture.
+        }
+        finally
+        {
+            StopCameraDockPreview();
+        }
+
+        if (IsCursorOverDockHost(state))
+        {
+            DockCamera(state.Key);
+        }
+    }
+
+    private void FloatCamera(CameraDockState state, bool positionNearCursor = false)
+    {
+        if (state.IsFloating)
+        {
+            return;
+        }
+
+        state.IsFloating = true;
+        state.DockedMargin = state.Panel.Margin;
+        state.Host.Children.Remove(state.Panel);
+        state.Placeholder.Visibility = Visibility.Visible;
+        state.Panel.Margin = new Thickness(0);
+        state.ToggleButton.Content = "DOCK";
+
+        var floatingWindow = new Window
+        {
+            Title = state.Title,
+            Owner = this,
+            DataContext = DataContext,
+            Width = 860,
+            Height = 620,
+            MinWidth = 520,
+            MinHeight = 360,
+            ResizeMode = ResizeMode.CanResizeWithGrip,
+            WindowStartupLocation = WindowStartupLocation.CenterOwner,
+            Background = new SolidColorBrush(Color.FromRgb(7, 11, 18)),
+            Content = state.Panel
+        };
+
+        if (positionNearCursor)
+        {
+            var cursor = System.Windows.Forms.Cursor.Position;
+            floatingWindow.WindowStartupLocation = WindowStartupLocation.Manual;
+            floatingWindow.Left = Math.Max(0, cursor.X - 120);
+            floatingWindow.Top = Math.Max(0, cursor.Y - 24);
+        }
+
+        floatingWindow.Closed += (_, _) => OnCameraFloatingWindowClosed(state, floatingWindow);
+        floatingWindow.SizeChanged += (_, _) => RefreshCameraDockContent();
+        state.FloatingWindow = floatingWindow;
+        floatingWindow.Show();
+        RefreshCameraDockContent();
+    }
+
+    private void DockCamera(string key)
+    {
+        if (!_cameraDockStates.TryGetValue(key, out var state))
+        {
+            return;
+        }
+
+        var floatingWindow = state.FloatingWindow;
+        state.FloatingWindow = null;
+        state.IsFloating = false;
+
+        _cameraDockOperation = true;
+        try
+        {
+            if (floatingWindow != null)
+            {
+                floatingWindow.Content = null;
+                floatingWindow.Close();
+            }
+        }
+        finally
+        {
+            _cameraDockOperation = false;
+        }
+
+        if (state.Panel.Parent is Panel currentParent)
+        {
+            currentParent.Children.Remove(state.Panel);
+        }
+
+        state.Panel.Margin = state.DockedMargin;
+        if (!state.Host.Children.Contains(state.Panel))
+        {
+            state.Host.Children.Add(state.Panel);
+        }
+
+        state.Placeholder.Visibility = Visibility.Collapsed;
+        state.ToggleButton.Content = "FLOAT";
+        RefreshCameraDockContent();
+    }
+
+    private void StartCameraDockPreview(CameraDockState state)
+    {
+        _draggingCameraState = state;
+        SetCameraDockCue(state, isActive: false);
+        _cameraDockPreviewTimer ??= new DispatcherTimer
+        {
+            Interval = TimeSpan.FromMilliseconds(45)
+        };
+        _cameraDockPreviewTimer.Tick -= CameraDockPreviewTimer_Tick;
+        _cameraDockPreviewTimer.Tick += CameraDockPreviewTimer_Tick;
+        _cameraDockPreviewTimer.Start();
+    }
+
+    private void StopCameraDockPreview()
+    {
+        _cameraDockPreviewTimer?.Stop();
+        if (_draggingCameraState != null)
+        {
+            ResetCameraDockCue(_draggingCameraState);
+        }
+
+        _draggingCameraState = null;
+    }
+
+    private void CameraDockPreviewTimer_Tick(object? sender, EventArgs e)
+    {
+        if (_draggingCameraState == null)
+        {
+            return;
+        }
+
+        SetCameraDockCue(_draggingCameraState, IsCursorOverDockHost(_draggingCameraState));
+    }
+
+    private static void SetCameraDockCue(CameraDockState state, bool isActive)
+    {
+        state.Placeholder.BorderThickness = new Thickness(2);
+        state.Placeholder.BorderBrush = new SolidColorBrush(isActive ? Color.FromRgb(24, 224, 123) : Color.FromRgb(39, 166, 255));
+        state.Placeholder.Background = new SolidColorBrush(isActive ? Color.FromRgb(9, 45, 35) : Color.FromRgb(8, 25, 43));
+    }
+
+    private static void ResetCameraDockCue(CameraDockState state)
+    {
+        state.Placeholder.ClearValue(Border.BorderThicknessProperty);
+        state.Placeholder.ClearValue(Border.BorderBrushProperty);
+        state.Placeholder.ClearValue(Border.BackgroundProperty);
+    }
+
+    private bool IsCursorOverDockHost(CameraDockState state)
+    {
+        if (!state.Placeholder.IsVisible || state.Host.ActualWidth <= 0 || state.Host.ActualHeight <= 0)
+        {
+            return false;
+        }
+
+        var cursor = System.Windows.Forms.Cursor.Position;
+        var topLeft = state.Host.PointToScreen(new Point(0, 0));
+        var bounds = new Rect(topLeft, new Size(state.Host.ActualWidth, state.Host.ActualHeight));
+        return bounds.Contains(new Point(cursor.X, cursor.Y));
+    }
+
+    private void OnCameraFloatingWindowClosed(CameraDockState state, Window floatingWindow)
+    {
+        if (_cameraDockOperation)
+        {
+            return;
+        }
+
+        floatingWindow.Content = null;
+        state.FloatingWindow = null;
+        if (!_closingMainWindow)
+        {
+            DockCamera(state.Key);
+        }
+    }
+
+    private void CloseFloatingCameraWindows()
+    {
+        _cameraDockOperation = true;
+        try
+        {
+            foreach (var state in _cameraDockStates.Values.ToArray())
+            {
+                var floatingWindow = state.FloatingWindow;
+                if (floatingWindow == null)
+                {
+                    continue;
+                }
+
+                state.FloatingWindow = null;
+                floatingWindow.Content = null;
+                floatingWindow.Close();
+            }
+        }
+        finally
+        {
+            _cameraDockOperation = false;
+        }
+    }
+
+    private void RefreshCameraDockContent()
+    {
+        Dispatcher.BeginInvoke(new Action(() =>
+        {
+            DrawRoiOverlays();
+            if (_pttViewerPanel != null)
+            {
+                _pem3DViewerHostService.ResizeExternalViewer(_pttViewerPanel);
+            }
+        }), DispatcherPriority.Background);
+    }
+
     private bool CanHandleUiEvent => _uiReady && !_applyingModel;
 
     private void HandleUiChange(Action action)
@@ -361,6 +701,38 @@ public partial class MainWindow : Window, IDialogOwner
         }
 
         action();
+    }
+
+    private sealed class CameraDockState
+    {
+        public CameraDockState(string key, string title, Grid host, Border panel, Border placeholder, Button toggleButton)
+        {
+            Key = key;
+            Title = title;
+            Host = host;
+            Panel = panel;
+            Placeholder = placeholder;
+            ToggleButton = toggleButton;
+            DockedMargin = panel.Margin;
+        }
+
+        public string Key { get; }
+
+        public string Title { get; }
+
+        public Grid Host { get; }
+
+        public Border Panel { get; }
+
+        public Border Placeholder { get; }
+
+        public Button ToggleButton { get; }
+
+        public Thickness DockedMargin { get; set; }
+
+        public bool IsFloating { get; set; }
+
+        public Window? FloatingWindow { get; set; }
     }
 
 
@@ -517,6 +889,13 @@ public partial class MainWindow : Window, IDialogOwner
         ViewModel.StatusMessage = status;
     }
 
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        _closingMainWindow = true;
+        CloseFloatingCameraWindows();
+        base.OnClosing(e);
+    }
+
     protected override void OnClosed(EventArgs e)
     {
         _pem3DViewerHostService.Dispose();
@@ -529,6 +908,35 @@ public partial class MainWindow : Window, IDialogOwner
         {
             ViewModel.SelectTreeNode(node);
         }
+    }
+
+    private void InspectionTreeItem_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        var item = FindVisualParent<TreeViewItem>(e.OriginalSource as DependencyObject);
+        if (!ReferenceEquals(sender, item) || item?.DataContext is not InspectionTreeNodeViewModel node)
+        {
+            return;
+        }
+
+        item.Focus();
+        item.IsSelected = true;
+        ViewModel.SelectTreeNode(node);
+    }
+
+    private static T? FindVisualParent<T>(DependencyObject? source)
+        where T : DependencyObject
+    {
+        while (source != null)
+        {
+            if (source is T match)
+            {
+                return match;
+            }
+
+            source = VisualTreeHelper.GetParent(source);
+        }
+
+        return null;
     }
 
     private void DrawAlgorithmRoiButton_Click(object sender, RoutedEventArgs e)
