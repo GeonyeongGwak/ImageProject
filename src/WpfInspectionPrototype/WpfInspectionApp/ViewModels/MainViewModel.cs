@@ -26,6 +26,7 @@ public sealed class MainViewModel : ViewModelBase
     private string _inspectionResultText = "Waiting for inspection...";
     private bool _isInspectionRunning;
     private string _selectedAlgorithm = "AlgoAlign";
+    private string _selectedThemeKey = "Dark";
     private double _imageZoomPercent = 100;
     private ImageSource? _sourceImage;
     private ImageSource? _binaryImage;
@@ -99,6 +100,14 @@ public sealed class MainViewModel : ViewModelBase
                 resolvePttPath: () => ResolveLastFlowPttPath(),
                 resolveResolution: () => ResolveModelResolution())));
 
+        ThemeOptions = new ObservableCollection<ThemeOptionViewModel>
+        {
+            new("Dark", "Dark", Color.FromRgb(39, 166, 255)),
+            new("Light", "Light", Color.FromRgb(48, 128, 208)),
+            new("Pink", "Pink", Color.FromRgb(255, 112, 189))
+        };
+        SetSelectedTheme("Dark", raiseEvent: false);
+
         LoadImageCommand = new RelayCommand(BrowseAndLoadImage);
         LoadPttCommand = new RelayCommand(BrowseAndLoadPtt);
         SaveModelCommand = new RelayCommand(SaveModel);
@@ -107,6 +116,7 @@ public sealed class MainViewModel : ViewModelBase
         AddAlgorithmCommand = new RelayCommand(AddAlgorithm);
         RunInspectionCommand = new AsyncRelayCommand(RunInspectionAsync, () => CanRunInspection);
         RunFlowCommand = new AsyncRelayCommand(RunFlowAsync, () => !IsInspectionRunning);
+        SelectThemeCommand = new RelayCommand(parameter => SetSelectedTheme(parameter?.ToString() ?? "Dark"));
         ZoomOneCommand = DisabledCommand();
         ZoomFitCommand = DisabledCommand();
     }
@@ -221,6 +231,7 @@ public sealed class MainViewModel : ViewModelBase
     public event Action<int>? AlignSearchNumSyncRequested;
     public event Action? AlignActiveRoiUiRefreshRequested;
     public event Action? OverlayRefreshRequested;
+    public event Action<string>? ThemeChanged;
 
     public void SelectNextAlignRoi()
     {
@@ -755,6 +766,8 @@ public sealed class MainViewModel : ViewModelBase
     // One runner per registered IFlowAlgorithm. XAML ItemsControl renders them.
     public ObservableCollection<FlowAlgorithmRunner> FlowAlgorithms { get; }
 
+    public ObservableCollection<ThemeOptionViewModel> ThemeOptions { get; }
+
     public ObservableCollection<InspectionTreeNodeViewModel> InspectionTreeNodes { get; }
 
     // PTT path / resolution lookups used by each runner. Centralized here so that all
@@ -1023,8 +1036,32 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand AddAlgorithmCommand { get; private set; }
     public ICommand RunInspectionCommand { get; private set; }
     public ICommand RunFlowCommand { get; private set; }
+    public ICommand SelectThemeCommand { get; private set; }
     public ICommand ZoomOneCommand { get; private set; }
     public ICommand ZoomFitCommand { get; private set; }
+
+    public string SelectedThemeKey
+    {
+        get => _selectedThemeKey;
+        private set => SetProperty(ref _selectedThemeKey, value);
+    }
+
+    private void SetSelectedTheme(string key, bool raiseEvent = true)
+    {
+        var next = ThemeOptions.FirstOrDefault(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
+            ?? ThemeOptions.First(item => item.Key == "Dark");
+
+        SelectedThemeKey = next.Key;
+        foreach (var option in ThemeOptions)
+        {
+            option.IsSelected = ReferenceEquals(option, next);
+        }
+
+        if (raiseEvent)
+        {
+            ThemeChanged?.Invoke(next.Key);
+        }
+    }
 
     public object? ActiveAlgorithmPanelContent
     {

@@ -91,6 +91,7 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.PttLoadRequested += LoadPtt;
         _viewModel.ModelViewRefreshRequested += ApplyModelAndRefreshView;
         _viewModel.ModelSyncFromUiRequested += UpdateModelFromUi;
+        _viewModel.ThemeChanged += ApplyTheme;
         _viewModel.PartTeachingStatusRequested += AlignPanel.SetPartTeachingStatus;
         _viewModel.ThresholdScheduleRequested += ScheduleThreshold;
         _viewModel.AlignSearchTabActivationRequested += AlignPanel.ActivateSearchTab;
@@ -99,6 +100,7 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.AlignActiveRoiUiRefreshRequested += UpdateActiveRoiUi;
         _viewModel.OverlayRefreshRequested += DrawRoiOverlays;
         InitializeAlgorithmPanels();
+        ApplyTheme(_viewModel.SelectedThemeKey);
 
         _thresholdTimer = new DispatcherTimer
         {
@@ -513,7 +515,7 @@ public partial class MainWindow : Window, IDialogOwner
             MinHeight = 360,
             ResizeMode = ResizeMode.CanResizeWithGrip,
             WindowStartupLocation = WindowStartupLocation.CenterOwner,
-            Background = new SolidColorBrush(Color.FromRgb(7, 11, 18)),
+            Background = Resources["WindowBackground"] as Brush ?? new SolidColorBrush(Color.FromRgb(7, 11, 18)),
             Content = state.Panel
         };
 
