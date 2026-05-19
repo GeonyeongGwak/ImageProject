@@ -15,6 +15,19 @@
         Loaded="Window_Loaded"
         PreviewKeyDown="Window_PreviewKeyDown"
         Background="{DynamicResource WindowBackground}">
+    <!--
+        OS 타이틀바를 우리 TopBar 가 대신 그리도록 WindowChrome 사용. CaptionHeight=50 은
+        outer Grid 의 10px top margin + 42px TopBar 높이 (+ TopBar 와 콘텐츠 사이 8px
+        gap 의 절반) 합. 이 영역이 드래그 가능 영역이 됨. 개별 인터랙티브 컨트롤은
+        WindowChrome.IsHitTestVisibleInChrome="True" 로 클릭을 받게 함.
+    -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="50"
+                      GlassFrameThickness="0"
+                      ResizeBorderThickness="6"
+                      CornerRadius="0"
+                      UseAeroCaptionButtons="False" />
+    </WindowChrome.WindowChrome>
     <Window.Resources>
         <SolidColorBrush x:Key="WindowBackground" Color="#070B12" />
         <SolidColorBrush x:Key="TopBarBackground" Color="#111827" />
@@ -540,6 +553,70 @@
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
+        <!--
+            Themed window-chrome system buttons (Min/Max/Close). Override the base Button
+            style to remove the default chrome and use Segoe MDL2 glyph font. Colors are
+            all DynamicResource so theme switching repaints them along with everything
+            else.
+        -->
+        <Style x:Key="ChromeSystemButton" TargetType="Button">
+            <Setter Property="Width" Value="36" />
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Margin" Value="0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Background" Value="Transparent" />
+            <Setter Property="BorderThickness" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+            <Setter Property="FontFamily" Value="Segoe MDL2 Assets" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="Cursor" Value="Hand" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ChromeBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ChromeBorder" Property="Background" Value="{DynamicResource ControlHover}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ChromeBorder" Property="Background" Value="{DynamicResource ControlBackground}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="ChromeSystemCloseButton" TargetType="Button" BasedOn="{StaticResource ChromeSystemButton}">
+            <!-- Close 만 hover 시 빨강 강조 -->
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="ChromeBorder"
+                                Background="{TemplateBinding Background}"
+                                BorderThickness="0">
+                            <ContentPresenter HorizontalAlignment="Center"
+                                              VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="ChromeBorder" Property="Background" Value="#E81123" />
+                                <Setter Property="Foreground" Value="#FFFFFF" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="ChromeBorder" Property="Background" Value="#C50F1F" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
             <Setter Property="VerticalAlignment" Value="Center" />
@@ -566,6 +643,7 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="Auto" />
                     <ColumnDefinition Width="Auto" />
+                    <ColumnDefinition Width="Auto" />
                 </Grid.ColumnDefinitions>
                 <TextBlock Text="VISION INSPECTOR WPF"
                            VerticalAlignment="Center"
@@ -581,6 +659,7 @@
                 <ItemsControl Grid.Column="2"
                               Margin="0,0,12,0"
                               VerticalAlignment="Center"
+                              WindowChrome.IsHitTestVisibleInChrome="True"
                               ItemsSource="{Binding ThemeOptions}">
                     <ItemsControl.ItemsPanel>
                         <ItemsPanelTemplate>
@@ -593,7 +672,8 @@
                                     CommandParameter="{Binding Key}"
                                     Background="{Binding ButtonBackground}"
                                     BorderBrush="{Binding ButtonBorderBrush}"
-                                    Style="{StaticResource ThemeOptionButton}">
+                                    Style="{StaticResource ThemeOptionButton}"
+                                    WindowChrome.IsHitTestVisibleInChrome="True">
                                 <StackPanel Orientation="Horizontal">
                                     <Border Width="10"
                                             Height="10"
@@ -612,9 +692,36 @@
                 <TextBlock x:Name="BridgeStateText"
                            Grid.Column="3"
                            VerticalAlignment="Center"
+                           Margin="0,0,12,0"
                            Foreground="{Binding BridgeStateBrush}"
                            FontWeight="Bold"
                            Text="{Binding BridgeState}" />
+
+                <!--
+                    Themed system buttons replacing the OS title bar's Min/Max/Close.
+                    Each opts INTO hit-testing via WindowChrome.IsHitTestVisibleInChrome
+                    so clicks reach them instead of starting a window drag.
+                -->
+                <StackPanel Grid.Column="4"
+                            Orientation="Horizontal"
+                            VerticalAlignment="Center"
+                            WindowChrome.IsHitTestVisibleInChrome="True">
+                    <Button x:Name="ChromeMinimizeButton"
+                            Click="ChromeMinimizeButton_Click"
+                            Style="{StaticResource ChromeSystemButton}"
+                            ToolTip="Minimize"
+                            Content="&#xE921;" />
+                    <Button x:Name="ChromeMaximizeButton"
+                            Click="ChromeMaximizeButton_Click"
+                            Style="{StaticResource ChromeSystemButton}"
+                            ToolTip="Maximize/Restore"
+                            Content="&#xE922;" />
+                    <Button x:Name="ChromeCloseButton"
+                            Click="ChromeCloseButton_Click"
+                            Style="{StaticResource ChromeSystemCloseButton}"
+                            ToolTip="Close"
+                            Content="&#xE8BB;" />
+                </StackPanel>
             </Grid>
         </Border>
 
