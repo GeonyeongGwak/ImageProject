@@ -944,10 +944,10 @@ public partial class MainWindow : Window, IDialogOwner
         _viewModel.EnableAlgorithmRoiDrawing();
     }
 
-    private void AlgorithmCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        HandleAlignPanelUpdate(AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.AlgorithmPanels | AlignPanelUpdateEffect.RoiDrawButton | AlignPanelUpdateEffect.Threshold);
-    }
+    // AlgorithmCombo_SelectionChanged 제거: ALGORITHM TYPE ComboBox UI 가 삭제되어
+    // 더 이상 XAML 에서 호출되지 않음. SelectedAlgorithm 변경 시 모델/패널/threshold
+    // 동기화가 필요하면 ViewModel 의 SelectedAlgorithm setter 또는 인스펙션 트리
+    // 노드 선택 경로에서 처리.
 
     private void ViewerOption_Changed(object sender, RoutedEventArgs e)
     {

@@ -992,36 +992,10 @@
                         </StackPanel>
                     </Border>
 
-                    <Border Style="{StaticResource RightPanelBorder}">
-                        <StackPanel>
-                            <TextBlock Text="ALGORITHM TYPE" Style="{StaticResource PanelTitle}" />
-                            <ComboBox x:Name="AlgorithmCombo"
-                                      MinHeight="34"
-                                      Height="34"
-                                      FontSize="13"
-                                      Foreground="{DynamicResource PrimaryText}"
-                                      Background="{DynamicResource ComboDarkSelected}"
-                                      ItemsSource="{Binding AlgorithmTypes}"
-                                      SelectedItem="{Binding SelectedAlgorithm, Mode=TwoWay}"
-                                      SelectionChanged="AlgorithmCombo_SelectionChanged">
-                                <ComboBox.ItemTemplate>
-                                    <DataTemplate>
-                                        <TextBlock Text="{Binding}"
-                                                   Foreground="{DynamicResource PrimaryText}"
-                                                   FontWeight="Bold"
-                                                   Padding="4,2" />
-                                    </DataTemplate>
-                                </ComboBox.ItemTemplate>
-                            </ComboBox>
-                            <TextBlock Margin="0,6,0,0"
-                                       Padding="10,6"
-                                       Foreground="{DynamicResource PrimaryText}"
-                                       Background="{DynamicResource ComboDarkSelected}"
-                                       FontSize="14"
-                                       FontWeight="ExtraBold"
-                                       Text="{Binding SelectedAlgorithmText}" />
-                        </StackPanel>
-                    </Border>
+                    <!-- ALGORITHM TYPE panel 제거됨 (ComboBox + Selected text).
+                         사용자 요청에 따라 UI 만 삭제. ViewModel 의 SelectedAlgorithm
+                         속성은 유지 — 인스펙션 트리/AlignPanel 등 다른 경로에서
+                         여전히 사용됨. -->
 
                     <ContentControl x:Name="AlgorithmPanelHost" Content="{Binding ActiveAlgorithmPanelContent}" />
 
@@ -1060,105 +1034,10 @@
                                      IsReadOnly="True"
                                      Text="{Binding InspectionResultText}" />
 
-                            <TextBlock Text="MPTI FLOW ALGORITHMS" Style="{StaticResource PanelTitle}" Margin="0,12,0,0" />
-                            <!-- Auto-renders one row per registered IFlowAlgorithm.
-                                 Adding a new algorithm in AppServices grows this list
-                                 without touching MainViewModel or XAML. -->
-                            <ItemsControl ItemsSource="{Binding FlowAlgorithms}">
-                                <ItemsControl.ItemTemplate>
-                                    <DataTemplate>
-                                        <!-- One row per registered algorithm. The Expander
-                                             header has the Run button + summary; expanded
-                                             content is an implicit DataTemplate matched
-                                             on the Parameters' concrete type (defined in
-                                             Views/FlowAlgorithmTemplates.xaml). -->
-                                        <!--
-                                          Each row is a header (color chip + Run + Summary + toggle) and a
-                                          collapsible body. We avoid WPF Expander on purpose - its built-in
-                                          chevron RotateTransform calls Matrix.CreateRotationRadians during
-                                          the first layout pass which triggers an FP-inexact SEH under VS
-                                          native debugging and crashes the process (0xC0000005 in JIT code).
-                                          A plain ToggleButton + Visibility binding doesn't go through
-                                          any rotation/animation path.
-                                        -->
-                                        <StackPanel Margin="0,2,0,0">
-                                            <Grid>
-                                                <Grid.ColumnDefinitions>
-                                                    <ColumnDefinition Width="12" />
-                                                    <ColumnDefinition Width="100" />
-                                                    <ColumnDefinition Width="*" />
-                                                    <ColumnDefinition Width="24" />
-                                                </Grid.ColumnDefinitions>
-                                                <!-- OK/NG color chip: bound directly to a Brush computed
-                                                     on the runner. No DataTrigger / IValueConverter
-                                                     evaluation on the layout-critical path. -->
-                                                <Border Grid.Column="0"
-                                                        Width="10" Height="10"
-                                                        CornerRadius="2"
-                                                        VerticalAlignment="Center"
-                                                        HorizontalAlignment="Left"
-                                                        Background="{Binding OkNgBrush}" />
-                                                <Button Grid.Column="1"
-                                                        Content="{Binding DisplayName}"
-                                                        Command="{Binding RunCommand}" />
-                                                <TextBlock Grid.Column="2"
-                                                           Margin="6,0,0,0"
-                                                           VerticalAlignment="Center"
-                                                           TextTrimming="CharacterEllipsis"
-                                                           ToolTip="{Binding Summary}"
-                                                           Text="{Binding Summary}" />
-                                                <!-- Two-state toggle (+ / -). No RotateTransform / Storyboard. -->
-                                                <ToggleButton Grid.Column="3"
-                                                              IsChecked="{Binding IsExpanded, Mode=TwoWay}"
-                                                              FontFamily="Consolas">
-                                                    <ToggleButton.Style>
-                                                        <Style TargetType="ToggleButton">
-                                                            <Setter Property="Content" Value="+" />
-                                                            <Style.Triggers>
-                                                                <Trigger Property="IsChecked" Value="True">
-                                                                    <Setter Property="Content" Value="-" />
-                                                                </Trigger>
-                                                            </Style.Triggers>
-                                                        </Style>
-                                                    </ToggleButton.Style>
-                                                </ToggleButton>
-                                            </Grid>
-
-                                            <!-- Collapsible body. Visibility binding uses WPF's built-in
-                                                 BooleanToVisibilityConverter (no custom converter call). -->
-                                            <StackPanel Margin="20,4,0,8"
-                                                        Visibility="{Binding IsExpanded, Converter={StaticResource BoolToVis}}">
-                                                <ContentPresenter Content="{Binding Parameters}" />
-
-                                                <TextBlock Text="LAST RESULT FIELDS"
-                                                           Margin="0,10,0,2"
-                                                           FontSize="10"
-                                                           Foreground="{DynamicResource MutedText}" />
-
-                                                <ItemsControl ItemsSource="{Binding LastResult.Fields}">
-                                                    <ItemsControl.ItemTemplate>
-                                                        <DataTemplate>
-                                                            <Grid Margin="0,1">
-                                                                <Grid.ColumnDefinitions>
-                                                                    <ColumnDefinition Width="120" />
-                                                                    <ColumnDefinition Width="*" />
-                                                                </Grid.ColumnDefinitions>
-                                                                <TextBlock Grid.Column="0"
-                                                                           Text="{Binding Key}"
-                                                                           Foreground="{DynamicResource MutedText}" />
-                                                                <TextBlock Grid.Column="1"
-                                                                           Text="{Binding Value}"
-                                                                           FontFamily="Consolas"
-                                                                           Foreground="{DynamicResource PrimaryText}" />
-                                                            </Grid>
-                                                        </DataTemplate>
-                                                    </ItemsControl.ItemTemplate>
-                                                </ItemsControl>
-                                            </StackPanel>
-                                        </StackPanel>
-                                    </DataTemplate>
-                                </ItemsControl.ItemTemplate>
-                            </ItemsControl>
+                            <!-- MPTI FLOW ALGORITHMS ItemsControl 제거됨 (사용자 요청).
+                                 FlowAlgorithmRunner / IFlowAlgorithm 인프라 및
+                                 MainViewModel.FlowAlgorithms 컬렉션은 코드상에 유지
+                                 (콘솔 harness / 향후 재노출용). -->
                         </StackPanel>
                     </Border>
                 </StackPanel>
