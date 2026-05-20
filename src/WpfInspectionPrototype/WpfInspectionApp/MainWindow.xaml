@@ -334,6 +334,12 @@
             <Setter Property="IsSelected" Value="{Binding IsSelected, Mode=TwoWay}" />
             <Setter Property="IsEnabled" Value="{Binding IsEnabled}" />
             <EventSetter Event="PreviewMouseRightButtonDown" Handler="InspectionTreeItem_PreviewMouseRightButtonDown" />
+            <!--
+                선택된 TreeViewItem 이 ScrollViewer 의 viewport 밖에 있으면 자동으로
+                스크롤되어 보이도록. ROI 를 클릭해서 외부에서 IsSelected 가 true 로
+                설정될 때도 동작 — 클릭한 노드가 화면에 안 보이면 답답하다는 사용자 피드백.
+            -->
+            <EventSetter Event="Selected" Handler="InspectionTreeItem_Selected" />
             <Setter Property="Template">
                 <Setter.Value>
                     <ControlTemplate TargetType="{x:Type TreeViewItem}">

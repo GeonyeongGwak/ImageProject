@@ -865,6 +865,21 @@ public partial class MainWindow : Window, IDialogOwner
         }
     }
 
+    // TreeViewItem 이 선택될 때마다 자기 자신을 ScrollViewer viewport 안으로 끌어옴.
+    // Selected 이벤트는 자식 → 부모로 bubble 되므로, e.OriginalSource 가 sender 와 같을
+    // 때만 (즉 진짜로 선택된 그 leaf item 본인) BringIntoView. 부모 TreeViewItem 이
+    // 같은 이벤트를 한 번 더 받았을 때 스크롤이 흔들리는 것을 막는다.
+    //
+    // 호출 시점이 Selected 이벤트라 컨테이너가 이미 layout 된 상태 — Dispatcher
+    // defer 가 필요 없음.
+    private void InspectionTreeItem_Selected(object sender, RoutedEventArgs e)
+    {
+        if (sender is TreeViewItem item && ReferenceEquals(e.OriginalSource, item))
+        {
+            item.BringIntoView();
+        }
+    }
+
     private void InspectionTreeItem_PreviewMouseRightButtonDown(object sender, MouseButtonEventArgs e)
     {
         var item = FindVisualParent<TreeViewItem>(e.OriginalSource as DependencyObject);
