@@ -10,19 +10,37 @@ public sealed class AlignParameters : ObservableObject, IFlowAlgorithmParameters
 {
     private int _minBinary = 100;
     private int _maxBinary = 255;
-    private int _searchSize = 80;
+    private int _searchSizeX = 80;
+    private int _searchSizeY = 80;
+    private int _searchMargin = 10;
+    private int _typeRange2D = 2;
+    private bool _invertCheck;
+    private bool _useInsp3D;
+    private double _heightRateMin;
+    private double _heightRateMax = 120;
     private double _maxShiftX = 20;
     private double _maxShiftY = 20;
     private double _maxAngle = 5;
     private int _minBlobArea = 10;
+    private bool _fillHole;
+    private bool _inspectionAreaCount;
 
     public int MinBinary  { get => _minBinary;  set => SetProperty(ref _minBinary,  value); }
     public int MaxBinary  { get => _maxBinary;  set => SetProperty(ref _maxBinary,  value); }
-    public int SearchSize { get => _searchSize; set => SetProperty(ref _searchSize, value); }
+    public int SearchSizeX { get => _searchSizeX; set => SetProperty(ref _searchSizeX, value); }
+    public int SearchSizeY { get => _searchSizeY; set => SetProperty(ref _searchSizeY, value); }
+    public int SearchMargin { get => _searchMargin; set => SetProperty(ref _searchMargin, value); }
+    public int TypeRange2D { get => _typeRange2D; set => SetProperty(ref _typeRange2D, value); }
+    public bool InvertCheck { get => _invertCheck; set => SetProperty(ref _invertCheck, value); }
+    public bool UseInsp3D { get => _useInsp3D; set => SetProperty(ref _useInsp3D, value); }
+    public double HeightRateMin { get => _heightRateMin; set => SetProperty(ref _heightRateMin, value); }
+    public double HeightRateMax { get => _heightRateMax; set => SetProperty(ref _heightRateMax, value); }
     public double MaxShiftX { get => _maxShiftX; set => SetProperty(ref _maxShiftX, value); }
     public double MaxShiftY { get => _maxShiftY; set => SetProperty(ref _maxShiftY, value); }
     public double MaxAngle  { get => _maxAngle;  set => SetProperty(ref _maxAngle,  value); }
     public int MinBlobArea  { get => _minBlobArea; set => SetProperty(ref _minBlobArea, value); }
+    public bool FillHole { get => _fillHole; set => SetProperty(ref _fillHole, value); }
+    public bool InspectionAreaCount { get => _inspectionAreaCount; set => SetProperty(ref _inspectionAreaCount, value); }
 }
 
 // Align algorithm — pattern-detected anchor windows used to compute (offsetX, offsetY,
@@ -41,18 +59,25 @@ public sealed class AlignFlowAlgorithm : IFlowAlgorithm
         var ctx = FlowAlgorithmContext.Current;
         int qx = ctx.PartWidth / 4;
         int qy = ctx.PartHeight / 4;
-        int sz = Math.Max(8, pp.SearchSize);
+        int sx = Math.Max(8, pp.SearchSizeX);
+        int sy = Math.Max(8, pp.SearchSizeY);
         var p = new MptiBridgeFlowAlignParams
         {
             SearchNum = 4,
             SearchPointsX = new[] { qx, ctx.PartWidth - qx, qx, ctx.PartWidth - qx },
             SearchPointsY = new[] { qy, qy, ctx.PartHeight - qy, ctx.PartHeight - qy },
-            SearchSizeW = new[] { sz, sz, sz, sz },
-            SearchSizeH = new[] { sz, sz, sz, sz },
-            SearchMargin = 10,
-            MinBinary = pp.MinBinary,
-            MaxBinary = pp.MaxBinary,
+            SearchSizeW = new[] { sx, sx, sx, sx },
+            SearchSizeH = new[] { sy, sy, sy, sy },
+            SearchMargin = Math.Max(0, pp.SearchMargin),
+            MinBinary = Math.Min(pp.MinBinary, pp.MaxBinary),
+            MaxBinary = Math.Max(pp.MinBinary, pp.MaxBinary),
+            TypeRange2D = pp.TypeRange2D,
             UseInsp2D = 1,
+            InvertCheck = pp.InvertCheck ? 1 : 0,
+            UseInsp3D = pp.UseInsp3D ? 1 : 0,
+            HeightRateMin = Math.Min(pp.HeightRateMin, pp.HeightRateMax),
+            HeightRateMax = Math.Max(pp.HeightRateMin, pp.HeightRateMax),
+            TypeRange3D = 2,
             UseShift = 1,
             MaxShiftX = pp.MaxShiftX,
             MaxShiftY = pp.MaxShiftY,
@@ -60,6 +85,8 @@ public sealed class AlignFlowAlgorithm : IFlowAlgorithm
             MaxAngle = pp.MaxAngle,
             SameSize = 1,
             MinBlobArea = Math.Max(1, pp.MinBlobArea),
+            FillHole = pp.FillHole ? 1 : 0,
+            InspOption = pp.InspectionAreaCount ? 0x01 : 0,
         };
         MptiFlowNativeBridge.MptiBridgeSetAlgoParamsAlign(slot.WndIdx, slot.AlgoIdx, ref p);
     }

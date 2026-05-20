@@ -16,7 +16,7 @@ public sealed class FileDialogService : IFileDialogService
 
     public string? BrowsePtt(Window owner)
     {
-        return Browse(owner, "Load 3D PTT", "PTT 3D Files|*.ptt|All Files|*.*", initialDirectory: null);
+        return Browse(owner, "Load PTT data", "PTT Files|*.ptt|All Files|*.*", initialDirectory: null);
     }
 
     public string? BrowseModel(Window owner, string initialDirectory)

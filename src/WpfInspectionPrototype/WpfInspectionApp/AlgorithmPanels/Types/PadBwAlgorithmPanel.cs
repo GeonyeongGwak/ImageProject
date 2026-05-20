@@ -1,3 +1,5 @@
+using WpfInspectionApp.Models;
+
 namespace WpfInspectionApp.AlgorithmPanels.Types;
 
 public sealed class PadBwAlgorithmPanel : DynamicAlgorithmPanel
@@ -21,7 +23,7 @@ public sealed class PadBwAlgorithmPanel : DynamicAlgorithmPanel
     {
         if (Context != null && key.Contains("PadBW", StringComparison.OrdinalIgnoreCase))
         {
-            Context.Algorithm.Parameters["PadBW.Event.LastEditedParameter"] = key;
+            AlgorithmParameterStore.Set(Context.Algorithm.Parameters, "PadBW.Event.LastEditedParameter", key);
         }
     }
 }

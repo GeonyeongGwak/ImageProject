@@ -83,25 +83,41 @@ public sealed class AlignPartTeachingService : IAlignPartTeachingService
         Func<RoiRect?, string> formatRoi)
     {
         algorithm.ApplyCatalogDefaults();
-        algorithm.Parameters["PartTeaching.Enabled"] = "true";
-        algorithm.Parameters["PartTeaching.Mode"] = useGerber ? "Gerber" : "FullMap";
-        algorithm.Parameters["PartTeaching.UseCommonLibrary"] = model.PartTeachingUseCommonLibrary.ToString();
-        algorithm.Parameters["PartTeaching.UseLibraryPart"] = model.PartTeachingUseLibraryPart.ToString();
-        algorithm.Parameters["PartTeaching.UseAutoTeaching"] = model.PartTeachingUseAutoTeaching.ToString();
-        algorithm.Parameters["PartTeaching.UseCadMatching"] = model.PartTeachingUseCadMatching.ToString();
-        algorithm.Parameters["PartTeaching.LibraryMatchMode"] = model.PartTeachingLibraryMatchMode;
-        algorithm.Parameters["PartTeaching.WindowIndex"] = (index + 1).ToString();
-        algorithm.Parameters["PartTeaching.WindowName"] = window.Name;
-        algorithm.Parameters["PartTeaching.WindowRoi"] = formatRoi(window.Roi);
-        algorithm.Parameters["PartTeaching.SearchMargin"] = model.AlignSearchMargin.ToString();
-        algorithm.Parameters["PartTeaching.SearchSizeX"] = model.AlignSearchSizeX.ToString();
-        algorithm.Parameters["PartTeaching.SearchSizeY"] = model.AlignSearchSizeY.ToString();
-        algorithm.Parameters["PartTeaching.TeachTime"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
+        Set(algorithm, "PartTeaching.Enabled", "true");
+        Set(algorithm, "PartTeaching.Mode", useGerber ? "Gerber" : "FullMap");
+        Set(algorithm, "PartTeaching.UseCommonLibrary", model.PartTeachingUseCommonLibrary.ToString());
+        Set(algorithm, "PartTeaching.UseLibraryPart", model.PartTeachingUseLibraryPart.ToString());
+        Set(algorithm, "PartTeaching.UseAutoTeaching", model.PartTeachingUseAutoTeaching.ToString());
+        Set(algorithm, "PartTeaching.UseCadMatching", model.PartTeachingUseCadMatching.ToString());
+        Set(algorithm, "PartTeaching.LibraryMatchMode", model.PartTeachingLibraryMatchMode);
+        Set(algorithm, "PartTeaching.WindowIndex", (index + 1).ToString());
+        Set(algorithm, "PartTeaching.WindowName", window.Name);
+        Set(algorithm, "PartTeaching.WindowRoi", formatRoi(window.Roi));
+        Set(algorithm, "PartTeaching.SearchMargin", model.AlignSearchMargin.ToString());
+        Set(algorithm, "PartTeaching.SearchSizeX", model.AlignSearchSizeX.ToString());
+        Set(algorithm, "PartTeaching.SearchSizeY", model.AlignSearchSizeY.ToString());
+        Set(algorithm, "Align.MinBinary", Math.Min(model.Threshold2D, model.Threshold2DMax).ToString());
+        Set(algorithm, "Align.MaxBinary", Math.Max(model.Threshold2D, model.Threshold2DMax).ToString());
+        Set(algorithm, "Align.Range2DType", model.AlignRange2DType.ToString());
+        Set(algorithm, "Align.InvertCheck", model.AlignInvertCheck.ToString());
+        Set(algorithm, "Align.Use3D", model.Use3D.ToString());
+        Set(algorithm, "Align.HeightMin", Math.Min(model.Threshold3D, model.Threshold3DMax).ToString());
+        Set(algorithm, "Align.HeightMax", Math.Max(model.Threshold3D, model.Threshold3DMax).ToString());
+        Set(algorithm, "Align.HeightAverage", model.AlignHeightAverage.ToString("0.##"));
+        Set(algorithm, "Align.Range3DType", model.AlignRange3DType.ToString());
+        Set(algorithm, "Align.FillHole", model.AlignFillHole.ToString());
+        Set(algorithm, "Align.InspOption", (model.AlignInspectionAreaCount ? 0x01 : 0).ToString());
+        Set(algorithm, "PartTeaching.TeachTime", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
         algorithm.PanelData = AlgorithmPanelSchema.Create(algorithm);
         algorithm.Result = new InspectionResultData
         {
-            Message = $"Align Part Teaching prepared ({algorithm.Parameters["PartTeaching.Mode"]})",
+            Message = $"Align Part Teaching prepared ({AlgorithmParameterStore.GetValue(algorithm.Parameters, "PartTeaching.Mode")})",
             Bounds = window.Roi
         };
+    }
+
+    private static void Set(InspectionAlgorithmData algorithm, string key, string value)
+    {
+        AlgorithmParameterStore.Set(algorithm.Parameters, key, value);
     }
 }

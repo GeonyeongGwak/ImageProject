@@ -44,7 +44,7 @@ public sealed class PartImportWorkflowService : IPartImportWorkflowService
         }
 
         return !string.IsNullOrWhiteSpace(pttPath)
-            ? $"Part imported with 3D PTT: {path}"
+            ? $"Part imported with PTT data: {path}"
             : $"Part imported: {path}";
     }
 }

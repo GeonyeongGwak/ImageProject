@@ -298,7 +298,7 @@ public sealed class InspectionTreeNodeViewModel : ViewModelBase
 
     public static bool ReadBool(InspectionAlgorithmData algorithm, string key, bool fallback)
     {
-        if (algorithm.Parameters == null || !algorithm.Parameters.TryGetValue(key, out var raw))
+        if (algorithm.Parameters == null || !AlgorithmParameterStore.TryGetValue(algorithm.Parameters, key, out var raw))
         {
             return fallback;
         }
@@ -318,7 +318,7 @@ public sealed class InspectionTreeNodeViewModel : ViewModelBase
 
     private static void WriteBool(InspectionAlgorithmData algorithm, string key, bool value)
     {
-        algorithm.Parameters ??= [];
-        algorithm.Parameters[key] = value ? "true" : "false";
+        algorithm.Parameters = AlgorithmParameterStore.CloneCaseInsensitive(algorithm.Parameters);
+        AlgorithmParameterStore.Set(algorithm.Parameters, key, value ? "true" : "false");
     }
 }

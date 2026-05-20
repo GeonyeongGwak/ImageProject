@@ -1,0 +1,225 @@
+<UserControl x:Class="WpfInspectionApp.Views.LightControlView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             MinHeight="220">
+    <UserControl.Resources>
+        <Style x:Key="LightPanelTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource AccentBlue}" />
+            <Setter Property="FontSize" Value="13" />
+            <Setter Property="FontWeight" Value="Black" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+        </Style>
+
+        <Style x:Key="LightFieldLabel" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
+            <Setter Property="FontSize" Value="11" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
+        <Style x:Key="LightValueTextBox" TargetType="TextBox">
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="6,2" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+            <Setter Property="Background" Value="{DynamicResource ComboDarkBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="HorizontalContentAlignment" Value="Right" />
+            <Setter Property="FontFamily" Value="Consolas" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
+        <Style x:Key="LightComboBox" TargetType="ComboBox">
+            <Setter Property="Height" Value="28" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+            <Setter Property="Background" Value="{DynamicResource ComboDarkBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
+        <Style x:Key="LightActionButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="28" />
+            <Setter Property="Padding" Value="10,3" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+            <Setter Property="Background" Value="{DynamicResource ControlBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
+        <DataTemplate x:Key="LightChannelTemplate">
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="18" />
+                    <ColumnDefinition Width="34" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="42" />
+                </Grid.ColumnDefinitions>
+                <Ellipse Width="10"
+                         Height="10"
+                         Fill="{Binding Swatch}"
+                         VerticalAlignment="Center" />
+                <TextBlock Grid.Column="1"
+                           Text="{Binding Code}"
+                           Style="{StaticResource LightFieldLabel}" />
+                <Slider Grid.Column="2"
+                        Minimum="0"
+                        Maximum="{Binding Maximum}"
+                        TickFrequency="10"
+                        IsSnapToTickEnabled="False"
+                        Value="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEnabled="{Binding IsEditable}"
+                        Margin="0,0,8,0" />
+                <TextBox Grid.Column="3"
+                         Style="{StaticResource LightValueTextBox}"
+                         Text="{Binding ValueText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding IsEditable}" />
+                <TextBlock Grid.Column="4"
+                           Text="{Binding PercentText}"
+                           Foreground="{DynamicResource SecondaryText}"
+                           FontFamily="Consolas"
+                           FontWeight="Bold"
+                           TextAlignment="Right"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </DataTemplate>
+    </UserControl.Resources>
+
+    <Border Margin="0,0,0,8"
+            Padding="10"
+            BorderThickness="1"
+            BorderBrush="{DynamicResource BorderBlue}"
+            Background="{DynamicResource PanelBackground}"
+            IsEnabled="{Binding IsEnabled}">
+        <StackPanel>
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="150" />
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="LIGHT"
+                           Style="{StaticResource LightPanelTitle}" />
+                <ComboBox Grid.Column="1"
+                          Style="{StaticResource LightComboBox}"
+                          ItemsSource="{Binding LightTypeOptions}"
+                          DisplayMemberPath="Label"
+                          SelectedValuePath="Value"
+                          SelectedValue="{Binding LightType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+            </Grid>
+
+            <Grid Visibility="{Binding IsNormalMode, Converter={StaticResource BoolToVis}}">
+                <ItemsControl ItemsSource="{Binding NormalChannels}"
+                              ItemTemplate="{StaticResource LightChannelTemplate}" />
+            </Grid>
+
+            <Grid Visibility="{Binding IsUserMode, Converter={StaticResource BoolToVis}}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,8">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
+                        </Grid.ColumnDefinitions>
+                        <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                            <TextBlock Text="USER MIX"
+                                       Style="{StaticResource LightFieldLabel}"
+                                       Margin="0,0,8,0" />
+                            <TextBlock Text="{Binding UserCellCountText}"
+                                       Foreground="{DynamicResource SecondaryText}"
+                                       FontFamily="Consolas"
+                                       FontWeight="Bold" />
+                        </StackPanel>
+                        <Button Grid.Column="1"
+                                Content="ADD"
+                                Style="{StaticResource LightActionButton}"
+                                Command="{Binding AddUserCellCommand}" />
+                        <Button Grid.Column="2"
+                                Content="DEL"
+                                Style="{StaticResource LightActionButton}"
+                                Margin="0"
+                                Command="{Binding RemoveUserCellCommand}" />
+                    </Grid>
+
+                    <ListBox ItemsSource="{Binding UserCells}"
+                             SelectedItem="{Binding SelectedUserCell, Mode=TwoWay}"
+                             BorderThickness="0"
+                             Background="Transparent"
+                             Foreground="{DynamicResource PrimaryText}"
+                             ScrollViewer.HorizontalScrollBarVisibility="Disabled"
+                             ScrollViewer.VerticalScrollBarVisibility="Auto"
+                             MaxHeight="108"
+                             Margin="0,0,0,8">
+                        <ListBox.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <WrapPanel />
+                            </ItemsPanelTemplate>
+                        </ListBox.ItemsPanel>
+                        <ListBox.ItemContainerStyle>
+                            <Style TargetType="ListBoxItem">
+                                <Setter Property="Padding" Value="0" />
+                                <Setter Property="Margin" Value="0,0,6,6" />
+                                <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                            </Style>
+                        </ListBox.ItemContainerStyle>
+                        <ListBox.ItemTemplate>
+                            <DataTemplate>
+                                <Grid Width="74" Height="34">
+                                    <Border BorderThickness="1"
+                                            BorderBrush="{DynamicResource ControlBorder}"
+                                            Background="{DynamicResource ComboDarkBackground}" />
+                                    <TextBlock Text="{Binding HeaderText}"
+                                               Foreground="{DynamicResource PrimaryText}"
+                                               FontSize="10"
+                                               FontWeight="Bold"
+                                               TextAlignment="Center"
+                                               VerticalAlignment="Center"
+                                               TextTrimming="CharacterEllipsis"
+                                               Margin="4,0" />
+                                    <TextBlock Text="{Binding OperatorText}"
+                                               Foreground="{DynamicResource AccentYellow}"
+                                               FontSize="14"
+                                               FontWeight="Black"
+                                               HorizontalAlignment="Right"
+                                               VerticalAlignment="Top"
+                                               Margin="0,-2,4,0" />
+                                </Grid>
+                            </DataTemplate>
+                        </ListBox.ItemTemplate>
+                    </ListBox>
+
+                    <Grid Visibility="{Binding HasSelectedUserCell, Converter={StaticResource BoolToVis}}">
+                        <StackPanel>
+                            <Grid Margin="0,0,0,8">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="58" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="8" />
+                                    <ColumnDefinition Width="58" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="POS" Style="{StaticResource LightFieldLabel}" />
+                                <ComboBox Grid.Column="1"
+                                          Style="{StaticResource LightComboBox}"
+                                          ItemsSource="{Binding PositionOptions}"
+                                          DisplayMemberPath="Label"
+                                          SelectedValuePath="Value"
+                                          SelectedValue="{Binding SelectedUserCell.Position, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                                <TextBlock Grid.Column="3"
+                                           Text="OPER"
+                                           Style="{StaticResource LightFieldLabel}" />
+                                <ComboBox Grid.Column="4"
+                                          Style="{StaticResource LightComboBox}"
+                                          ItemsSource="{Binding OperatorOptions}"
+                                          DisplayMemberPath="Label"
+                                          SelectedValuePath="Value"
+                                          SelectedValue="{Binding SelectedUserCell.OperatorType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
+                            </Grid>
+                            <ItemsControl ItemsSource="{Binding SelectedUserCell.Channels}"
+                                          ItemTemplate="{StaticResource LightChannelTemplate}" />
+                        </StackPanel>
+                    </Grid>
+                </StackPanel>
+            </Grid>
+        </StackPanel>
+    </Border>
+</UserControl>

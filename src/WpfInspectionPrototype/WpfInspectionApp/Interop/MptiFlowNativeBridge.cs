@@ -56,6 +56,10 @@ public static class MptiFlowNativeBridge
     public static extern int MptiBridgeAddAlgo(int wndIndex, int algoType, int algoId);
 
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeSetAlgoLight(
+        int wndIndex, int algoIndex, ref MptiBridgeFlowLightParams parameters);
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int MptiBridgeSetAlgoParamsAlign(
         int wndIndex, int algoIndex, ref MptiBridgeFlowAlignParams parameters);
 
@@ -165,8 +169,16 @@ public struct MptiBridgeFlowAlignParams
     public int SearchMargin;
     public int MinBinary;
     public int MaxBinary;
+    public int TypeRange2D;
     public int UseInsp2D;
     public int InvertCheck;
+    public int UseInsp3D;
+    public double HeightRateMin;
+    public double HeightRateMax;
+    public double HeightAverage;
+    public int TypeRange3D;
+    public int UseIpc;
+    public int IpcClass;
     public int UseShift;
     public double MaxShiftX;
     public double MaxShiftY;
@@ -174,6 +186,25 @@ public struct MptiBridgeFlowAlignParams
     public double MaxAngle;
     public int SameSize;
     public int MinBlobArea;
+    public int FillHole;
+    public int InspOption;
+}
+
+[StructLayout(LayoutKind.Sequential, Pack = 8)]
+public struct MptiBridgeFlowLightParams
+{
+    public int LightType;
+    public int RedValue;
+    public int GreenValue;
+    public int BlueValue;
+    public int WhiteValue;
+    public int LightCnt;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public int[] ArrRedValue;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public int[] ArrGreenValue;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public int[] ArrBlueValue;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public int[] ArrWhiteValue;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public int[] ArrCalculation;
+    [MarshalAs(UnmanagedType.ByValArray, SizeConst = 10)] public int[] ArrLightPosition;
 }
 
 [StructLayout(LayoutKind.Sequential, Pack = 8)]

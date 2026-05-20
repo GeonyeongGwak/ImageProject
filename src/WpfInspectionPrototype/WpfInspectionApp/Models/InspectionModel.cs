@@ -8,7 +8,9 @@ public sealed class InspectionModel
     public string? SelectedWindowId { get; set; }
 
     public int Threshold2D { get; set; } = 128;
+    public int Threshold2DMax { get; set; } = 255;
     public int Threshold3D { get; set; } = 96;
+    public int Threshold3DMax { get; set; } = 120;
     public int EdgeGain { get; set; } = 42;
     public bool Use2D { get; set; } = true;
     public bool Use3D { get; set; } = true;
@@ -26,6 +28,10 @@ public sealed class InspectionModel
     public bool AlignSameSize { get; set; } = true;
     public RoiRect?[] AlignSearchRois { get; set; } = new RoiRect?[4];
 
+    public int AlignRange2DType { get; set; } = 2;
+    public int AlignRange3DType { get; set; } = 2;
+    public bool AlignInvertCheck { get; set; }
+    public double AlignHeightAverage { get; set; }
     public bool AlignShiftEnabled { get; set; } = true;
     public double AlignShiftX { get; set; } = 1.0;
     public double AlignShiftY { get; set; } = 1.0;
@@ -145,7 +151,7 @@ public sealed class InspectionAlgorithmData
         LegacyFlag = catalog.LegacyFlag;
         LegacyName = catalog.LegacyName;
         ParameterFamily = catalog.ParameterFamily;
-        Parameters ??= [];
+        Parameters = AlgorithmParameterStore.CloneCaseInsensitive(Parameters);
         PanelData ??= AlgorithmPanelSchema.Create(this);
         if (string.IsNullOrWhiteSpace(PanelData.AlgorithmType) || !string.Equals(PanelData.AlgorithmType, Type, StringComparison.OrdinalIgnoreCase))
         {

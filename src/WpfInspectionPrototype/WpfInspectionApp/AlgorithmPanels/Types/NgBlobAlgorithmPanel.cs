@@ -1,3 +1,5 @@
+using WpfInspectionApp.Models;
+
 namespace WpfInspectionApp.AlgorithmPanels.Types;
 
 public sealed class NgBlobAlgorithmPanel : DynamicAlgorithmPanel
@@ -21,7 +23,7 @@ public sealed class NgBlobAlgorithmPanel : DynamicAlgorithmPanel
     {
         if (Context != null && key.Contains("NGBlob", StringComparison.OrdinalIgnoreCase))
         {
-            Context.Algorithm.Parameters["NGBlob.Event.LastEditedParameter"] = key;
+            AlgorithmParameterStore.Set(Context.Algorithm.Parameters, "NGBlob.Event.LastEditedParameter", key);
         }
     }
 }

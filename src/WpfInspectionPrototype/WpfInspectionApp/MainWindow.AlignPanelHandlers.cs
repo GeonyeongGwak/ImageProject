@@ -1,16 +1,9 @@
-using System.Windows.Controls;
-
 namespace WpfInspectionApp;
 
 public partial class MainWindow
 {
-    private void AlignTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void AlignPanel_SearchTabSelectionChanged(object? sender, EventArgs e)
     {
-        if (sender != AlignPanel.AlignTabControl)
-        {
-            return;
-        }
-
         HandleUiChange(() =>
         {
             _viewModel.SetAlignSearchTabActive(AlignPanel.IsSearchTabActive);
@@ -32,19 +25,10 @@ public partial class MainWindow
         });
     }
 
-    private void SearchSizeBox_TextChanged(object? source)
+    private void SearchSizeBox_TextChanged()
     {
-        if (_syncingSearchSize)
-        {
-            return;
-        }
-
         HandleUiChange(() =>
         {
-            _syncingSearchSize = true;
-            AlignPanel.MirrorSearchSizeInput(source);
-            _syncingSearchSize = false;
-
             UpdateModelFromUi();
             ResizeActiveRoiFromSearchInputs();
         });

@@ -176,9 +176,6 @@ public static partial class AlgorithmReferenceUiCatalog
 
     private static void AddPadBw(AlgorithmReferenceUiProfile profile, string family)
     {
-        profile.Controls.Add(Combo("Pad BW", "Select Light", $"{family}.SelectLight", "0", ["Main", "Sub", "Free"]));
-        profile.Controls.Add(Command("Pad BW", "Add Light", $"{family}.AddLightRequested"));
-        profile.Controls.Add(Command("Pad BW", "Sub Light", $"{family}.SubLightRequested"));
         profile.Controls.Add(Check("Pad BW", "Use Histogram", $"{family}.UseHistogram", "false"));
         profile.Controls.Add(Number("Pad BW", "Calc Green", $"{family}.CalcGreen", "0"));
         profile.Controls.Add(Number("Pad BW", "Calc Yellow", $"{family}.CalcYellow", "0"));
@@ -333,7 +330,6 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Number("Pattern Diff Data", "BW Data Count", $"{family}.BWDataCount", "0"));
         profile.Controls.Add(Number("Pattern Diff Data", "Teach Area Count", $"{family}.TeachAreaCount", "0"));
         profile.Controls.Add(Number("Pattern Diff Data", "Histogram Count", $"{family}.HistogramCount", "0"));
-        profile.Controls.Add(Number("Pattern Diff Data", "Light Data Count", $"{family}.LightDataCount", "0"));
         profile.Controls.Add(Check("Pattern Diff Mask", "Use Mask Filter", $"{family}.UseMaskFilter", "false"));
         profile.Controls.Add(Number("Pattern Diff Mask", "Mask Filter Size", $"{family}.MaskFilterSize", "0"));
         profile.Controls.Add(Number("Pattern Diff Mask", "Mask BW Count", $"{family}.MaskBWDataCount", "0"));
@@ -363,8 +359,6 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Command("Color Histogram", "Histogram View", $"{family}.ColorHistogramViewRequested"));
         profile.Controls.Add(Command("Color Histogram", "Gray Save", $"{family}.GraySaveRequested"));
         profile.Controls.Add(Combo("Color Histogram", "Gray Value", $"{family}.GrayValue", "0", ["Average", "Min", "Max"]));
-        profile.Controls.Add(Combo("Color Light", "ROI Light", $"{family}.RoiLight", "0", ["Bottom", "Middle", "Top"]));
-        profile.Controls.Add(Check("Color Light", "Mid Light", $"{family}.MidLight", "false"));
     }
 
     private static void AddColorXy(AlgorithmReferenceUiProfile profile, string family)

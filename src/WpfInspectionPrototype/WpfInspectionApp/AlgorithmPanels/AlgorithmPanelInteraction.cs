@@ -30,7 +30,7 @@ public sealed class AlgorithmPanelInteraction
     public string Read(string key, string fallback)
     {
         var context = _getContext();
-        return context?.Algorithm.Parameters.TryGetValue(key, out var value) == true ? value : fallback;
+        return AlgorithmParameterStore.GetValue(context?.Algorithm.Parameters, key, fallback);
     }
 
     public int ReadIndex(string key, string fallback)

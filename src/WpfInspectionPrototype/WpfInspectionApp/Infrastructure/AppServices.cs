@@ -13,8 +13,9 @@ public sealed class AppServices
         ThresholdResult = new ThresholdResultService(InspectionResultText);
         ImageRuntimeState = new ImageRuntimeStateService(ImageFrame);
         ImageLoadWorkflow = new ImageLoadWorkflowService(ImageRuntimeState);
+        PttLightPreview = new PttLightPreviewService(ImageFrame);
         ThresholdPreviewWorkflow = new ThresholdPreviewWorkflowService(PreviewProcessing, ImageRuntimeState, ThresholdResult);
-        PttViewerWorkflow = new PttViewerWorkflowService(Pem3DViewerHost, PttLoad);
+        PttViewerWorkflow = new PttViewerWorkflowService(PttLoad);
         RoiInteraction = new RoiInteractionService(RoiGeometry);
         RoiUiState = new RoiUiStateService(RoiModel);
 
@@ -57,6 +58,8 @@ public sealed class AppServices
 
     public IImageLoadWorkflowService ImageLoadWorkflow { get; }
 
+    public IPttLightPreviewService PttLightPreview { get; }
+
     public IRoiGeometryService RoiGeometry { get; } = new RoiGeometryService();
 
     public IRoiModelService RoiModel { get; } = new RoiModelService();
@@ -65,12 +68,6 @@ public sealed class AppServices
 
     public IRoiUiStateService RoiUiState { get; }
 
-    // Pem3DViewerHostService (real) is disabled - the PEM3DControl OCX/COM init path
-    // is suspected of triggering FPU exception unmask / native D3D probes that crash
-    // WPF startup under VS native debugging. Re-enable by swapping back to
-    // `new Pem3DViewerHostService()` once the underlying fp issue is solved.
-    public IPem3DViewerHostService Pem3DViewerHost { get; } = new DisabledPem3DViewerHostService();
-
     public IPttLoadService PttLoad { get; } = new PttLoadService();
 
     public IPttViewerWorkflowService PttViewerWorkflow { get; }
@@ -78,6 +75,10 @@ public sealed class AppServices
     public IAlignPartTeachingService AlignPartTeaching { get; } = new AlignPartTeachingService();
 
     public IAlignConditionService AlignCondition { get; } = new AlignConditionService();
+
+    public IAlignFlowRequestFactory AlignFlowRequestFactory { get; } = new AlignFlowRequestFactory();
+
+    public IAlgorithmLightService AlgorithmLight { get; } = new AlgorithmLightService();
 
     public IInspectionResultTextService InspectionResultText { get; } = new InspectionResultTextService();
 

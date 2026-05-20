@@ -49,11 +49,6 @@ public static partial class AlgorithmReferenceUiCatalog
         profile.Controls.Add(Check("Common", "Enable", "Common.bAlgoEnable", "true"));
         profile.Controls.Add(Check("Common", "Required", "Common.IsRequired", "false"));
         profile.Controls.Add(Check("Common", "Algorithm Group", "Common.bAlgoGroup", "false"));
-        profile.Controls.Add(Combo("Common", "Light Type", "Common.LightTypeNum", "0", ["None", "Red", "Green", "Blue", "White", "Free"]));
-        profile.Controls.Add(Number("Common", "Red Light", "Common.RedValue", "0"));
-        profile.Controls.Add(Number("Common", "Green Light", "Common.GreenValue", "0"));
-        profile.Controls.Add(Number("Common", "Blue Light", "Common.BlueValue", "0"));
-        profile.Controls.Add(Number("Common", "White Light", "Common.WhiteValue", "0"));
         profile.Controls.Add(Number("Common", "Manual Defect Code", "Common.ManualDefectCode", "0"));
         profile.Controls.Add(Number("Common", "Manual Sub Defect Code", "Common.ManualSubDefectCode", "0"));
     }

@@ -78,9 +78,6 @@ public sealed class AlignEdgeAlgorithmPanel : DynamicAlgorithmPanel
 
     private static void WriteDefault(AlgorithmPanelContext context, string key, string value)
     {
-        if (!context.Algorithm.Parameters.ContainsKey(key))
-        {
-            context.Algorithm.Parameters[key] = value;
-        }
+        AlgorithmParameterStore.SetDefault(context.Algorithm.Parameters, key, value);
     }
 }

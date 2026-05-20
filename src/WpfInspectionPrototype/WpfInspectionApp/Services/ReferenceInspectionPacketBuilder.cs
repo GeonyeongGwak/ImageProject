@@ -109,6 +109,7 @@ public static class ReferenceInspectionPacketBuilder
         };
 
         CopyLegacyFields(referenceAlgorithm, algorithm);
+        CopyCommonLightFields(referenceAlgorithm, algorithm);
         PromoteImportantFields(referenceAlgorithm, referenceName);
         return referenceAlgorithm;
     }
@@ -144,6 +145,29 @@ public static class ReferenceInspectionPacketBuilder
             else
             {
                 referenceAlgorithm.ScalarFields[key] = pair.Value;
+            }
+        }
+    }
+
+    private static void CopyCommonLightFields(ReferenceAlgorithmPacket referenceAlgorithm, AlgorithmRuntimePacket algorithm)
+    {
+        foreach (var key in CommonLightFieldKeys)
+        {
+            if (!AlgorithmParameterStore.TryGetValue(algorithm.Parameters, key, out var value))
+            {
+                continue;
+            }
+
+            var referenceKey = key.Substring("Common.".Length);
+            referenceAlgorithm.RawFields[referenceKey] = value;
+            var values = ParseNumberArray(value);
+            if (values.Length > 1)
+            {
+                referenceAlgorithm.NumericArrays[referenceKey] = values;
+            }
+            else
+            {
+                referenceAlgorithm.ScalarFields[referenceKey] = value;
             }
         }
     }
@@ -202,13 +226,14 @@ public static class ReferenceInspectionPacketBuilder
 
     private static double[] ParseNumberArray(string value)
     {
-        if (string.IsNullOrWhiteSpace(value) || !value.Contains(','))
+        if (string.IsNullOrWhiteSpace(value)
+            || (!value.Contains(',') && !value.Contains('|') && !value.Contains(';')))
         {
             return [];
         }
 
         var numbers = new List<double>();
-        foreach (var token in value.Split(','))
+        foreach (var token in value.Split(new[] { ',', '|', ';' }, StringSplitOptions.RemoveEmptyEntries))
         {
             if (!double.TryParse(token.Trim(), NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
             {
@@ -220,6 +245,22 @@ public static class ReferenceInspectionPacketBuilder
 
         return numbers.ToArray();
     }
+
+    private static readonly string[] CommonLightFieldKeys =
+    [
+        "Common.LightTypeNum",
+        "Common.RedValue",
+        "Common.GreenValue",
+        "Common.BlueValue",
+        "Common.WhiteValue",
+        "Common.LightCnt",
+        "Common.ArrRedValueString",
+        "Common.ArrGreenValueString",
+        "Common.ArrBlueValueString",
+        "Common.ArrWhiteValueString",
+        "Common.ArrCalculationString",
+        "Common.ArrLightPositionString"
+    ];
 
     private static bool IsImporterMetadata(string key)
     {

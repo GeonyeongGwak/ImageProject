@@ -49,7 +49,7 @@ internal static class AlignBridgeAdapter
 
         var threshold = ReadInt(parameters, "Align.Threshold", model.Threshold2D);
         var minBinary = ReadInt(parameters, "Align.BinaryMin", threshold);
-        var maxBinary = ReadInt(parameters, "Align.BinaryMax", 255);
+        var maxBinary = ReadInt(parameters, "Align.BinaryMax", model.Threshold2DMax);
 
         return new MptiBridgeAlignParams
         {
@@ -59,17 +59,17 @@ internal static class AlignBridgeAdapter
             SearchSizeW = searchSizeW,
             SearchSizeH = searchSizeH,
             SearchMargin = Math.Max(0, ReadInt(parameters, "Align.SearchMargin", model.AlignSearchMargin)),
-            MinBinary = Net48Compat.Clamp(minBinary, 0, 255),
-            MaxBinary = Net48Compat.Clamp(maxBinary, 0, 255),
-            UseInsp2D = ReadBool(parameters, "Align.Use2D", true) ? 1 : 0,
-            InvertCheck = ReadBool(parameters, "Align.InvertCheck", false) ? 1 : 0,
+            MinBinary = Net48Compat.Clamp(Math.Min(minBinary, maxBinary), 0, 255),
+            MaxBinary = Net48Compat.Clamp(Math.Max(minBinary, maxBinary), 0, 255),
+            UseInsp2D = ReadBool(parameters, "Align.Use2D", model.Use2D) ? 1 : 0,
+            InvertCheck = ReadBool(parameters, "Align.InvertCheck", model.AlignInvertCheck) ? 1 : 0,
             UseShift = ReadBool(parameters, "Align.UseShift", model.AlignShiftEnabled) ? 1 : 0,
             MaxShiftX = ReadDouble(parameters, "Align.ShiftX", model.AlignShiftX),
             MaxShiftY = ReadDouble(parameters, "Align.ShiftY", model.AlignShiftY),
             UseAngle = ReadBool(parameters, "Align.UseAngle", model.AlignAngleEnabled) ? 1 : 0,
             MaxAngle = ReadDouble(parameters, "Align.Angle", model.AlignAngle),
             SameSize = sameSize ? 1 : 0,
-            MinBlobArea = Math.Max(1, ReadInt(parameters, "Align.MinBlobArea", 5))
+            MinBlobArea = Math.Max(1, ReadInt(parameters, "Align.MinBlobArea", model.AlignFilter))
         };
     }
 
@@ -93,13 +93,13 @@ internal static class AlignBridgeAdapter
 
     private static int ReadInt(Dictionary<string, string> parameters, string key, int fallback)
     {
-        if (parameters.TryGetValue(key, out var raw)
+        if (AlgorithmParameterStore.TryGetValue(parameters, key, out var raw)
             && int.TryParse(raw, System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
         {
             return parsed;
         }
 
-        if (parameters.TryGetValue(key, out raw)
+        if (AlgorithmParameterStore.TryGetValue(parameters, key, out raw)
             && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var number))
         {
             return (int)Math.Round(number, MidpointRounding.AwayFromZero);
@@ -163,8 +163,8 @@ internal static class AlignBridgeAdapter
     {
         x = 0;
         y = 0;
-        if (!parameters.TryGetValue($"Align.SearchPoint{index}.X", out var rawX)
-            || !parameters.TryGetValue($"Align.SearchPoint{index}.Y", out var rawY))
+        if (!AlgorithmParameterStore.TryGetValue(parameters, $"Align.SearchPoint{index}.X", out var rawX)
+            || !AlgorithmParameterStore.TryGetValue(parameters, $"Align.SearchPoint{index}.Y", out var rawY))
         {
             return false;
         }
@@ -176,7 +176,7 @@ internal static class AlignBridgeAdapter
 
     private static bool ReadBool(Dictionary<string, string> parameters, string key, bool fallback)
     {
-        if (!parameters.TryGetValue(key, out var raw))
+        if (!AlgorithmParameterStore.TryGetValue(parameters, key, out var raw))
         {
             return fallback;
         }
@@ -211,7 +211,7 @@ internal static class AlignBridgeAdapter
 
     private static float ReadFloat(Dictionary<string, string> parameters, string key, float fallback)
     {
-        if (parameters.TryGetValue(key, out var raw) && float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        if (AlgorithmParameterStore.TryGetValue(parameters, key, out var raw) && float.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
         {
             return parsed;
         }
@@ -220,7 +220,7 @@ internal static class AlignBridgeAdapter
 
     private static double ReadDouble(Dictionary<string, string> parameters, string key, double fallback)
     {
-        if (parameters.TryGetValue(key, out var raw) && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
+        if (AlgorithmParameterStore.TryGetValue(parameters, key, out var raw) && double.TryParse(raw, System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out var parsed))
         {
             return parsed;
         }

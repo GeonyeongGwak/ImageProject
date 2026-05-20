@@ -36,14 +36,6 @@ public partial class MainWindow
         SetThemeBrush(SystemColors.HighlightBrushKey, palette.SelectionBackground);
         SetThemeBrush(SystemColors.HighlightTextBrushKey, palette.SelectionText);
 
-        if (_pttViewerPanel != null)
-        {
-            // WinForms hosted control — DynamicResource 가 안 통하므로 매번 수동 갱신 필요.
-            _pttViewerPanel.BackColor = System.Drawing.Color.FromArgb(
-                palette.SurfaceBackground.R,
-                palette.SurfaceBackground.G,
-                palette.SurfaceBackground.B);
-        }
 
         // 플로팅 카메라 창들은 SetResourceReference(WindowBackground) 로 DynamicResource
         // binding 이 걸려있어 ApplyBrush 가 Application.Resources["WindowBackground"] 를

@@ -34,7 +34,10 @@ public sealed class AlgorithmPanelFactory
         {
             if (Activator.CreateInstance(panelType) is IAlgorithmPanel panel)
             {
-                Register(panel);
+                if (!_panels.ContainsKey(panel.AlgorithmType))
+                {
+                    Register(panel);
+                }
             }
         }
     }

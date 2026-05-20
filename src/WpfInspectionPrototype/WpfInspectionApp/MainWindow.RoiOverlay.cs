@@ -37,9 +37,7 @@ public partial class MainWindow
         AlignPanel.SetActiveRoiText(state.ActiveRoiText);
         if (state.SearchSizeRoi.HasValue)
         {
-            _syncingSearchSize = true;
             AlignPanel.SetSearchSize(state.SearchSizeRoi.Value.Width, state.SearchSizeRoi.Value.Height);
-            _syncingSearchSize = false;
         }
 
         AlignPanel.SetRoiText(state.RoiText);

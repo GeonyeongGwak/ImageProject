@@ -31,24 +31,6 @@
     <Using Remove="System.Windows.Forms" />
     <PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="8.0.0" />
     <PackageReference Include="System.Text.Json" Version="8.0.5" />
-    <Reference Include="PEM3DControlWrapper">
-      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControlWrapper.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
-    <Reference Include="PEM3DControl.Interfaces">
-      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.Interfaces.dll</HintPath>
-      <Private>true</Private>
-    </Reference>
-    <Reference Include="Interop.PEM3DControlLib">
-      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Interop.PEM3DControlLib.dll</HintPath>
-      <Private>true</Private>
-      <EmbedInteropTypes>false</EmbedInteropTypes>
-    </Reference>
-    <Reference Include="AxInterop.PEM3DControlLib">
-      <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\AxInterop.PEM3DControlLib.dll</HintPath>
-      <Private>true</Private>
-      <EmbedInteropTypes>false</EmbedInteropTypes>
-    </Reference>
     <Reference Include="Ionic.Zip">
       <HintPath>D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Ionic.Zip.dll</HintPath>
       <Private>true</Private>
@@ -73,15 +55,16 @@
       <NativePrototypeDll Include="..\bin\$(Configuration)\x64\BridgeLayer.pdb" Condition="Exists('..\bin\$(Configuration)\x64\BridgeLayer.pdb')" />
       <NativePrototypeDll Include="..\bin\$(Configuration)\x64\InspectionCore.pdb" Condition="Exists('..\bin\$(Configuration)\x64\InspectionCore.pdb')" />
       <!-- PEM3DControl.ocx / Native.PEM3DControlWrapper.manifest copy disabled:
-           these are the COM activation pieces - if not in the output dir, the OCX
-           cannot be instantiated even if some code path tried to. The .NET wrapper
-           DLLs stay so Pem3DViewerHostService.cs still compiles, but the disabled
-           service never touches them at runtime. -->
+           PTT is loaded internally through MPTI for 2D/light preview, not through
+           the PEM3D Viewer control. -->
       <!--
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl.ocx')" />
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest" Condition="Exists('D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Native.PEM3DControlWrapper.manifest')" />
       -->
       <NativePrototypeDll Include="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.dll" Exclude="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\*.resources.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PInspAlgo*.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ippi.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ipps.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ippcc.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\ippcv.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Microsoft.Bcl.AsyncInterfaces.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Buffers.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Memory.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Numerics.Vectors.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Runtime.CompilerServices.Unsafe.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Text.Encodings.Web.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Text.Json.dll;D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\System.Threading.Tasks.Extensions.dll" />
+      <NativePrototypeDll Remove="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\PEM3DControl*.dll" />
+      <NativePrototypeDll Remove="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\Interop.PEM3DControlLib.dll" />
+      <NativePrototypeDll Remove="D:\Work\GGY\pemtoFrameworkAll_R_4.0.0.7\bin\x64\Release\AxInterop.PEM3DControlLib.dll" />
       <NativePrototypeDll Include="..\MptiBridge\NativeSources\PInspAlgo\Release\PInspAlgo.dll" Condition="Exists('..\MptiBridge\NativeSources\PInspAlgo\Release\PInspAlgo.dll')" />
       <NativePrototypeDll Include="..\MptiBridge\NativeSources\PInspAlgo\Release\PemHL.dll" Condition="Exists('..\MptiBridge\NativeSources\PInspAlgo\Release\PemHL.dll')" />
       <NativePrototypeDll Include="..\MptiBridge\NativeSources\jpeg_Dll\JPGIPPLibrary.dll" Condition="Exists('..\MptiBridge\NativeSources\jpeg_Dll\JPGIPPLibrary.dll')" />

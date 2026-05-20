@@ -22,8 +22,16 @@ struct MptiBridgeFlowAlignParams
     int     searchMargin;
     int     minBinary;          // 0-255
     int     maxBinary;          // 0-255
+    int     typeRange2D;        // m_nTypeRange2D
     int     useInsp2D;          // 0/1
     int     invertCheck;        // 0/1
+    int     useInsp3D;          // 0/1
+    double  heightRateMin;
+    double  heightRateMax;
+    double  heightAverage;
+    int     typeRange3D;        // m_nTypeRange3D
+    int     useIpc;             // 0/1
+    int     ipcClass;           // 0=Class1, 1=Class2, 2=Class3
     int     useShift;           // 0/1
     double  maxShiftX;
     double  maxShiftY;
@@ -31,6 +39,27 @@ struct MptiBridgeFlowAlignParams
     double  maxAngle;
     int     sameSize;           // 0/1
     int     minBlobArea;
+    int     fillHole;           // 0/1
+    int     inspOption;         // m_byInspOPT bitmask
+};
+
+// Mirrors the common InspAlgo light envelope. Normal light modes use the scalar
+// channel values; User_Light additionally consumes the first lightCnt entries of the
+// array fields.
+struct MptiBridgeFlowLightParams
+{
+    int     lightType;          // InspLightType (Top_Light..ThreeD)
+    int     redValue;
+    int     greenValue;
+    int     blueValue;
+    int     whiteValue;
+    int     lightCnt;           // 0..10
+    int     arrRedValue[10];
+    int     arrGreenValue[10];
+    int     arrBlueValue[10];
+    int     arrWhiteValue[10];
+    int     arrCalculation[10]; // 0=none, 1=add, 2=sub
+    int     arrLightPosition[10]; // Top/Middle/Bottom for user light cells
 };
 
 // Mirrors PInsp_Algo/Blob/InspParamDef_Blob.h stAlgoBlob (subset).
@@ -376,6 +405,10 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeAddWindow(
 // Adds an algorithm to a window. algoType is eAlgo* (eAlgoAlign etc).
 // Returns the algorithm index within the window (>= 0) or negative on error.
 MPTI_BRIDGE_FLOW_API int MptiBridgeAddAlgo(int wndIndex, int algoType, int algoId);
+
+// Fills the common InspAlgo light envelope of an existing (window, algorithm) entry.
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoLight(
+    int wndIndex, int algoIndex, const MptiBridgeFlowLightParams* params);
 
 // Fills the AlgoAlign param of an existing (window, algorithm) Align entry.
 MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(

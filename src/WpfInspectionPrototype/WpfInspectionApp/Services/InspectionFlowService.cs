@@ -11,6 +11,8 @@ namespace WpfInspectionApp.Services;
 // AddAlgo -> SetAlgoParamsAlign -> CommitInspParam -> InspProc -> ResultAlign.
 public sealed class InspectionFlowService : IInspectionFlowService
 {
+    private const int LightArrayLength = 10;
+
     public Task<AlignFlowResult> RunAlignAsync(AlignFlowRequest request)
     {
         // The native bridge isn't thread-safe (single global g_pMPTI / g_pInspMng state);
@@ -63,40 +65,55 @@ public sealed class InspectionFlowService : IInspectionFlowService
             MptiFlowNativeBridge.MptiBridgeSetRawDataFovInfo(
                 request.PttPath, null, 0, 0, 0, 0, 0, out _, sb, sb.Capacity);
 
-            // Build the part + one centered Align window with 4 quadrant search points.
+            // Build the part + Align window/search points from the current model.
+            // When the model has no ROI yet, fall back to the old centered/quadrant
+            // harness defaults so smoke testing still works from a bare PTT.
             MptiFlowNativeBridge.MptiBridgeBeginPart(
                 partW / 2.0, partH / 2.0, partW, partH, 0.0, partW, partH);
 
-            int wndW = ClampWindow(request.WindowWidth, partW);
-            int wndH = ClampWindow(request.WindowHeight, partH);
+            var window = ResolveWindow(request, partW, partH);
             int wndIdx = MptiFlowNativeBridge.MptiBridgeAddWindow(
-                MptiFlowNativeBridge.EINSP_ALIGN, partW / 2.0, partH / 2.0, wndW, wndH, 0, 0);
+                MptiFlowNativeBridge.EINSP_ALIGN, window.CenterX, window.CenterY, window.Width, window.Height, 0, 0);
             if (wndIdx < 0) return Failure($"AddWindow failed: {wndIdx}");
 
             int algoIdx = MptiFlowNativeBridge.MptiBridgeAddAlgo(
                 wndIdx, MptiFlowNativeBridge.EALGO_ALIGN, 1);
             if (algoIdx < 0) return Failure($"AddAlgo failed: {algoIdx}");
 
-            int qx = partW / 4, qy = partH / 4;
+            var lightParams = CreateLightParams(request);
+            int salRet = MptiFlowNativeBridge.MptiBridgeSetAlgoLight(wndIdx, algoIdx, ref lightParams);
+            if (salRet != 0) return Failure($"SetAlgoLight failed: {salRet}");
+
+            var search = ResolveSearch(request, partW, partH);
             var alignParams = new MptiBridgeFlowAlignParams
             {
-                SearchNum = 4,
-                SearchPointsX = new[] { qx, partW - qx, qx, partW - qx },
-                SearchPointsY = new[] { qy, qy, partH - qy, partH - qy },
-                SearchSizeW = new[] { request.SearchSizeW, request.SearchSizeW, request.SearchSizeW, request.SearchSizeW },
-                SearchSizeH = new[] { request.SearchSizeH, request.SearchSizeH, request.SearchSizeH, request.SearchSizeH },
-                SearchMargin = 10,
-                MinBinary = request.MinBinary,
-                MaxBinary = request.MaxBinary,
-                UseInsp2D = 1,
-                InvertCheck = 0,
-                UseShift = 1,
+                SearchNum = search.Count,
+                SearchPointsX = search.X,
+                SearchPointsY = search.Y,
+                SearchSizeW = search.W,
+                SearchSizeH = search.H,
+                SearchMargin = Math.Max(0, request.SearchMargin),
+                MinBinary = ClampInt(Math.Min(request.MinBinary, request.MaxBinary), 0, 255),
+                MaxBinary = ClampInt(Math.Max(request.MinBinary, request.MaxBinary), 0, 255),
+                TypeRange2D = ClampInt(request.TypeRange2D, 0, 3),
+                UseInsp2D = request.UseInsp2D ? 1 : 0,
+                InvertCheck = request.InvertCheck ? 1 : 0,
+                UseInsp3D = request.UseInsp3D ? 1 : 0,
+                HeightRateMin = Math.Min(request.HeightRateMin, request.HeightRateMax),
+                HeightRateMax = Math.Max(request.HeightRateMin, request.HeightRateMax),
+                HeightAverage = request.HeightAverage,
+                TypeRange3D = ClampInt(request.TypeRange3D, 0, 3),
+                UseIpc = request.UseIpc ? 1 : 0,
+                IpcClass = ClampInt(request.IpcClass, 0, 2),
+                UseShift = request.UseShift ? 1 : 0,
                 MaxShiftX = request.MaxShiftX,
                 MaxShiftY = request.MaxShiftY,
-                UseAngle = 1,
+                UseAngle = request.UseAngle ? 1 : 0,
                 MaxAngle = request.MaxAngle,
-                SameSize = 1,
+                SameSize = request.SameSize ? 1 : 0,
                 MinBlobArea = request.MinBlobArea,
+                FillHole = request.FillHole ? 1 : 0,
+                InspOption = request.InspOption,
             };
             int sapRet = MptiFlowNativeBridge.MptiBridgeSetAlgoParamsAlign(wndIdx, algoIdx, ref alignParams);
             if (sapRet != 0) return Failure($"SetAlgoParamsAlign failed: {sapRet}");
@@ -152,6 +169,110 @@ public sealed class InspectionFlowService : IInspectionFlowService
     {
         if (value <= 0) return Math.Max(64, partExtent / 3);
         return Math.Min(value, partExtent);
+    }
+
+    private static (double CenterX, double CenterY, int Width, int Height) ResolveWindow(
+        AlignFlowRequest request,
+        int partW,
+        int partH)
+    {
+        var width = ClampWindow(request.WindowWidth, partW);
+        var height = ClampWindow(request.WindowHeight, partH);
+        var centerX = request.WindowCenterX > 0 ? request.WindowCenterX : partW / 2.0;
+        var centerY = request.WindowCenterY > 0 ? request.WindowCenterY : partH / 2.0;
+
+        centerX = ClampDouble(centerX, width / 2.0, partW - width / 2.0);
+        centerY = ClampDouble(centerY, height / 2.0, partH - height / 2.0);
+        return (centerX, centerY, width, height);
+    }
+
+    private static (int Count, int[] X, int[] Y, int[] W, int[] H) ResolveSearch(
+        AlignFlowRequest request,
+        int partW,
+        int partH)
+    {
+        var count = request.SearchNum > 0 ? ClampInt(request.SearchNum, 1, 4) : 4;
+        var x = new int[4];
+        var y = new int[4];
+        var w = new int[4];
+        var h = new int[4];
+        var qx = partW / 4;
+        var qy = partH / 4;
+        var fallbackX = new[] { qx, partW - qx, qx, partW - qx };
+        var fallbackY = new[] { qy, qy, partH - qy, partH - qy };
+
+        for (var i = 0; i < 4; i++)
+        {
+            var px = ReadPositive(request.SearchPointsX, i, fallbackX[i]);
+            var py = ReadPositive(request.SearchPointsY, i, fallbackY[i]);
+            x[i] = ClampInt(px, 0, Math.Max(0, partW - 1));
+            y[i] = ClampInt(py, 0, Math.Max(0, partH - 1));
+            w[i] = Math.Max(1, ReadPositive(request.SearchSizeWidths, i, request.SearchSizeW));
+            h[i] = Math.Max(1, ReadPositive(request.SearchSizeHeights, i, request.SearchSizeH));
+        }
+
+        return (count, x, y, w, h);
+    }
+
+    private static MptiBridgeFlowLightParams CreateLightParams(AlignFlowRequest request)
+    {
+        return new MptiBridgeFlowLightParams
+        {
+            LightType = ClampInt(request.LightType, AlgorithmLightService.TopLight, AlgorithmLightService.ThreeDLight),
+            RedValue = ClampInt(request.RedValue, 0, 200),
+            GreenValue = ClampInt(request.GreenValue, 0, 200),
+            BlueValue = ClampInt(request.BlueValue, 0, 200),
+            WhiteValue = ClampInt(request.WhiteValue, 0, 200),
+            LightCnt = ClampInt(request.LightCnt, 0, LightArrayLength),
+            ArrRedValue = CreateLightArray(request.ArrRedValue, 0, 200),
+            ArrGreenValue = CreateLightArray(request.ArrGreenValue, 0, 200),
+            ArrBlueValue = CreateLightArray(request.ArrBlueValue, 0, 200),
+            ArrWhiteValue = CreateLightArray(request.ArrWhiteValue, 0, 200),
+            ArrCalculation = CreateLightArray(request.ArrCalculation, 0, 2),
+            ArrLightPosition = CreateLightArray(request.ArrLightPosition, AlgorithmLightService.TopLight, AlgorithmLightService.BottomLight)
+        };
+    }
+
+    private static int[] CreateLightArray(int[]? source, int min, int max)
+    {
+        var values = new int[LightArrayLength];
+        if (source == null)
+        {
+            return values;
+        }
+
+        var count = Math.Min(values.Length, source.Length);
+        for (var index = 0; index < count; index++)
+        {
+            values[index] = ClampInt(source[index], min, max);
+        }
+
+        return values;
+    }
+
+    private static int ReadPositive(int[]? values, int index, int fallback)
+    {
+        if (values == null || index < 0 || index >= values.Length || values[index] <= 0)
+        {
+            return fallback;
+        }
+
+        return values[index];
+    }
+
+    private static int ClampInt(int value, int min, int max)
+    {
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
+    }
+
+    private static double ClampDouble(double value, double min, double max)
+    {
+        if (max < min) return value;
+        if (value < min) return min;
+        if (value > max) return max;
+        return value;
     }
 
     private static AlignFlowResult Failure(string message) => new(

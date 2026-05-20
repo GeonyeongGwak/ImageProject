@@ -32,7 +32,7 @@ internal static class Program
         out int resultNumber, StringBuilder message, int messageLength);
 
     // --- new flow API ---
-    [StructLayout(LayoutKind.Sequential)]
+    [StructLayout(LayoutKind.Sequential, Pack = 8)]
     private struct FlowAlignParams
     {
         public int SearchNum;
@@ -43,8 +43,16 @@ internal static class Program
         public int SearchMargin;
         public int MinBinary;
         public int MaxBinary;
+        public int TypeRange2D;
         public int UseInsp2D;
         public int InvertCheck;
+        public int UseInsp3D;
+        public double HeightRateMin;
+        public double HeightRateMax;
+        public double HeightAverage;
+        public int TypeRange3D;
+        public int UseIpc;
+        public int IpcClass;
         public int UseShift;
         public double MaxShiftX;
         public double MaxShiftY;
@@ -52,6 +60,8 @@ internal static class Program
         public double MaxAngle;
         public int SameSize;
         public int MinBlobArea;
+        public int FillHole;
+        public int InspOption;
     }
 
     [StructLayout(LayoutKind.Sequential)]
@@ -190,8 +200,15 @@ internal static class Program
                 SearchMargin = 10,
                 MinBinary = 100,
                 MaxBinary = 255,
+                TypeRange2D = 2,
                 UseInsp2D = 1,
                 InvertCheck = 0,
+                UseInsp3D = 0,
+                HeightRateMin = 0,
+                HeightRateMax = 120,
+                TypeRange3D = 2,
+                UseIpc = 0,
+                IpcClass = 1,
                 UseShift = 1,
                 MaxShiftX = 20,
                 MaxShiftY = 20,
@@ -199,6 +216,8 @@ internal static class Program
                 MaxAngle = 5,
                 SameSize = 1,
                 MinBlobArea = 10,
+                FillHole = 0,
+                InspOption = 0,
             };
             return $"ret={MptiBridgeSetAlgoParamsAlign(wndIdx, algoIdx, ref p)}";
         });

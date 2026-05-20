@@ -18,6 +18,8 @@ public interface IImageRuntimeStateService
 
     LoadedImageFrame LoadImage(string path);
 
+    void SetSourceFrame(LoadedImageFrame frame);
+
     WriteableBitmap UpdateBinaryBitmap(byte[] pixels, int width, int height, int stride);
 
     PartRuntimeImage? CreatePartRuntimeImage(int threshold2D);

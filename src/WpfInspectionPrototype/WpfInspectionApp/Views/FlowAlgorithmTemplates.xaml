@@ -41,8 +41,8 @@
             <TextBlock Grid.Row="0" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MaxBinary" />
             <TextBox   Grid.Row="0" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MaxBinary, UpdateSourceTrigger=PropertyChanged}" />
 
-            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="SearchSize" />
-            <TextBox   Grid.Row="1" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding SearchSize, UpdateSourceTrigger=PropertyChanged}" />
+            <TextBlock Grid.Row="1" Grid.Column="0" Style="{StaticResource ParamLabel}" Text="SearchSizeX" />
+            <TextBox   Grid.Row="1" Grid.Column="1" Style="{StaticResource ParamInput}" Text="{Binding SearchSizeX, UpdateSourceTrigger=PropertyChanged}" />
             <TextBlock Grid.Row="1" Grid.Column="2" Style="{StaticResource ParamLabel}" Text="MinBlobArea" />
             <TextBox   Grid.Row="1" Grid.Column="3" Style="{StaticResource ParamInput}" Text="{Binding MinBlobArea, UpdateSourceTrigger=PropertyChanged}" />
 

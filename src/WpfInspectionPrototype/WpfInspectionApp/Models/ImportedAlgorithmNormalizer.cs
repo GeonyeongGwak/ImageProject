@@ -26,7 +26,7 @@ public static class ImportedAlgorithmNormalizer
     public static void NormalizeAlgorithm(InspectionAlgorithmData algorithm, int index)
     {
         algorithm.Id = string.IsNullOrWhiteSpace(algorithm.Id) ? InspectionAlgorithmData.CreateId() : algorithm.Id;
-        algorithm.Parameters ??= [];
+        algorithm.Parameters = AlgorithmParameterStore.CloneCaseInsensitive(algorithm.Parameters);
         algorithm.Type = ResolveType(algorithm);
         algorithm.ApplyCatalogDefaults();
 
@@ -38,8 +38,8 @@ public static class ImportedAlgorithmNormalizer
         SeedReferenceUiDefaults(algorithm);
         algorithm.Result ??= new InspectionResultData { Message = "Imported and normalized" };
         algorithm.PanelData = AlgorithmPanelSchema.Create(algorithm);
-        algorithm.Parameters["Import.NormalizedType"] = algorithm.Type;
-        algorithm.Parameters["Import.ReferenceUi"] = AlgorithmReferenceUiCatalog.Create(AlgorithmCatalog.Find(algorithm.Type)).SourceControl;
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Import.NormalizedType", algorithm.Type);
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Import.ReferenceUi", AlgorithmReferenceUiCatalog.Create(AlgorithmCatalog.Find(algorithm.Type)).SourceControl);
     }
 
     private static string ResolveType(InspectionAlgorithmData algorithm)
@@ -84,7 +84,7 @@ public static class ImportedAlgorithmNormalizer
             "Name"
         })
         {
-            if (algorithm.Parameters.TryGetValue(key, out var value))
+            if (AlgorithmParameterStore.TryGetValue(algorithm.Parameters, key, out var value))
             {
                 yield return value;
             }
@@ -110,14 +110,23 @@ public static class ImportedAlgorithmNormalizer
                 continue;
             }
 
-            if (!algorithm.Parameters.ContainsKey(control.Key))
-            {
-                algorithm.Parameters[control.Key] = control.DefaultValue;
-            }
+            AlgorithmParameterStore.SetDefault(algorithm.Parameters, control.Key, control.DefaultValue);
         }
 
-        AddDefault(algorithm.Parameters, "Common.bAlgoEnable", "true");
-        AddDefault(algorithm.Parameters, "ROI.UseAlgorithmRoi", algorithm.AlgorithmRoi.HasValue ? "true" : "false");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.bAlgoEnable", "true");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.LightTypeNum", "0");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.RedValue", "100");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.GreenValue", "0");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.BlueValue", "0");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.WhiteValue", "0");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.LightCnt", "0");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.ArrRedValueString", "");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.ArrGreenValueString", "");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.ArrBlueValueString", "");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.ArrWhiteValueString", "");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.ArrCalculationString", "");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.ArrLightPositionString", "");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "ROI.UseAlgorithmRoi", algorithm.AlgorithmRoi.HasValue ? "true" : "false");
     }
 
     private static Dictionary<string, string> BuildAliasMap()
@@ -175,14 +184,6 @@ public static class ImportedAlgorithmNormalizer
         if (!string.IsNullOrWhiteSpace(key))
         {
             aliases[NormalizeKey(key)] = value;
-        }
-    }
-
-    private static void AddDefault(Dictionary<string, string> parameters, string key, string value)
-    {
-        if (!parameters.ContainsKey(key))
-        {
-            parameters[key] = value;
         }
     }
 

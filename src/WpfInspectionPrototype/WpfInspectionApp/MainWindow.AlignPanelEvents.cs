@@ -65,7 +65,7 @@ public partial class MainWindow
                 SearchNumCombo_SelectionChanged();
                 break;
             case AlignPanelUpdateKind.SearchSize:
-                SearchSizeBox_TextChanged(e.Source);
+                SearchSizeBox_TextChanged();
                 break;
             default:
                 HandleAlignPanelUpdate(e.Kind.ToEffect());

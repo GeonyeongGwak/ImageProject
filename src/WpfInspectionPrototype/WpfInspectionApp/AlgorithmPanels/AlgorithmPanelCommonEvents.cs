@@ -13,8 +13,8 @@ public static class AlgorithmPanelCommonEvents
 
         var stamp = Now();
         StampClick(context, "Common.DrawAlgorithmRoi", stamp);
-        context.Algorithm.Parameters["ROI.DrawTarget"] = "Algorithm";
-        context.Algorithm.Parameters["ROI.DrawRequestedAt"] = stamp;
+        Set(context, "ROI.DrawTarget", "Algorithm");
+        Set(context, "ROI.DrawRequestedAt", stamp);
         CommitTeachingChange(context, "ROI", "DrawAlgorithmRoi", "Algorithm ROI drawing requested", stamp);
         context.RequestAlgorithmRoiDrawing();
     }
@@ -26,9 +26,9 @@ public static class AlgorithmPanelCommonEvents
             return;
         }
 
-        context.Algorithm.Parameters[key] = value;
+        Set(context, key, value);
         var stamp = Now();
-        context.Algorithm.Parameters[$"Event.{key}.ChangedAt"] = stamp;
+        Set(context, $"Event.{key}.ChangedAt", stamp);
         context.SetParameter(key, value);
         CommitTeachingChange(context, key, "ParameterChanged", value, stamp);
     }
@@ -41,32 +41,32 @@ public static class AlgorithmPanelCommonEvents
         }
 
         var stamp = Now();
-        context.Algorithm.Parameters[key] = stamp;
-        context.Algorithm.Parameters[$"Event.{key}.Click"] = stamp;
-        context.Algorithm.Parameters["Common.LastCommandKey"] = key;
-        context.Algorithm.Parameters["Common.LastCommandAt"] = stamp;
+        Set(context, key, stamp);
+        Set(context, $"Event.{key}.Click", stamp);
+        Set(context, "Common.LastCommandKey", key);
+        Set(context, "Common.LastCommandAt", stamp);
         context.SetParameter(key, stamp);
 
         if (IsTeachCommand(key))
         {
             var roi = context.Algorithm.AlgorithmRoi ?? context.Window.Roi;
             var formattedRoi = FormatRoi(roi);
-            context.Algorithm.Parameters[$"{catalog.ParameterFamily}.TeachRoi"] = formattedRoi;
-            context.Algorithm.Parameters["Common.TeachRoi"] = formattedRoi;
-            context.Algorithm.Parameters["Common.SaveAlgoPropertyRequestedAt"] = stamp;
-            context.Algorithm.Parameters["Common.SaveAlgoPropertyReason"] = "Teach";
+            Set(context, $"{catalog.ParameterFamily}.TeachRoi", formattedRoi);
+            Set(context, "Common.TeachRoi", formattedRoi);
+            Set(context, "Common.SaveAlgoPropertyRequestedAt", stamp);
+            Set(context, "Common.SaveAlgoPropertyReason", "Teach");
         }
 
         if (IsApplyAllCommand(key))
         {
-            context.Algorithm.Parameters["Common.ApplyAllRequestedAt"] = stamp;
-            context.Algorithm.Parameters["Common.ApplyAllScope"] = "Part";
-            context.Algorithm.Parameters["Common.ApplyAllSourceType"] = catalog.Type;
+            Set(context, "Common.ApplyAllRequestedAt", stamp);
+            Set(context, "Common.ApplyAllScope", "Part");
+            Set(context, "Common.ApplyAllSourceType", catalog.Type);
         }
 
         if (IsSearchCommand(catalog, key))
         {
-            context.Algorithm.Parameters["Common.SearchRequestedAt"] = stamp;
+            Set(context, "Common.SearchRequestedAt", stamp);
         }
 
         CommitTeachingChange(context, key, "CommandClicked", stamp, stamp);
@@ -93,15 +93,15 @@ public static class AlgorithmPanelCommonEvents
         string? stamp = null)
     {
         var changedAt = stamp ?? Now();
-        context.Algorithm.Parameters["Common.IsDirty"] = "true";
-        context.Algorithm.Parameters["Common.LastEvent"] = eventName;
-        context.Algorithm.Parameters["Common.LastEventSource"] = sourceKey;
-        context.Algorithm.Parameters["Common.LastEventValue"] = value;
-        context.Algorithm.Parameters["Common.LastChangedAt"] = changedAt;
-        context.Algorithm.Parameters["Common.PartRefId"] = context.Model.Part.Name;
-        context.Algorithm.Parameters["Common.WindowId"] = context.Window.Id;
-        context.Algorithm.Parameters["Common.WindowName"] = context.Window.Name;
-        context.Algorithm.Parameters["Common.AlgorithmId"] = context.Algorithm.Id;
+        Set(context, "Common.IsDirty", "true");
+        Set(context, "Common.LastEvent", eventName);
+        Set(context, "Common.LastEventSource", sourceKey);
+        Set(context, "Common.LastEventValue", value);
+        Set(context, "Common.LastChangedAt", changedAt);
+        Set(context, "Common.PartRefId", context.Model.Part.Name);
+        Set(context, "Common.WindowId", context.Window.Id);
+        Set(context, "Common.WindowName", context.Window.Name);
+        Set(context, "Common.AlgorithmId", context.Algorithm.Id);
 
         context.RequestPreviewUpdate();
         context.RequestTreeRefresh();
@@ -109,8 +109,13 @@ public static class AlgorithmPanelCommonEvents
 
     private static void StampClick(AlgorithmPanelContext context, string key, string stamp)
     {
-        context.Algorithm.Parameters[$"Event.{key}.Click"] = stamp;
+        Set(context, $"Event.{key}.Click", stamp);
         context.SetParameter($"Event.{key}.Click", stamp);
+    }
+
+    private static void Set(AlgorithmPanelContext context, string key, string value)
+    {
+        AlgorithmParameterStore.Set(context.Algorithm.Parameters, key, value);
     }
 
     public static string FormatRoi(RoiRect roi)

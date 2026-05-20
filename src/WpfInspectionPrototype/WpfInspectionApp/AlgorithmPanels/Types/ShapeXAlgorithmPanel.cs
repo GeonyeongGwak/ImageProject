@@ -1,3 +1,5 @@
+using WpfInspectionApp.Models;
+
 namespace WpfInspectionApp.AlgorithmPanels.Types;
 
 public sealed class ShapeXAlgorithmPanel : DynamicAlgorithmPanel
@@ -21,7 +23,7 @@ public sealed class ShapeXAlgorithmPanel : DynamicAlgorithmPanel
     {
         if (Context != null && key.Contains("ShapeX", StringComparison.OrdinalIgnoreCase))
         {
-            Context.Algorithm.Parameters["ShapeX.Event.LastEditedParameter"] = key;
+            AlgorithmParameterStore.Set(Context.Algorithm.Parameters, "ShapeX.Event.LastEditedParameter", key);
         }
     }
 }

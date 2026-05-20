@@ -149,7 +149,7 @@ public sealed class PartInspectionRuntime
                     InspectionRoi = inspectionRoi,
                     Enabled = window.IsEnabled && ReadBoolean(algorithm.Parameters, "Common.bAlgoEnable", true),
                     Required = ReadBoolean(algorithm.Parameters, "Common.IsRequired", false),
-                    Parameters = new Dictionary<string, string>(algorithm.Parameters, StringComparer.OrdinalIgnoreCase),
+                    Parameters = AlgorithmParameterStore.CloneCaseInsensitive(algorithm.Parameters),
                     Source = algorithm
                 });
             }
@@ -165,9 +165,7 @@ public sealed class PartInspectionRuntime
         var stopwatch = Stopwatch.StartNew();
         var packet = BuildPartParam(model);
         var referencePacket = ReferenceInspectionPacketBuilder.Build(packet);
-        var referenceAlgorithms = referencePacket.Windows
-            .SelectMany(window => window.Algorithms)
-            .ToDictionary(algorithm => CreateReferenceKey(algorithm.WindowIndex, algorithm.AlgorithmIndex), StringComparer.OrdinalIgnoreCase);
+        var referenceAlgorithms = BuildReferenceAlgorithmMap(referencePacket);
 
         var run = new PartRunResult
         {
@@ -206,36 +204,36 @@ public sealed class PartInspectionRuntime
                     BlobCount = result.BlobCount,
                     Bounds = result.Bounds
                 };
-                algorithm.Source.Parameters["Runtime.LastRun"] = DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss");
-                algorithm.Source.Parameters["Runtime.WindowIndex"] = window.Index.ToString();
-                algorithm.Source.Parameters["Runtime.AlgorithmIndex"] = algorithm.Index.ToString();
-                algorithm.Source.Parameters["Runtime.InspectionRoi"] = FormatRoi(algorithm.InspectionRoi);
-                algorithm.Source.Parameters["Runtime.UsedAlign"] = result.UsedAlign.ToString();
+                SetSourceParameter(algorithm, "Runtime.LastRun", DateTime.Now.ToString("yyyy-MM-dd HH:mm:ss"));
+                SetSourceParameter(algorithm, "Runtime.WindowIndex", window.Index.ToString());
+                SetSourceParameter(algorithm, "Runtime.AlgorithmIndex", algorithm.Index.ToString());
+                SetSourceParameter(algorithm, "Runtime.InspectionRoi", FormatRoi(algorithm.InspectionRoi));
+                SetSourceParameter(algorithm, "Runtime.UsedAlign", result.UsedAlign.ToString());
 
                 if (IsAlignFamily(algorithm.Type))
                 {
                     alignState = CreateAlignState(model, window, algorithm, result);
-                    algorithm.Source.Parameters["Runtime.AlignResult"] = alignState.ToRuntimeText();
+                    SetSourceParameter(algorithm, "Runtime.AlignResult", alignState.ToRuntimeText());
                     if (result.NativeAlignAvailable)
                     {
-                        algorithm.Source.Parameters["Runtime.AlignBridge"] = "native";
-                        algorithm.Source.Parameters["Runtime.AlignOkCount"] = result.AlignOkCount.ToString();
-                        algorithm.Source.Parameters["Runtime.AlignOkShiftX"] = result.AlignOkShiftX.ToString();
-                        algorithm.Source.Parameters["Runtime.AlignOkShiftY"] = result.AlignOkShiftY.ToString();
-                        algorithm.Source.Parameters["Runtime.AlignOkAngle"] = result.AlignOkAngle.ToString();
+                        SetSourceParameter(algorithm, "Runtime.AlignBridge", "native");
+                        SetSourceParameter(algorithm, "Runtime.AlignOkCount", result.AlignOkCount.ToString());
+                        SetSourceParameter(algorithm, "Runtime.AlignOkShiftX", result.AlignOkShiftX.ToString());
+                        SetSourceParameter(algorithm, "Runtime.AlignOkShiftY", result.AlignOkShiftY.ToString());
+                        SetSourceParameter(algorithm, "Runtime.AlignOkAngle", result.AlignOkAngle.ToString());
                     }
                     else
                     {
-                        algorithm.Source.Parameters["Runtime.AlignBridge"] = "fallback";
+                        SetSourceParameter(algorithm, "Runtime.AlignBridge", "fallback");
                         if (!string.IsNullOrWhiteSpace(result.NativeAlignMessage))
                         {
-                            algorithm.Source.Parameters["Runtime.AlignBridgeMessage"] = result.NativeAlignMessage;
+                            SetSourceParameter(algorithm, "Runtime.AlignBridgeMessage", result.NativeAlignMessage);
                         }
                     }
                 }
                 else if (alignState != null)
                 {
-                    algorithm.Source.Parameters["Runtime.AlignResult"] = alignState.ToRuntimeText();
+                    SetSourceParameter(algorithm, "Runtime.AlignResult", alignState.ToRuntimeText());
                 }
             }
         }
@@ -247,14 +245,34 @@ public sealed class PartInspectionRuntime
 
     private static void ApplyReferenceRuntimeData(AlgorithmRuntimePacket algorithm, ReferenceAlgorithmPacket referenceAlgorithm)
     {
-        algorithm.Source.Parameters["Reference.InspAlgoType"] = referenceAlgorithm.ReferenceName;
-        algorithm.Source.Parameters["Reference.InspAlgoTypeOrdinal"] = referenceAlgorithm.InspAlgoTypeOrdinal.ToString();
-        algorithm.Source.Parameters["Reference.ResultBucket"] = referenceAlgorithm.ResultBucket;
-        algorithm.Source.Parameters["Reference.WindowIndex"] = referenceAlgorithm.WindowIndex.ToString();
-        algorithm.Source.Parameters["Reference.AlgorithmIndex"] = referenceAlgorithm.AlgorithmIndex.ToString();
-        algorithm.Source.Parameters["Reference.RawFieldCount"] = referenceAlgorithm.RawFields.Count.ToString();
-        algorithm.Source.Parameters["Reference.NumericArrayCount"] = referenceAlgorithm.NumericArrays.Count.ToString();
-        algorithm.Source.Parameters["Reference.Summary"] = referenceAlgorithm.ToSummary();
+        SetSourceParameter(algorithm, "Reference.InspAlgoType", referenceAlgorithm.ReferenceName);
+        SetSourceParameter(algorithm, "Reference.InspAlgoTypeOrdinal", referenceAlgorithm.InspAlgoTypeOrdinal.ToString());
+        SetSourceParameter(algorithm, "Reference.ResultBucket", referenceAlgorithm.ResultBucket);
+        SetSourceParameter(algorithm, "Reference.WindowIndex", referenceAlgorithm.WindowIndex.ToString());
+        SetSourceParameter(algorithm, "Reference.AlgorithmIndex", referenceAlgorithm.AlgorithmIndex.ToString());
+        SetSourceParameter(algorithm, "Reference.RawFieldCount", referenceAlgorithm.RawFields.Count.ToString());
+        SetSourceParameter(algorithm, "Reference.NumericArrayCount", referenceAlgorithm.NumericArrays.Count.ToString());
+        SetSourceParameter(algorithm, "Reference.Summary", referenceAlgorithm.ToSummary());
+    }
+
+    private static Dictionary<string, ReferenceAlgorithmPacket> BuildReferenceAlgorithmMap(ReferenceInspectionPacket referencePacket)
+    {
+        var map = new Dictionary<string, ReferenceAlgorithmPacket>(StringComparer.OrdinalIgnoreCase);
+        foreach (var algorithm in referencePacket.Windows.SelectMany(window => window.Algorithms))
+        {
+            var key = CreateReferenceKey(algorithm.WindowIndex, algorithm.AlgorithmIndex);
+            if (!map.ContainsKey(key))
+            {
+                map[key] = algorithm;
+            }
+        }
+
+        return map;
+    }
+
+    private static void SetSourceParameter(AlgorithmRuntimePacket algorithm, string key, string value)
+    {
+        AlgorithmParameterStore.Set(algorithm.Source.Parameters, key, value);
     }
 
     private static string CreateReferenceKey(int windowIndex, int algorithmIndex)
@@ -433,16 +451,16 @@ public sealed class PartInspectionRuntime
             result.ForegroundPixels = response.ForegroundPixels;
             result.BlobCount = response.BlobCount;
             result.Bounds = response.ForegroundPixels > 0 ? roi : (RoiRect?)null;
-            algorithm.Source.Parameters["Runtime.ShapeXBridge"] = "native";
-            algorithm.Source.Parameters["Runtime.ShapeXIsOK"] = response.IsOK.ToString();
-            algorithm.Source.Parameters["Runtime.ShapeXAreaRatio"] = response.AreaRate.ToString("F4");
-            algorithm.Source.Parameters["Runtime.ShapeXShift"] = $"{response.ShiftX:F2},{response.ShiftY:F2}";
-            algorithm.Source.Parameters["Runtime.ShapeXOkFlags"] = response.OkFlagsMask.ToString();
+            SetSourceParameter(algorithm, "Runtime.ShapeXBridge", "native");
+            SetSourceParameter(algorithm, "Runtime.ShapeXIsOK", response.IsOK.ToString());
+            SetSourceParameter(algorithm, "Runtime.ShapeXAreaRatio", response.AreaRate.ToString("F4"));
+            SetSourceParameter(algorithm, "Runtime.ShapeXShift", $"{response.ShiftX:F2},{response.ShiftY:F2}");
+            SetSourceParameter(algorithm, "Runtime.ShapeXOkFlags", response.OkFlagsMask.ToString());
         }
         else
         {
-            algorithm.Source.Parameters["Runtime.ShapeXBridge"] = "fallback";
-            algorithm.Source.Parameters["Runtime.ShapeXBridgeMessage"] = response.Message;
+            SetSourceParameter(algorithm, "Runtime.ShapeXBridge", "fallback");
+            SetSourceParameter(algorithm, "Runtime.ShapeXBridgeMessage", response.Message);
             RunThresholdFallback(image, model, algorithm, result);
         }
     }
@@ -462,16 +480,16 @@ public sealed class PartInspectionRuntime
             result.ForegroundPixels = response.ForegroundPixels;
             result.BlobCount = response.BlobCount;
             result.Bounds = response.ForegroundPixels > 0 ? roi : (RoiRect?)null;
-            algorithm.Source.Parameters["Runtime.PadBWBridge"] = "native";
-            algorithm.Source.Parameters["Runtime.PadBWIsOK"] = response.IsOK.ToString();
-            algorithm.Source.Parameters["Runtime.PadBWAreaRate"] = response.AreaRate.ToString("F2");
-            algorithm.Source.Parameters["Runtime.PadBWShift"] = $"{response.ShiftX:F2},{response.ShiftY:F2}";
-            algorithm.Source.Parameters["Runtime.PadBWOkFlags"] = response.OkFlagsMask.ToString();
+            SetSourceParameter(algorithm, "Runtime.PadBWBridge", "native");
+            SetSourceParameter(algorithm, "Runtime.PadBWIsOK", response.IsOK.ToString());
+            SetSourceParameter(algorithm, "Runtime.PadBWAreaRate", response.AreaRate.ToString("F2"));
+            SetSourceParameter(algorithm, "Runtime.PadBWShift", $"{response.ShiftX:F2},{response.ShiftY:F2}");
+            SetSourceParameter(algorithm, "Runtime.PadBWOkFlags", response.OkFlagsMask.ToString());
         }
         else
         {
-            algorithm.Source.Parameters["Runtime.PadBWBridge"] = "fallback";
-            algorithm.Source.Parameters["Runtime.PadBWBridgeMessage"] = response.Message;
+            SetSourceParameter(algorithm, "Runtime.PadBWBridge", "fallback");
+            SetSourceParameter(algorithm, "Runtime.PadBWBridgeMessage", response.Message);
             RunThresholdFallback(image, model, algorithm, result);
         }
     }
@@ -528,16 +546,16 @@ public sealed class PartInspectionRuntime
             result.ForegroundPixels = response.ForegroundPixels;
             result.BlobCount = response.BlobCount;
             result.Bounds = response.ForegroundPixels > 0 ? roi : (RoiRect?)null;
-            algorithm.Source.Parameters["Runtime.GenericBridge"] = "native";
-            algorithm.Source.Parameters["Runtime.GenericAlgoKind"] = kind.ToString();
-            algorithm.Source.Parameters["Runtime.GenericIsOK"] = response.IsOK.ToString();
-            algorithm.Source.Parameters["Runtime.GenericAreaRatio"] = response.AreaRate.ToString("F4");
-            algorithm.Source.Parameters["Runtime.GenericShift"] = $"{response.ShiftX:F2},{response.ShiftY:F2}";
+            SetSourceParameter(algorithm, "Runtime.GenericBridge", "native");
+            SetSourceParameter(algorithm, "Runtime.GenericAlgoKind", kind.ToString());
+            SetSourceParameter(algorithm, "Runtime.GenericIsOK", response.IsOK.ToString());
+            SetSourceParameter(algorithm, "Runtime.GenericAreaRatio", response.AreaRate.ToString("F4"));
+            SetSourceParameter(algorithm, "Runtime.GenericShift", $"{response.ShiftX:F2},{response.ShiftY:F2}");
         }
         else
         {
-            algorithm.Source.Parameters["Runtime.GenericBridge"] = "fallback";
-            algorithm.Source.Parameters["Runtime.GenericBridgeMessage"] = response.Message;
+            SetSourceParameter(algorithm, "Runtime.GenericBridge", "fallback");
+            SetSourceParameter(algorithm, "Runtime.GenericBridgeMessage", response.Message);
             RunThresholdFallback(image, model, algorithm, result);
         }
     }
@@ -592,7 +610,7 @@ public sealed class PartInspectionRuntime
     private static int ReadAlgorithmThreshold(InspectionModel model, AlgorithmRuntimePacket algorithm)
     {
         var family = AlgorithmCatalog.Find(algorithm.Type).ParameterFamily;
-        if (algorithm.Parameters.TryGetValue($"{family}.Threshold", out var value) && int.TryParse(value, out var threshold))
+        if (AlgorithmParameterStore.TryGetValue(algorithm.Parameters, $"{family}.Threshold", out var value) && int.TryParse(value, out var threshold))
         {
             return Net48Compat.Clamp(threshold, 0, 255);
         }
@@ -616,7 +634,7 @@ public sealed class PartInspectionRuntime
 
     private static bool ReadBoolean(Dictionary<string, string> parameters, string key, bool fallback)
     {
-        if (!parameters.TryGetValue(key, out var value) || string.IsNullOrWhiteSpace(value))
+        if (!AlgorithmParameterStore.TryGetValue(parameters, key, out var value) || string.IsNullOrWhiteSpace(value))
         {
             return fallback;
         }

@@ -1,6 +1,7 @@
-﻿<UserControl x:Class="WpfInspectionApp.Views.AlignPanelView"
+<UserControl x:Class="WpfInspectionApp.Views.AlignPanelView"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
-             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:vm="clr-namespace:WpfInspectionApp.ViewModels">
     <UserControl.Resources>
         <Style x:Key="RightPanelBorder" TargetType="Border">
             <Setter Property="Padding" Value="10" />
@@ -10,308 +11,595 @@
             <Setter Property="BorderThickness" Value="1" />
             <Setter Property="CornerRadius" Value="4" />
         </Style>
+
         <Style x:Key="PanelTitle" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource AccentBlue}" />
             <Setter Property="FontWeight" Value="Bold" />
             <Setter Property="FontSize" Value="13" />
             <Setter Property="Margin" Value="0,0,0,8" />
         </Style>
+
+        <Style x:Key="SectionTitle" TargetType="TextBlock">
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+            <Setter Property="FontWeight" Value="Bold" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+
         <Style x:Key="FieldLabel" TargetType="TextBlock">
             <Setter Property="Foreground" Value="{DynamicResource MutedText}" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="FontSize" Value="12" />
         </Style>
+
+        <Style x:Key="SignalLabel" TargetType="Border">
+            <Setter Property="CornerRadius" Value="3" />
+            <Setter Property="Padding" Value="6,4" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+        </Style>
+
+        <Style x:Key="AlignGroupBorder" TargetType="Border">
+            <Setter Property="Padding" Value="8" />
+            <Setter Property="Margin" Value="0,0,0,8" />
+            <Setter Property="Background" Value="{DynamicResource ComboDarkBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="CornerRadius" Value="4" />
+        </Style>
+
+        <Style x:Key="WideTabItem" TargetType="TabItem">
+            <Setter Property="Foreground" Value="{DynamicResource SecondaryText}" />
+            <Setter Property="Background" Value="{DynamicResource TreeHeaderBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="FontWeight" Value="SemiBold" />
+            <Setter Property="MinWidth" Value="128" />
+            <Setter Property="Padding" Value="12,6" />
+        </Style>
     </UserControl.Resources>
-                    <Border x:Name="AlignPanel" Style="{StaticResource RightPanelBorder}">
-                        <StackPanel>
-                            <TextBlock Text="ALIGN ALGORITHM" Style="{StaticResource PanelTitle}" />
-                            <TabControl x:Name="AlignTabControl" SelectionChanged="AlignTabControl_SelectionChanged">
-                                <TabItem Header="Search">
-                                    <StackPanel Margin="0,8,0,0">
-                                         <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="90" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="90" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Search Num" Style="{StaticResource FieldLabel}" />
-                                            <ComboBox x:Name="SearchNumCombo"
-                                                      Grid.Column="1"
-                                                      SelectedValuePath="Content"
-                                                      SelectedValue="{Binding SearchNum, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                      SelectionChanged="SearchNumCombo_SelectionChanged">
-                                                <ComboBoxItem Content="1" />
-                                                <ComboBoxItem Content="2" />
-                                                <ComboBoxItem Content="3" />
-                                                <ComboBoxItem Content="4" IsSelected="True" />
-                                            </ComboBox>
-                                            <Button x:Name="ActiveRoiButton" Grid.Column="2" Content="{Binding ActiveRoiText}" Command="{Binding ActiveRoiCommand}" />
-                                        </Grid>
 
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="90" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="84" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Background="#3CFF50" CornerRadius="3" Padding="6,4" Margin="0,0,6,0">
-                                                <TextBlock Text="Binary ROI" Foreground="#06111C" FontWeight="Bold" />
-                                            </Border>
-                                             <Button x:Name="DrawRoiButton" Grid.Column="1" Content="{Binding DrawWindowRoiText}" Background="{Binding DrawWindowRoiBrush}" Command="{Binding DrawWindowRoiCommand}" />
-                                             <TextBlock Grid.Column="2" Text="Original px" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" />
-                                         </Grid>
+    <Border x:Name="AlignPanel" Style="{StaticResource RightPanelBorder}">
+        <StackPanel>
+            <TextBlock Text="ALIGN ALGORITHM" Style="{StaticResource PanelTitle}" />
 
-                                        <Button x:Name="DrawAlignAlgorithmRoiButton"
-                                                Content="Draw Algorithm ROI"
-                                                Margin="0,0,0,8"
-                                                Command="{Binding DrawAlgorithmRoiCommand}" />
+            <Border Style="{StaticResource AlignGroupBorder}">
+                <StackPanel>
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="84" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <TextBlock Text="Search Num" Style="{StaticResource FieldLabel}" />
+                        <ComboBox x:Name="SearchNumCombo"
+                                  Grid.Column="1"
+                                  Tag="{x:Static vm:AlignPanelUpdateKind.SearchNum}"
+                                  SelectedValuePath="Content"
+                                  SelectedValue="{Binding SearchNum, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                  SelectionChanged="AlignControl_Changed">
+                            <ComboBoxItem Content="1" />
+                            <ComboBoxItem Content="2" />
+                            <ComboBoxItem Content="3" />
+                            <ComboBoxItem Content="4" IsSelected="True" />
+                        </ComboBox>
+                        <TextBlock Grid.Column="2"
+                                   Text="{Binding ActiveRoiText}"
+                                   Foreground="{DynamicResource AccentYellow}"
+                                   FontWeight="Bold"
+                                   VerticalAlignment="Center"
+                                   Margin="10,0,0,0" />
+                        <Button x:Name="ActiveRoiButton"
+                                Grid.Column="3"
+                                Content="Next ROI"
+                                HorizontalAlignment="Right"
+                                Command="{Binding ActiveRoiCommand}" />
+                    </Grid>
 
-                                         <TextBlock x:Name="RoiText"
-                                                   Margin="0,0,0,8"
-                                                   Foreground="{DynamicResource SecondaryText}"
-                                                   FontFamily="Consolas"
-                                                   FontWeight="Bold"
-                                                   TextWrapping="Wrap"
-                                                   Text="{Binding RoiText}" />
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="96" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SignalLabel}" Background="#3CFF50">
+                            <TextBlock Text="Binary ROI" Foreground="#06111C" FontWeight="Bold" />
+                        </Border>
+                        <Button x:Name="DrawRoiButton"
+                                Grid.Column="1"
+                                Content="{Binding DrawWindowRoiText}"
+                                Background="{Binding DrawWindowRoiBrush}"
+                                Command="{Binding DrawWindowRoiCommand}" />
+                        <Button x:Name="DrawAlignAlgorithmRoiButton"
+                                Grid.Column="2"
+                                Content="Algo ROI"
+                                Command="{Binding DrawAlgorithmRoiCommand}" />
+                    </Grid>
 
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="90" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Shortcut" Style="{StaticResource FieldLabel}" />
-                                            <TextBlock Grid.Column="1" Text="A: Draw Current     S: Next ROI / Draw     Del: Delete ROI" Foreground="{DynamicResource MutedText}" FontSize="12" TextWrapping="Wrap" />
-                                        </Grid>
+                    <TextBlock x:Name="RoiText"
+                               Margin="0,0,0,8"
+                               Foreground="{DynamicResource SecondaryText}"
+                               FontFamily="Consolas"
+                               FontWeight="Bold"
+                               TextTrimming="CharacterEllipsis"
+                               Text="{Binding RoiText}" />
 
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="110" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="42" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Background="#3CFF50" CornerRadius="3" Padding="6,4" Margin="0,0,6,0">
-                                                <TextBlock Text="Search Margin" Foreground="#06111C" FontWeight="Bold" />
-                                            </Border>
-                                            <TextBox x:Name="SearchMarginBox"
-                                                     Grid.Column="1"
-                                                     Text="{Binding SearchMargin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     TextChanged="SearchParameter_Changed" />
-                                            <TextBlock Grid.Column="2" Text="Pixel" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="6,0,0,0" />
-                                        </Grid>
+                    <Grid Margin="0,0,0,6">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="80" />
+                            <ColumnDefinition Width="48" />
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SignalLabel}" Background="#3CFF50">
+                            <TextBlock Text="Margin" Foreground="#06111C" FontWeight="Bold" />
+                        </Border>
+                        <TextBox x:Name="SearchMarginBox"
+                                 Grid.Column="1"
+                                 Tag="{x:Static vm:AlignPanelUpdateKind.SearchParameter}"
+                                 Text="{Binding SearchMargin, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 TextChanged="AlignControl_Changed" />
+                        <TextBlock Grid.Column="2" Text="px" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                        <CheckBox x:Name="SameSizeCheck"
+                                  Grid.Column="3"
+                                  Content="Same Size"
+                                  Tag="{x:Static vm:AlignPanelUpdateKind.SearchParameter}"
+                                  IsChecked="{Binding SameSize, Mode=TwoWay}"
+                                  Checked="AlignControl_Changed"
+                                  Unchecked="AlignControl_Changed" />
+                        <Button Grid.Column="4"
+                                Content="Teach"
+                                HorizontalAlignment="Right"
+                                Command="{Binding TeachCommand}" />
+                    </Grid>
 
-                                        <CheckBox x:Name="SameSizeCheck" Content="Same Size" IsChecked="{Binding SameSize, Mode=TwoWay}" Checked="SearchParameter_Changed" Unchecked="SearchParameter_Changed" />
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="16" />
+                            <ColumnDefinition Width="96" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Border Style="{StaticResource SignalLabel}" Background="#FFD229">
+                            <TextBlock Text="Size X" Foreground="#06111C" FontWeight="Bold" />
+                        </Border>
+                        <TextBox x:Name="SearchSizeXBox"
+                                 Grid.Column="1"
+                                 Tag="{x:Static vm:AlignPanelUpdateKind.SearchSize}"
+                                 Text="{Binding SearchSizeX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 TextChanged="AlignControl_Changed" />
+                        <Border Grid.Column="3" Style="{StaticResource SignalLabel}" Background="#FFD229">
+                            <TextBlock Text="Size Y" Foreground="#06111C" FontWeight="Bold" />
+                        </Border>
+                        <TextBox x:Name="SearchSizeYBox"
+                                 Grid.Column="4"
+                                 Tag="{x:Static vm:AlignPanelUpdateKind.SearchSize}"
+                                 Text="{Binding SearchSizeY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                 TextChanged="AlignControl_Changed"
+                                 IsEnabled="{Binding IsSearchSizeYEnabled}" />
+                    </Grid>
+                </StackPanel>
+            </Border>
 
-                                        <Grid Margin="0,2,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="110" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="74" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Background="#FFD229" CornerRadius="3" Padding="6,4" Margin="0,0,6,0">
-                                                <TextBlock Text="Search Size X" Foreground="#06111C" FontWeight="Bold" />
-                                            </Border>
-                                            <TextBox x:Name="SearchSizeXBox"
-                                                     Grid.Column="1"
-                                                     Text="{Binding SearchSizeX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     TextChanged="SearchSizeBox_TextChanged" />
-                                            <Button Grid.Column="2" Content="Teach" Command="{Binding TeachCommand}" />
-                                        </Grid>
+            <TabControl x:Name="AlignTabControl"
+                        SelectionChanged="AlignTabControl_SelectionChanged"
+                        ItemContainerStyle="{StaticResource WideTabItem}">
+                <TabItem Header="BW Condition">
+                    <StackPanel Margin="0,8,0,0">
+                        <Border Style="{StaticResource AlignGroupBorder}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="90" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="Use3DCheck"
+                                              Content="Use 3D"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                              IsChecked="{Binding Use3D, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                    <ComboBox x:Name="Range3DCombo"
+                                              Grid.Column="1"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                              SelectedIndex="{Binding Range3DType, Mode=TwoWay}"
+                                              SelectionChanged="AlignControl_Changed"
+                                              IsEnabled="{Binding Is3DConditionEnabled}"
+                                              Margin="8,0,8,0">
+                                        <ComboBoxItem Content="Inside" />
+                                        <ComboBoxItem Content="Outside" />
+                                        <ComboBoxItem Content="Upper" />
+                                        <ComboBoxItem Content="Lower" />
+                                    </ComboBox>
+                                    <TextBox x:Name="HeightAverageBox"
+                                             Grid.Column="2"
+                                             Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                             Text="{Binding HeightAverage, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding Is3DConditionEnabled}"
+                                             TextChanged="AlignControl_Changed"
+                                             ToolTip="3D average height" />
+                                </Grid>
 
-                                        <Grid Margin="0,0,0,4">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="110" />
-                                                <ColumnDefinition Width="*" />
-                                            </Grid.ColumnDefinitions>
-                                            <Border Background="#FFD229" CornerRadius="3" Padding="6,4" Margin="0,0,6,0">
-                                                <TextBlock Text="Search Size Y" Foreground="#06111C" FontWeight="Bold" />
-                                            </Border>
-                                            <TextBox x:Name="SearchSizeYBox"
-                                                     Grid.Column="1"
-                                                     Text="{Binding SearchSizeY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                     TextChanged="SearchSizeBox_TextChanged" />
-                                        </Grid>
-                                    </StackPanel>
-                                </TabItem>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="46" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="3D MIN" Style="{StaticResource FieldLabel}" />
+                                    <Slider x:Name="Threshold3DSlider"
+                                            Grid.Column="1"
+                                            Tag="{x:Static vm:AlignPanelUpdateKind.Threshold3D}"
+                                            Minimum="0"
+                                            Maximum="255"
+                                            Value="{Binding Threshold3D, Mode=TwoWay}"
+                                            IsEnabled="{Binding Is3DConditionEnabled}"
+                                            TickFrequency="1"
+                                            ValueChanged="AlignControl_Changed" />
+                                    <TextBlock x:Name="Threshold3DValueText"
+                                               Grid.Column="2"
+                                               Text="{Binding Threshold3DText}"
+                                               Foreground="{DynamicResource AccentBlue}"
+                                               FontWeight="Bold"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
 
-                                <TabItem Header="BW Condition">
-                                    <StackPanel Margin="0,8,0,0">
-                                        <CheckBox x:Name="Use2DCheck" Content="Use 2D" IsChecked="{Binding Use2D, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                        <Grid Margin="0,4,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="70" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="46" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="2D THR" Style="{StaticResource FieldLabel}" />
-                                            <Slider x:Name="ThresholdSlider" Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Threshold2D, Mode=TwoWay}" IsEnabled="{Binding Use2D}" TickFrequency="1" ValueChanged="ThresholdSlider_ValueChanged" />
-                                            <TextBlock x:Name="ThresholdValueText" Grid.Column="2" Text="{Binding Threshold2DText}" Foreground="{DynamicResource AccentYellow}" FontWeight="Bold" TextAlignment="Right" VerticalAlignment="Center" />
-                                        </Grid>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="46" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="3D MAX" Style="{StaticResource FieldLabel}" />
+                                    <Slider x:Name="Threshold3DMaxSlider"
+                                            Grid.Column="1"
+                                            Tag="{x:Static vm:AlignPanelUpdateKind.Threshold3D}"
+                                            Minimum="0"
+                                            Maximum="255"
+                                            Value="{Binding Threshold3DMax, Mode=TwoWay}"
+                                            IsEnabled="{Binding Is3DConditionEnabled}"
+                                            TickFrequency="1"
+                                            ValueChanged="AlignControl_Changed" />
+                                    <TextBlock x:Name="Threshold3DMaxValueText"
+                                               Grid.Column="2"
+                                               Text="{Binding Threshold3DMaxText}"
+                                               Foreground="{DynamicResource AccentBlue}"
+                                               FontWeight="Bold"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
-                                        <CheckBox x:Name="Use3DCheck" Content="Use 3D" IsChecked="{Binding Use3D, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                        <Grid Margin="0,4,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="70" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="46" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="3D THR" Style="{StaticResource FieldLabel}" />
-                                            <Slider x:Name="Threshold3DSlider" Grid.Column="1" Minimum="0" Maximum="255" Value="{Binding Threshold3D, Mode=TwoWay}" IsEnabled="{Binding Use3D}" TickFrequency="1" ValueChanged="Threshold3DSlider_ValueChanged" />
-                                            <TextBlock x:Name="Threshold3DValueText" Grid.Column="2" Text="{Binding Threshold3DText}" Foreground="{DynamicResource AccentBlue}" FontWeight="Bold" TextAlignment="Right" VerticalAlignment="Center" />
-                                        </Grid>
+                        <Border Style="{StaticResource AlignGroupBorder}">
+                            <StackPanel>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="86" />
+                                    </Grid.ColumnDefinitions>
+                                    <CheckBox x:Name="Use2DCheck"
+                                              Content="Use 2D"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                              IsChecked="{Binding Use2D, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                    <ComboBox x:Name="Range2DCombo"
+                                              Grid.Column="1"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                              SelectedIndex="{Binding Range2DType, Mode=TwoWay}"
+                                              SelectionChanged="AlignControl_Changed"
+                                              IsEnabled="{Binding Is2DConditionEnabled}"
+                                              Margin="8,0,8,0">
+                                        <ComboBoxItem Content="Inside" />
+                                        <ComboBoxItem Content="Outside" />
+                                        <ComboBoxItem Content="Upper" />
+                                        <ComboBoxItem Content="Lower" />
+                                    </ComboBox>
+                                    <CheckBox x:Name="InvertCheck"
+                                              Grid.Column="2"
+                                              Content="Invert"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                              IsChecked="{Binding InvertCheck, Mode=TwoWay}"
+                                              IsEnabled="{Binding Is2DConditionEnabled}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                </Grid>
 
-                                        <CheckBox x:Name="UseEdgeCheck" Content="Use Edge" IsChecked="{Binding UseEdge, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                        <Grid Margin="0,4,0,8">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="70" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="46" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="EDGE" Style="{StaticResource FieldLabel}" />
-                                            <Slider x:Name="EdgeGainSlider" Grid.Column="1" Minimum="0" Maximum="100" Value="{Binding EdgeGain, Mode=TwoWay}" IsEnabled="{Binding UseEdge}" TickFrequency="1" ValueChanged="EdgeGainSlider_ValueChanged" />
-                                            <TextBlock x:Name="EdgeGainValueText" Grid.Column="2" Text="{Binding EdgeGainText}" Foreground="{DynamicResource AccentGreen}" FontWeight="Bold" TextAlignment="Right" VerticalAlignment="Center" />
-                                        </Grid>
+                                <Grid Margin="0,0,0,6">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="46" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="2D MIN" Style="{StaticResource FieldLabel}" />
+                                    <Slider x:Name="ThresholdSlider"
+                                            Grid.Column="1"
+                                            Tag="{x:Static vm:AlignPanelUpdateKind.Threshold2D}"
+                                            Minimum="0"
+                                            Maximum="255"
+                                            Value="{Binding Threshold2D, Mode=TwoWay}"
+                                            IsEnabled="{Binding Is2DConditionEnabled}"
+                                            TickFrequency="1"
+                                            ValueChanged="AlignControl_Changed" />
+                                    <TextBlock x:Name="ThresholdValueText"
+                                               Grid.Column="2"
+                                               Text="{Binding Threshold2DText}"
+                                               Foreground="{DynamicResource AccentYellow}"
+                                               FontWeight="Bold"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
 
-                                        <Border Padding="8" BorderBrush="{DynamicResource BorderBlue}" BorderThickness="1" CornerRadius="4" Background="{DynamicResource ComboDarkBackground}">
-                                            <Grid>
-                                                <TextBlock Text="MASK DENSITY" Foreground="{DynamicResource MutedText}" />
-                                                <TextBlock x:Name="MaskDensityText" HorizontalAlignment="Right" Text="{Binding MaskDensityText}" Foreground="{DynamicResource PrimaryText}" FontWeight="Bold" />
-                                            </Grid>
-                                        </Border>
-                                    </StackPanel>
-                                </TabItem>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="46" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="2D MAX" Style="{StaticResource FieldLabel}" />
+                                    <Slider x:Name="Threshold2DMaxSlider"
+                                            Grid.Column="1"
+                                            Tag="{x:Static vm:AlignPanelUpdateKind.Threshold2D}"
+                                            Minimum="0"
+                                            Maximum="255"
+                                            Value="{Binding Threshold2DMax, Mode=TwoWay}"
+                                            IsEnabled="{Binding Is2DConditionEnabled}"
+                                            TickFrequency="1"
+                                            ValueChanged="AlignControl_Changed" />
+                                    <TextBlock x:Name="Threshold2DMaxValueText"
+                                               Grid.Column="2"
+                                               Text="{Binding Threshold2DMaxText}"
+                                               Foreground="{DynamicResource AccentYellow}"
+                                               FontWeight="Bold"
+                                               TextAlignment="Right"
+                                               VerticalAlignment="Center" />
+                                </Grid>
+                            </StackPanel>
+                        </Border>
 
-                                <TabItem Header="Inspection">
-                                    <StackPanel Margin="0,8,0,0">
-                                        <CheckBox x:Name="ShiftCheck" Content="Shift" IsChecked="{Binding ShiftEnabled, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="60" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="60" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="34" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Shift X" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="ShiftXBox" Grid.Column="1" Text="{Binding ShiftX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="AlignParameter_Changed" />
-                                            <TextBlock Grid.Column="2" Text="mm" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
-                                            <TextBlock Grid.Column="3" Text="Shift Y" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="ShiftYBox" Grid.Column="4" Text="{Binding ShiftY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="AlignParameter_Changed" />
-                                            <TextBlock Grid.Column="5" Text="mm" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
-                                        </Grid>
+                        <Border Style="{StaticResource AlignGroupBorder}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="46" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="UseEdgeCheck"
+                                          Content="Use Edge"
+                                          Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                          IsChecked="{Binding UseEdge, Mode=TwoWay}"
+                                          Checked="AlignControl_Changed"
+                                          Unchecked="AlignControl_Changed" />
+                                <Slider x:Name="EdgeGainSlider"
+                                        Grid.Column="1"
+                                        Tag="{x:Static vm:AlignPanelUpdateKind.EdgeGain}"
+                                        Minimum="0"
+                                        Maximum="100"
+                                        Value="{Binding EdgeGain, Mode=TwoWay}"
+                                        IsEnabled="{Binding IsEdgeConditionEnabled}"
+                                        TickFrequency="1"
+                                        ValueChanged="AlignControl_Changed"
+                                        Margin="8,0,8,0" />
+                                <TextBlock x:Name="EdgeGainValueText"
+                                           Grid.Column="2"
+                                           Text="{Binding EdgeGainText}"
+                                           Foreground="{DynamicResource AccentGreen}"
+                                           FontWeight="Bold"
+                                           TextAlignment="Right"
+                                           VerticalAlignment="Center" />
+                            </Grid>
+                        </Border>
 
-                                        <CheckBox x:Name="AngleCheck" Content="Angle" IsChecked="{Binding AngleEnabled, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="60" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="34" />
-                                                <ColumnDefinition Width="Auto" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Angle" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="AngleBox" Grid.Column="1" Text="{Binding Angle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="AlignParameter_Changed" />
-                                            <TextBlock Grid.Column="2" Text="deg" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
-                                            <CheckBox x:Name="FillHoleCheck" Grid.Column="3" Content="Fill Hole" IsChecked="{Binding FillHole, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                        </Grid>
+                        <Border Padding="8"
+                                BorderBrush="{DynamicResource BorderBlue}"
+                                BorderThickness="1"
+                                CornerRadius="4"
+                                Background="{DynamicResource ComboDarkBackground}">
+                            <Grid>
+                                <TextBlock Text="MASK DENSITY" Foreground="{DynamicResource MutedText}" />
+                                <TextBlock x:Name="MaskDensityText"
+                                           HorizontalAlignment="Right"
+                                           Text="{Binding MaskDensityText}"
+                                           Foreground="{DynamicResource PrimaryText}"
+                                           FontWeight="Bold" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </TabItem>
 
-                                        <Grid Margin="0,0,0,6">
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="60" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="34" />
-                                            </Grid.ColumnDefinitions>
-                                            <TextBlock Text="Filter" Style="{StaticResource FieldLabel}" />
-                                            <TextBox x:Name="FilterBox" Grid.Column="1" Text="{Binding Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="AlignParameter_Changed" />
-                                            <TextBlock Grid.Column="2" Text="pix" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
-                                        </Grid>
+                <TabItem Header="Inspection Condition">
+                    <StackPanel Margin="0,8,0,0">
+                        <Border Style="{StaticResource AlignGroupBorder}">
+                            <StackPanel>
+                                <CheckBox x:Name="ShiftCheck"
+                                          Content="Shift"
+                                          Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                          IsChecked="{Binding ShiftEnabled, Mode=TwoWay}"
+                                          Checked="AlignControl_Changed"
+                                          Unchecked="AlignControl_Changed" />
+                                <Grid Margin="0,0,0,8">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="34" />
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="34" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Shift X" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="ShiftXBox"
+                                             Grid.Column="1"
+                                             Tag="{x:Static vm:AlignPanelUpdateKind.AlignParameter}"
+                                             Text="{Binding ShiftX, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding IsShiftInputEnabled}"
+                                             TextChanged="AlignControl_Changed" />
+                                    <TextBlock Grid.Column="2" Text="mm" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
+                                    <TextBlock Grid.Column="3" Text="Shift Y" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="ShiftYBox"
+                                             Grid.Column="4"
+                                             Tag="{x:Static vm:AlignPanelUpdateKind.AlignParameter}"
+                                             Text="{Binding ShiftY, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding IsShiftInputEnabled}"
+                                             TextChanged="AlignControl_Changed" />
+                                    <TextBlock Grid.Column="5" Text="mm" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
+                                </Grid>
 
-                                        <CheckBox x:Name="InspectionAreaCountCheck" Content="Inspection Area Cnt" IsChecked="{Binding InspectionAreaCount, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                    </StackPanel>
-                                </TabItem>
+                                <CheckBox x:Name="AngleCheck"
+                                          Content="Angle"
+                                          Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                          IsChecked="{Binding AngleEnabled, Mode=TwoWay}"
+                                          Checked="AlignControl_Changed"
+                                          Unchecked="AlignControl_Changed" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="70" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="38" />
+                                        <ColumnDefinition Width="72" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="34" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="Angle" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="AngleBox"
+                                             Grid.Column="1"
+                                             Tag="{x:Static vm:AlignPanelUpdateKind.AlignParameter}"
+                                             Text="{Binding Angle, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             IsEnabled="{Binding IsAngleInputEnabled}"
+                                             TextChanged="AlignControl_Changed" />
+                                    <TextBlock Grid.Column="2" Text="deg" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
+                                    <TextBlock Grid.Column="3" Text="Filter" Style="{StaticResource FieldLabel}" />
+                                    <TextBox x:Name="FilterBox"
+                                             Grid.Column="4"
+                                             Tag="{x:Static vm:AlignPanelUpdateKind.AlignParameter}"
+                                             Text="{Binding Filter, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                             TextChanged="AlignControl_Changed" />
+                                    <TextBlock Grid.Column="5" Text="px" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="4,0" />
+                                </Grid>
 
-                                <TabItem Header="IPC">
-                                    <StackPanel Margin="0,8,0,0">
-                                        <Grid>
-                                            <Grid.ColumnDefinitions>
-                                                <ColumnDefinition Width="90" />
-                                                <ColumnDefinition Width="*" />
-                                                <ColumnDefinition Width="78" />
-                                                <ColumnDefinition Width="30" />
-                                            </Grid.ColumnDefinitions>
-                                            <CheckBox x:Name="IpcUseCheck" Content="Use" IsChecked="{Binding IpcUse, Mode=TwoWay}" Checked="Parameter_Changed" Unchecked="Parameter_Changed" />
-                                            <ComboBox x:Name="IpcClassCombo"
-                                                      Grid.Column="1"
-                                                      SelectedValuePath="Content"
-                                                      SelectedValue="{Binding IpcClass, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                      SelectionChanged="IpcClassCombo_SelectionChanged">
-                                                <ComboBoxItem Content="Class2" IsSelected="True" />
-                                                <ComboBoxItem Content="Class1" />
-                                                <ComboBoxItem Content="Class3" />
-                                            </ComboBox>
-                                            <TextBox x:Name="IpcPercentBox" Grid.Column="2" Text="{Binding IpcPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" TextChanged="AlignParameter_Changed" Margin="6,0,0,0" />
-                                            <TextBlock Grid.Column="3" Text="%" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="6,0,0,0" />
-                                        </Grid>
-                                    </StackPanel>
-                                </TabItem>
+                                <UniformGrid Columns="2" Margin="0,8,0,0">
+                                    <CheckBox x:Name="FillHoleCheck"
+                                              Content="Fill Hole"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                              IsChecked="{Binding FillHole, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                    <CheckBox x:Name="InspectionAreaCountCheck"
+                                              Content="Inspection Area Cnt"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                              IsChecked="{Binding InspectionAreaCount, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
 
-                                <TabItem Header="Part Teaching">
-                                    <StackPanel Margin="0,8,0,0">
-                                        <ComboBox x:Name="PartTeachingLibraryMatchCombo"
-                                                  SelectedValuePath="Content"
-                                                  SelectedValue="{Binding PartTeachingLibraryMatchMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
-                                                  SelectionChanged="PartTeachingOption_Changed">
-                                            <ComboBoxItem Content="None" />
-                                            <ComboBoxItem Content="CAD Match" />
-                                            <ComboBoxItem Content="CAD Match No Message" />
-                                        </ComboBox>
+                        <Border Style="{StaticResource AlignGroupBorder}">
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="80" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="82" />
+                                    <ColumnDefinition Width="30" />
+                                </Grid.ColumnDefinitions>
+                                <CheckBox x:Name="IpcUseCheck"
+                                          Content="IPC Use"
+                                          Tag="{x:Static vm:AlignPanelUpdateKind.Parameter}"
+                                          IsChecked="{Binding IpcUse, Mode=TwoWay}"
+                                          Checked="AlignControl_Changed"
+                                          Unchecked="AlignControl_Changed" />
+                                <ComboBox x:Name="IpcClassCombo"
+                                          Grid.Column="1"
+                                          Tag="{x:Static vm:AlignPanelUpdateKind.IpcClass}"
+                                          SelectedValuePath="Content"
+                                          SelectedValue="{Binding IpcClass, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          IsEnabled="{Binding IsIpcClassEnabled}"
+                                          SelectionChanged="AlignControl_Changed">
+                                    <ComboBoxItem Content="Class2" IsSelected="True" />
+                                    <ComboBoxItem Content="Class1" />
+                                    <ComboBoxItem Content="Class3" />
+                                </ComboBox>
+                                <TextBox x:Name="IpcPercentBox"
+                                         Grid.Column="2"
+                                         Tag="{x:Static vm:AlignPanelUpdateKind.AlignParameter}"
+                                         Text="{Binding IpcPercent, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                         IsEnabled="{Binding IsIpcPercentEnabled}"
+                                         TextChanged="AlignControl_Changed"
+                                         Margin="6,0,0,0" />
+                                <TextBlock Grid.Column="3" Text="%" Foreground="{DynamicResource MutedText}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                            </Grid>
+                        </Border>
+                    </StackPanel>
+                </TabItem>
 
-                                        <UniformGrid Columns="2" Margin="0,8,0,0">
-                                            <CheckBox x:Name="PartTeachingCommonCheck"
-                                                      Content="Common Library"
-                                                      IsChecked="{Binding PartTeachingUseCommonLibrary, Mode=TwoWay}"
-                                                      Checked="PartTeachingOption_Changed"
-                                                      Unchecked="PartTeachingOption_Changed" />
-                                            <CheckBox x:Name="PartTeachingLibraryCheck"
-                                                      Content="Library Part"
-                                                      IsChecked="{Binding PartTeachingUseLibraryPart, Mode=TwoWay}"
-                                                      Checked="PartTeachingOption_Changed"
-                                                      Unchecked="PartTeachingOption_Changed" />
-                                            <CheckBox x:Name="PartTeachingAutoCheck"
-                                                      Content="Teaching"
-                                                      IsChecked="{Binding PartTeachingUseAutoTeaching, Mode=TwoWay}"
-                                                      Checked="PartTeachingOption_Changed"
-                                                      Unchecked="PartTeachingOption_Changed" />
-                                            <CheckBox x:Name="PartTeachingMatchingCheck"
-                                                      Content="Matching"
-                                                      IsChecked="{Binding PartTeachingUseCadMatching, Mode=TwoWay}"
-                                                      Checked="PartTeachingOption_Changed"
-                                                      Unchecked="PartTeachingOption_Changed" />
-                                        </UniformGrid>
+                <TabItem Header="Part Teaching">
+                    <StackPanel Margin="0,8,0,0">
+                        <Border Style="{StaticResource AlignGroupBorder}">
+                            <StackPanel>
+                                <ComboBox x:Name="PartTeachingLibraryMatchCombo"
+                                          Tag="{x:Static vm:AlignPanelUpdateKind.PartTeachingOption}"
+                                          SelectedValuePath="Content"
+                                          SelectedValue="{Binding PartTeachingLibraryMatchMode, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                                          SelectionChanged="AlignControl_Changed">
+                                    <ComboBoxItem Content="None" />
+                                    <ComboBoxItem Content="CAD Match" />
+                                    <ComboBoxItem Content="CAD Match No Message" />
+                                </ComboBox>
 
-                                        <UniformGrid Columns="3" Margin="0,10,0,0">
-                                            <Button x:Name="PartTeachingIcButton"
-                                                    Content="IC"
-                                                    Visibility="{Binding PartTeachingIcVisibility}"
-                                                    Command="{Binding PartTeachingIcCommand}" />
-                                            <Button x:Name="PartTeachingOkButton"
-                                                    Content="OK"
-                                                    Visibility="{Binding PartTeachingOkVisibility}"
-                                                    Command="{Binding PartTeachingOkCommand}" />
-                                            <Button x:Name="PartTeachingCloseButton"
-                                                    Content="Close"
-                                                    Command="{Binding PartTeachingCloseCommand}" />
-                                        </UniformGrid>
+                                <UniformGrid Columns="2" Margin="0,8,0,0">
+                                    <CheckBox x:Name="PartTeachingCommonCheck"
+                                              Content="Common Library"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.PartTeachingOption}"
+                                              IsChecked="{Binding PartTeachingUseCommonLibrary, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                    <CheckBox x:Name="PartTeachingLibraryCheck"
+                                              Content="Library Part"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.PartTeachingOption}"
+                                              IsChecked="{Binding PartTeachingUseLibraryPart, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                    <CheckBox x:Name="PartTeachingAutoCheck"
+                                              Content="Teaching"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.PartTeachingOption}"
+                                              IsChecked="{Binding PartTeachingUseAutoTeaching, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                    <CheckBox x:Name="PartTeachingMatchingCheck"
+                                              Content="Matching"
+                                              Tag="{x:Static vm:AlignPanelUpdateKind.PartTeachingOption}"
+                                              IsChecked="{Binding PartTeachingUseCadMatching, Mode=TwoWay}"
+                                              Checked="AlignControl_Changed"
+                                              Unchecked="AlignControl_Changed" />
+                                </UniformGrid>
 
-                                        <TextBlock x:Name="PartTeachingStatusText"
-                                                   Margin="0,8,0,0"
-                                                   Foreground="{DynamicResource MutedText}"
-                                                   FontFamily="Consolas"
-                                                   TextWrapping="Wrap"
-                                                   Text="{Binding PartTeachingStatus}" />
-                                    </StackPanel>
-                                </TabItem>
-                            </TabControl>
-                        </StackPanel>
-                    </Border>
+                                <UniformGrid Columns="3" Margin="0,10,0,0">
+                                    <Button x:Name="PartTeachingIcButton"
+                                            Content="IC"
+                                            Visibility="{Binding PartTeachingIcVisibility}"
+                                            Command="{Binding PartTeachingIcCommand}" />
+                                    <Button x:Name="PartTeachingOkButton"
+                                            Content="OK"
+                                            Visibility="{Binding PartTeachingOkVisibility}"
+                                            Command="{Binding PartTeachingOkCommand}" />
+                                    <Button x:Name="PartTeachingCloseButton"
+                                            Content="Close"
+                                            Command="{Binding PartTeachingCloseCommand}" />
+                                </UniformGrid>
+                            </StackPanel>
+                        </Border>
 
+                        <TextBlock x:Name="PartTeachingStatusText"
+                                   Foreground="{DynamicResource MutedText}"
+                                   FontFamily="Consolas"
+                                   TextWrapping="Wrap"
+                                   Text="{Binding PartTeachingStatus}" />
+                    </StackPanel>
+                </TabItem>
+            </TabControl>
+        </StackPanel>
+    </Border>
 </UserControl>

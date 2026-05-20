@@ -94,6 +94,8 @@ internal static class SmokeTestRunner
             padBWSw.Stop();
             Write($"PadBW bridge ({padBWSw.ElapsedMilliseconds}ms): available={padBWResp.Available} success={padBWResp.Success} isOK={padBWResp.IsOK} areaRate={padBWResp.AreaRate:F1}% message={padBWResp.Message}");
 
+            RunServiceRegressionChecks(services, Write);
+
             var allAvailable = alignResp.Available && shapeXResp.Available && padBWResp.Available;
             var allSuccess = alignResp.Success && shapeXResp.Success && padBWResp.Success;
             Write(allAvailable && allSuccess ? "PASS: all bridges native + success" : $"PARTIAL: available={allAvailable} success={allSuccess}");
@@ -104,6 +106,126 @@ internal static class SmokeTestRunner
             DiagnosticsLog.Write($"[SMOKE] EXCEPTION {ex}");
             return 5;
         }
+    }
+
+    private static void RunServiceRegressionChecks(AppServices services, Action<string> write)
+    {
+        write("running service regression checks...");
+        VerifyPartRuntimeHandlesCaseDuplicateKeys();
+        VerifyLightServiceRoundTrip(services.AlgorithmLight);
+        VerifyLegacyLightImportParsing();
+        write("service regression checks passed");
+    }
+
+    private static void VerifyPartRuntimeHandlesCaseDuplicateKeys()
+    {
+        var model = CreateSyntheticModel(128, 128);
+        var algorithm = model.Part.Windows[0].Algorithms[0];
+        algorithm.ApplyCatalogDefaults();
+        algorithm.Parameters["Common.bAlgoEnable"] = "true";
+        algorithm.Parameters["common.balgoenable"] = "false";
+        algorithm.Parameters["Align.Threshold"] = "128";
+        algorithm.Parameters["align.threshold"] = "64";
+
+        var runtime = new PartInspectionRuntime();
+        var result = runtime.Run(model, image: null);
+        Assert(result.TotalCount == 3, "Part runtime should keep all synthetic algorithms.");
+
+        var runtimeAlgorithm = result.Packet.Windows[0].Algorithms[0];
+        Assert(CountKeys(runtimeAlgorithm.Parameters, "Common.bAlgoEnable") == 1, "Runtime packet should collapse Common.bAlgoEnable duplicates.");
+        Assert(CountKeys(runtimeAlgorithm.Parameters, "Align.Threshold") == 1, "Runtime packet should collapse Align.Threshold duplicates.");
+        Assert(CountKeys(algorithm.Parameters, "Runtime.LastRun") == 1, "Runtime source parameters should be written without duplicate Runtime.LastRun keys.");
+    }
+
+    private static void VerifyLightServiceRoundTrip(IAlgorithmLightService service)
+    {
+        var algorithm = new InspectionAlgorithmData { Type = "AlgoShapeX", DisplayName = "Light RoundTrip" };
+        algorithm.ApplyCatalogDefaults();
+
+        service.SaveState(algorithm, new AlgorithmLightState
+        {
+            LightType = AlgorithmLightService.UserLight,
+            UserCells =
+            [
+                new AlgorithmLightCell { Position = AlgorithmLightService.TopLight, Operator = 1, RedValue = 120, GreenValue = 30, BlueValue = 20, WhiteValue = 10 },
+                new AlgorithmLightCell { Position = AlgorithmLightService.BottomLight, Operator = 2, RedValue = 80, GreenValue = -1, BlueValue = 40, WhiteValue = -1 }
+            ]
+        });
+
+        var read = service.ReadState(algorithm);
+        Assert(read.LightType == AlgorithmLightService.UserLight, "Light service should preserve User Light mode.");
+        Assert(read.UserCells.Count == 2, "Light service should preserve user light cell count.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrRedValueString") == "120|80", "Light service should store red user-light array.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrCalculationString") == "1|2", "Light service should store user-light operators.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrLightPositionString") == "0|2", "Light service should store user-light positions.");
+    }
+
+    private static void VerifyLegacyLightImportParsing()
+    {
+        const string xml = """
+            <RawDataContainer>
+              <PartData>
+                <Name>SmokeLightPart</Name>
+              </PartData>
+              <WindowDataList>
+                <WindowData>
+                  <ID>W1</ID>
+                  <Name>Main</Name>
+                  <RelRoi>
+                    <cx>64</cx>
+                    <cy>64</cy>
+                    <w>100</w>
+                    <h>100</h>
+                  </RelRoi>
+                  <AlgorithmDataList>
+                    <AlgorithmData>
+                      <ID>A1</ID>
+                      <Type>Align</Type>
+                      <LightType>User</LightType>
+                      <RedValue>35</RedValue>
+                      <GreenValue>25</GreenValue>
+                      <BlueValue>15</BlueValue>
+                      <WhiteValue>5</WhiteValue>
+                      <LightCnt>2</LightCnt>
+                      <ArrRedValue>
+                        <Value>120</Value>
+                        <Value>80</Value>
+                      </ArrRedValue>
+                      <ArrGreenValue>30, -1</ArrGreenValue>
+                      <ArrBlueValue>20;40</ArrBlueValue>
+                      <ArrWhiteValue>10|-1</ArrWhiteValue>
+                      <ArrCalculation>1|2</ArrCalculation>
+                      <ArrLightPosition>0|2</ArrLightPosition>
+                    </AlgorithmData>
+                  </AlgorithmDataList>
+                </WindowData>
+              </WindowDataList>
+            </RawDataContainer>
+            """;
+
+        var parsed = LegacyRawPartImportAdapter.TryParse(xml, out var part, out var status);
+        Assert(parsed, $"Legacy light XML should parse. Status: {status}");
+        var algorithm = part.Windows.Single().Algorithms.Single();
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.LightTypeNum") == "3", "Import should normalize User Light type.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.RedValue") == "35", "Import should parse normal red value.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.LightCnt") == "2", "Import should parse light count.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrRedValueString") == "120|80", "Import should parse light array container.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrGreenValueString") == "30|-1", "Import should parse comma-separated light array.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrBlueValueString") == "20|40", "Import should parse semicolon-separated light array.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrWhiteValueString") == "10|-1", "Import should parse pipe-separated light array.");
+    }
+
+    private static void Assert(bool condition, string message)
+    {
+        if (!condition)
+        {
+            throw new InvalidOperationException(message);
+        }
+    }
+
+    private static int CountKeys(Dictionary<string, string> parameters, string key)
+    {
+        return parameters.Keys.Count(candidate => string.Equals(candidate, key, StringComparison.OrdinalIgnoreCase));
     }
 
     private static bool IsBridgeAlgorithm(string type)

@@ -30,6 +30,11 @@ public sealed class ImageRuntimeStateService : IImageRuntimeStateService
         return frame;
     }
 
+    public void SetSourceFrame(LoadedImageFrame frame)
+    {
+        SetFrame(frame);
+    }
+
     public WriteableBitmap UpdateBinaryBitmap(byte[] pixels, int width, int height, int stride)
     {
         if (BinaryBitmap == null || BinaryBitmap.PixelWidth != width || BinaryBitmap.PixelHeight != height)

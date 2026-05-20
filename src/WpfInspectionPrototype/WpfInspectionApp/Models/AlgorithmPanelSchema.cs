@@ -23,7 +23,7 @@ public static class AlgorithmPanelSchema
             ActiveTab = "Common",
             Tabs =
             [
-                Tab("Common", "Common", ["Common.bAlgoEnable", "Common.IsRequired", "Common.bAlgoGroup", "Common.LightTypeNum"]),
+                Tab("Common", "Common", ["Common.bAlgoEnable", "Common.IsRequired", "Common.bAlgoGroup"]),
                 Tab("Condition", "Condition", [$"{family}.Use2D", $"{family}.Use3D", $"{family}.Threshold", $"{family}.Tolerance"]),
                 Tab("ROI", "ROI / Mask", ["ROI.UseAlgorithmRoi", "Mask.UseMask", "Mask.UsePolygon", "Mask.ExceptRoiCount"]),
                 Tab("Advanced", "Advanced", ["Common.ManualDefectCode", "Common.ManualSubDefectCode", "Command.ApplyAllTarget", "Command.TeachRequested"])

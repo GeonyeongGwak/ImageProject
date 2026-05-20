@@ -3,17 +3,25 @@ using System.Windows.Input;
 using System.Windows.Media;
 using WpfInspectionApp.Commands;
 using WpfInspectionApp.Infrastructure;
+using WpfInspectionApp.Services;
 
 namespace WpfInspectionApp.ViewModels;
 
 public sealed class AlignPanelViewModel : ViewModelBase
 {
+    private readonly IAlignPanelStateService _stateService;
     private int _threshold2D = 128;
+    private int _threshold2DMax = 255;
     private int _threshold3D = 96;
+    private int _threshold3DMax = 120;
     private int _edgeGain = 42;
     private bool _use2D = true;
     private bool _use3D = true;
     private bool _useEdge = true;
+    private int _range2DType = 2;
+    private int _range3DType = 2;
+    private bool _invertCheck;
+    private string _heightAverage = "0.00";
     private string _searchNum = "4";
     private string _searchMargin = "50";
     private string _searchSizeX = "103";
@@ -45,7 +53,13 @@ public sealed class AlignPanelViewModel : ViewModelBase
     private Visibility _partTeachingOkVisibility = Visibility.Collapsed;
 
     public AlignPanelViewModel()
+        : this(new AlignPanelStateService())
     {
+    }
+
+    internal AlignPanelViewModel(IAlignPanelStateService stateService)
+    {
+        _stateService = stateService ?? throw new ArgumentNullException(nameof(stateService));
         ActiveRoiCommand = ActionCommand(AlignPanelActionKind.ActiveRoi);
         DrawWindowRoiCommand = ActionCommand(AlignPanelActionKind.DrawWindowRoi);
         DrawAlgorithmRoiCommand = ActionCommand(AlignPanelActionKind.DrawAlgorithmRoi);
@@ -53,6 +67,7 @@ public sealed class AlignPanelViewModel : ViewModelBase
         PartTeachingIcCommand = ActionCommand(AlignPanelActionKind.PartTeachingIc);
         PartTeachingOkCommand = ActionCommand(AlignPanelActionKind.PartTeachingOk);
         PartTeachingCloseCommand = ActionCommand(AlignPanelActionKind.PartTeachingClose);
+        NotifyAllControlStateChanged();
     }
 
     public event EventHandler<AlignPanelActionRequestedEventArgs>? ActionRequested;
@@ -77,6 +92,7 @@ public sealed class AlignPanelViewModel : ViewModelBase
         set
         {
             var next = Net48Compat.Clamp(value, 0, 255);
+            next = Math.Min(next, _threshold2DMax);
             if (SetProperty(ref _threshold2D, next))
             {
                 OnPropertyChanged(nameof(Threshold2DText));
@@ -86,12 +102,29 @@ public sealed class AlignPanelViewModel : ViewModelBase
 
     public string Threshold2DText => Threshold2D.ToString();
 
+    public int Threshold2DMax
+    {
+        get => _threshold2DMax;
+        set
+        {
+            var next = Net48Compat.Clamp(value, 0, 255);
+            next = Math.Max(next, _threshold2D);
+            if (SetProperty(ref _threshold2DMax, next))
+            {
+                OnPropertyChanged(nameof(Threshold2DMaxText));
+            }
+        }
+    }
+
+    public string Threshold2DMaxText => Threshold2DMax.ToString();
+
     public int Threshold3D
     {
         get => _threshold3D;
         set
         {
             var next = Net48Compat.Clamp(value, 0, 255);
+            next = Math.Min(next, _threshold3DMax);
             if (SetProperty(ref _threshold3D, next))
             {
                 OnPropertyChanged(nameof(Threshold3DText));
@@ -100,6 +133,22 @@ public sealed class AlignPanelViewModel : ViewModelBase
     }
 
     public string Threshold3DText => Threshold3D.ToString();
+
+    public int Threshold3DMax
+    {
+        get => _threshold3DMax;
+        set
+        {
+            var next = Net48Compat.Clamp(value, 0, 255);
+            next = Math.Max(next, _threshold3D);
+            if (SetProperty(ref _threshold3DMax, next))
+            {
+                OnPropertyChanged(nameof(Threshold3DMaxText));
+            }
+        }
+    }
+
+    public string Threshold3DMaxText => Threshold3DMax.ToString();
 
     public int EdgeGain
     {
@@ -119,19 +168,67 @@ public sealed class AlignPanelViewModel : ViewModelBase
     public bool Use2D
     {
         get => _use2D;
-        set => SetProperty(ref _use2D, value);
+        set
+        {
+            if (SetProperty(ref _use2D, value))
+            {
+                KeepInspectionSourceEnabled(AlignPanelInspectionToggle.Use2D);
+            }
+        }
     }
 
     public bool Use3D
     {
         get => _use3D;
-        set => SetProperty(ref _use3D, value);
+        set
+        {
+            if (SetProperty(ref _use3D, value))
+            {
+                KeepInspectionSourceEnabled(AlignPanelInspectionToggle.Use3D);
+            }
+        }
     }
 
     public bool UseEdge
     {
         get => _useEdge;
-        set => SetProperty(ref _useEdge, value);
+        set
+        {
+            if (SetProperty(ref _useEdge, value))
+            {
+                KeepInspectionSourceEnabled(AlignPanelInspectionToggle.UseEdge);
+            }
+        }
+    }
+
+    public bool Is2DConditionEnabled => Use2D;
+
+    public bool Is3DConditionEnabled => Use3D;
+
+    public bool IsEdgeConditionEnabled => UseEdge;
+
+    public int Range2DType
+    {
+        get => _range2DType;
+        set => SetProperty(ref _range2DType, Net48Compat.Clamp(value, 0, 3));
+    }
+
+    public int Range3DType
+    {
+        get => _range3DType;
+        set => SetProperty(ref _range3DType, Net48Compat.Clamp(value, 0, 3));
+    }
+
+    public bool InvertCheck
+    {
+        get => _invertCheck;
+        set => SetProperty(ref _invertCheck, value);
+    }
+
+    public string HeightAverage
+    {
+        get => _heightAverage;
+        set => SetProperty(ref _heightAverage, value ?? "0.00");
     }
 
     public string SearchNum
@@ -149,7 +246,13 @@ public sealed class AlignPanelViewModel : ViewModelBase
     public string SearchSizeX
     {
         get => _searchSizeX;
-        set => SetProperty(ref _searchSizeX, value);
+        set
+        {
+            if (SetProperty(ref _searchSizeX, value) && SameSize)
+            {
+                SearchSizeY = _searchSizeX;
+            }
+        }
     }
 
     public string SearchSizeY
@@ -161,13 +264,32 @@ public sealed class AlignPanelViewModel : ViewModelBase
     public bool SameSize
     {
         get => _sameSize;
-        set => SetProperty(ref _sameSize, value);
+        set
+        {
+            if (SetProperty(ref _sameSize, value))
+            {
+                if (_sameSize)
+                {
+                    SearchSizeY = SearchSizeX;
+                }
+
+                OnPropertyChanged(nameof(IsSearchSizeYEnabled));
+            }
+        }
     }
+
+    public bool IsSearchSizeYEnabled => !SameSize;
 
     public bool ShiftEnabled
     {
         get => _shiftEnabled;
-        set => SetProperty(ref _shiftEnabled, value);
+        set
+        {
+            if (SetProperty(ref _shiftEnabled, value))
+            {
+                KeepCorrectionOptionEnabled(AlignPanelCorrectionToggle.Shift);
+            }
+        }
     }
 
     public string ShiftX
@@ -185,8 +307,18 @@ public sealed class AlignPanelViewModel : ViewModelBase
     public bool AngleEnabled
     {
         get => _angleEnabled;
-        set => SetProperty(ref _angleEnabled, value);
+        set
+        {
+            if (SetProperty(ref _angleEnabled, value))
+            {
+                KeepCorrectionOptionEnabled(AlignPanelCorrectionToggle.Angle);
+            }
+        }
     }
+
+    public bool IsShiftInputEnabled => ShiftEnabled && !IpcUse;
+
+    public bool IsAngleInputEnabled => AngleEnabled;
 
     public string Angle
     {
@@ -215,8 +347,20 @@ public sealed class AlignPanelViewModel : ViewModelBase
     public bool IpcUse
     {
         get => _ipcUse;
-        set => SetProperty(ref _ipcUse, value);
+        set
+        {
+            if (SetProperty(ref _ipcUse, value))
+            {
+                OnPropertyChanged(nameof(IsIpcClassEnabled));
+                OnPropertyChanged(nameof(IsIpcPercentEnabled));
+                OnPropertyChanged(nameof(IsShiftInputEnabled));
+            }
+        }
     }
+
+    public bool IsIpcClassEnabled => IpcUse;
+
+    public bool IsIpcPercentEnabled => IpcUse;
 
     public string IpcClass
     {
@@ -310,12 +454,18 @@ public sealed class AlignPanelViewModel : ViewModelBase
 
     public void LoadState(AlignPanelModelState state)
     {
+        Threshold2DMax = Math.Max(state.Threshold2DMax, state.Threshold2D);
         Threshold2D = state.Threshold2D;
+        Threshold3DMax = Math.Max(state.Threshold3DMax, state.Threshold3D);
         Threshold3D = state.Threshold3D;
         EdgeGain = state.EdgeGain;
         Use2D = state.Use2D;
         Use3D = state.Use3D;
         UseEdge = state.UseEdge;
+        Range2DType = state.Range2DType;
+        Range3DType = state.Range3DType;
+        InvertCheck = state.InvertCheck;
+        HeightAverage = state.HeightAverage;
         SearchNum = state.SearchNum;
         SearchMargin = state.SearchMargin;
         SearchSizeX = state.SearchSizeX;
@@ -337,18 +487,29 @@ public sealed class AlignPanelViewModel : ViewModelBase
         PartTeachingUseAutoTeaching = state.PartTeachingUseAutoTeaching;
         PartTeachingUseCadMatching = state.PartTeachingUseCadMatching;
         PartTeachingLibraryMatchMode = state.PartTeachingLibraryMatchMode;
+        NormalizeEditableValues();
+        NotifyAllControlStateChanged();
     }
 
     public AlignPanelModelState CaptureModelState(string selectedAlgorithm)
     {
+        NormalizeEditableValues();
+        NotifyAllControlStateChanged();
+
         return new AlignPanelModelState(
             selectedAlgorithm,
             Threshold2D,
+            Threshold2DMax,
             Threshold3D,
+            Threshold3DMax,
             EdgeGain,
             Use2D,
             Use3D,
             UseEdge,
+            Range2DType,
+            Range3DType,
+            InvertCheck,
+            HeightAverage,
             SearchNum,
             SearchMargin,
             SearchSizeX,
@@ -407,23 +568,12 @@ public sealed class AlignPanelViewModel : ViewModelBase
     public void SetSearchSize(int width, int height)
     {
         SearchSizeX = width.ToString();
-        SearchSizeY = height.ToString();
+        SearchSizeY = SameSize ? SearchSizeX : height.ToString();
     }
 
-    public void MirrorSearchSizeFromX()
+    public void SetMaskDensity(int maskDensity)
     {
-        if (SameSize)
-        {
-            SearchSizeY = SearchSizeX;
-        }
-    }
-
-    public void MirrorSearchSizeFromY()
-    {
-        if (SameSize)
-        {
-            SearchSizeX = SearchSizeY;
-        }
+        MaskDensityText = $"{maskDensity}%";
     }
 
     public void ClosePartTeaching()
@@ -434,6 +584,62 @@ public sealed class AlignPanelViewModel : ViewModelBase
     private RelayCommand ActionCommand(AlignPanelActionKind kind)
     {
         return new RelayCommand(() => ActionRequested?.Invoke(this, new AlignPanelActionRequestedEventArgs(kind)));
+    }
+
+    private void KeepInspectionSourceEnabled(AlignPanelInspectionToggle changedToggle)
+    {
+        var state = _stateService.KeepInspectionSourceEnabled(_use2D, _use3D, _useEdge, changedToggle);
+        SetProperty(ref _use2D, state.Use2D, nameof(Use2D));
+        SetProperty(ref _use3D, state.Use3D, nameof(Use3D));
+        SetProperty(ref _useEdge, state.UseEdge, nameof(UseEdge));
+        NotifyInspectionControlStateChanged();
+    }
+
+    private void KeepCorrectionOptionEnabled(AlignPanelCorrectionToggle changedToggle)
+    {
+        var state = _stateService.KeepCorrectionOptionEnabled(_shiftEnabled, _angleEnabled, changedToggle);
+        SetProperty(ref _shiftEnabled, state.ShiftEnabled, nameof(ShiftEnabled));
+        SetProperty(ref _angleEnabled, state.AngleEnabled, nameof(AngleEnabled));
+        NotifyCorrectionControlStateChanged();
+    }
+
+    private void NormalizeEditableValues()
+    {
+        SearchNum = _stateService.NormalizeIntegerText(SearchNum, "4", 1, 4);
+        SearchMargin = _stateService.NormalizeIntegerText(SearchMargin, "50", 0, 100000);
+        SearchSizeX = _stateService.NormalizeIntegerText(SearchSizeX, "1", 1, 100000);
+        SearchSizeY = SameSize
+            ? SearchSizeX
+            : _stateService.NormalizeIntegerText(SearchSizeY, "1", 1, 100000);
+        HeightAverage = _stateService.NormalizeDoubleText(HeightAverage, "0.00", 0, 1000000, "0.00");
+        ShiftX = _stateService.NormalizeDoubleText(ShiftX, "1.00", 0, 100000, "0.00");
+        ShiftY = _stateService.NormalizeDoubleText(ShiftY, "1.00", 0, 100000, "0.00");
+        Angle = _stateService.NormalizeDoubleText(Angle, "10", 0, 360, "0.##");
+        Filter = _stateService.NormalizeIntegerText(Filter, "5", 1, 100000);
+        IpcClass = _stateService.NormalizeIpcClass(IpcClass);
+        IpcPercent = _stateService.NormalizeDoubleText(IpcPercent, "50.00", 0, 100, "0.00");
+    }
+
+    private void NotifyAllControlStateChanged()
+    {
+        NotifyInspectionControlStateChanged();
+        OnPropertyChanged(nameof(IsSearchSizeYEnabled));
+        NotifyCorrectionControlStateChanged();
+        OnPropertyChanged(nameof(IsIpcClassEnabled));
+        OnPropertyChanged(nameof(IsIpcPercentEnabled));
+    }
+
+    private void NotifyInspectionControlStateChanged()
+    {
+        OnPropertyChanged(nameof(Is2DConditionEnabled));
+        OnPropertyChanged(nameof(Is3DConditionEnabled));
+        OnPropertyChanged(nameof(IsEdgeConditionEnabled));
+    }
+
+    private void NotifyCorrectionControlStateChanged()
+    {
+        OnPropertyChanged(nameof(IsShiftInputEnabled));
+        OnPropertyChanged(nameof(IsAngleInputEnabled));
     }
 
 }

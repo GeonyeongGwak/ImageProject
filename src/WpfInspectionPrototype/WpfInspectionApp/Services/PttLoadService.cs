@@ -35,9 +35,9 @@ public sealed class PttLoadService : IPttLoadService
             return new PttLoadPreparationResult(false, $"MPTI PTT load failed: {ptt.Code}", ptt.Width, ptt.Height);
         }
 
-        // MPTI_SetRawDataFovInfo can block on some imported PTT/POT pairs. Part Import should
-        // complete once the part data and PEM3D PTT viewer are loaded; run deeper RawData prep
-        // only from an explicit inspection/teaching flow.
+        // MPTI_SetRawDataFovInfo can block on some imported PTT/POT pairs. Light preview
+        // only needs MPTI_GetPttFileLoad to populate the internal per-channel PTT buffers;
+        // run deeper RawData prep only from an explicit inspection/teaching flow.
         return new PttLoadPreparationResult(true, $"MPTI PTT loaded: {ptt.Width}x{ptt.Height}", ptt.Width, ptt.Height);
     }
 }

@@ -30,6 +30,12 @@ namespace
         int   type = -1;     // InspAlgoType
         void* params = nullptr;
         void (*deleter)(void*) = nullptr;
+        int lightRed[10] = {};
+        int lightGreen[10] = {};
+        int lightBlue[10] = {};
+        int lightWhite[10] = {};
+        int lightCalculation[10] = {};
+        int lightPosition[10] = {};
 
         AlgoStorage() = default;
         AlgoStorage(const AlgoStorage&) = delete;
@@ -113,6 +119,28 @@ namespace
     {
         WriteMsg(message, len, text);
         return code;
+    }
+
+    int ClampIntValue(int value, int minValue, int maxValue)
+    {
+        if (value < minValue) return minValue;
+        if (value > maxValue) return maxValue;
+        return value;
+    }
+
+    int ClampLightChannel(int value)
+    {
+        return ClampIntValue(value, 0, 200);
+    }
+
+    void BindLightStorage(InspAlgo& algo, AlgoStorage& storage)
+    {
+        algo.m_nArrRedValue = storage.lightRed;
+        algo.m_nArrGreenValue = storage.lightGreen;
+        algo.m_nArrBlueValue = storage.lightBlue;
+        algo.m_nArrWhiteValue = storage.lightWhite;
+        algo.m_nArrCalculation = storage.lightCalculation;
+        algo.m_nArrLightPosition = storage.lightPosition;
     }
 
     // SEH filter that captures code + faulting address + module name. Runs in the
@@ -297,8 +325,66 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeAddAlgo(int wndIndex, int algoType, int algoI
             as->type = algoType;
             break;
         }
+        BindLightStorage(store.algos.back(), *as);
         store.algoStore.push_back(std::move(as));
         return static_cast<int>(store.algos.size()) - 1;
+    }
+    catch (...) { return -100; }
+}
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoLight(
+    int wndIndex, int algoIndex, const MptiBridgeFlowLightParams* params)
+{
+    try
+    {
+        if (s_committed)
+            return -10;
+        if (wndIndex < 0 || wndIndex >= static_cast<int>(s_windows.size()))
+            return -11;
+        if (params == nullptr)
+            return -1;
+
+        auto& store = s_windowStore[wndIndex];
+        if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size()))
+            return -12;
+        if (algoIndex >= static_cast<int>(store.algoStore.size()) || store.algoStore[algoIndex] == nullptr)
+            return -14;
+
+        auto& algo = store.algos[algoIndex];
+        auto& lightStore = *store.algoStore[algoIndex];
+        BindLightStorage(algo, lightStore);
+
+        algo.m_eLightType = static_cast<InspLightType>(ClampIntValue(params->lightType, Top_Light, ThreeD));
+        algo.m_nRedValue = ClampLightChannel(params->redValue);
+        algo.m_nGreenValue = ClampLightChannel(params->greenValue);
+        algo.m_nBlueValue = ClampLightChannel(params->blueValue);
+        algo.m_nWhiteValue = ClampLightChannel(params->whiteValue);
+
+        const int lightCnt = ClampIntValue(params->lightCnt, 0, 10);
+        algo.m_nLightCnt = lightCnt;
+        for (int i = 0; i < 10; ++i)
+        {
+            if (i < lightCnt)
+            {
+                lightStore.lightRed[i] = ClampLightChannel(params->arrRedValue[i]);
+                lightStore.lightGreen[i] = ClampLightChannel(params->arrGreenValue[i]);
+                lightStore.lightBlue[i] = ClampLightChannel(params->arrBlueValue[i]);
+                lightStore.lightWhite[i] = ClampLightChannel(params->arrWhiteValue[i]);
+                lightStore.lightCalculation[i] = ClampIntValue(params->arrCalculation[i], 0, 2);
+                lightStore.lightPosition[i] = ClampIntValue(params->arrLightPosition[i], Top_Light, Bottom_Light);
+            }
+            else
+            {
+                lightStore.lightRed[i] = 0;
+                lightStore.lightGreen[i] = 0;
+                lightStore.lightBlue[i] = 0;
+                lightStore.lightWhite[i] = 0;
+                lightStore.lightCalculation[i] = 0;
+                lightStore.lightPosition[i] = Top_Light;
+            }
+        }
+
+        return 0;
     }
     catch (...) { return -100; }
 }
@@ -329,9 +415,16 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(
         a.m_nSearchMargin = params->searchMargin < 0 ? 0 : params->searchMargin;
         a.m_nMinBinary = params->minBinary;
         a.m_nMaxBinary = params->maxBinary;
+        a.m_nTypeRange2D = params->typeRange2D;
         a.m_bInsp2D = params->useInsp2D != 0;
-        a.m_bInsp3D = FALSE;
+        a.m_bInsp3D = params->useInsp3D != 0;
+        a.m_dHeightRateMin = params->heightRateMin;
+        a.m_dHeightRateMax = params->heightRateMax;
+        a.m_dHeightAvg = params->heightAverage;
+        a.m_nTypeRange3D = params->typeRange3D;
         a.m_InvertCheck = params->invertCheck != 0;
+        a.m_bUseIPC = params->useIpc != 0;
+        a.m_byIPCClass = static_cast<byte>(params->ipcClass < 0 ? 0 : (params->ipcClass > 2 ? 2 : params->ipcClass));
         a.m_bUseShift = params->useShift != 0;
         a.m_dShiftX = params->maxShiftX;
         a.m_dShiftY = params->maxShiftY;
@@ -339,6 +432,8 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(
         a.m_dAngle = params->maxAngle;
         a.m_bSameSize = params->sameSize != 0;
         a.m_nMinBlobArea = params->minBlobArea < 1 ? 1 : params->minBlobArea;
+        a.m_bFillHole = params->fillHole != 0;
+        a.m_byInspOPT = static_cast<byte>(params->inspOption & 0xFF);
         for (int i = 0; i < sn; ++i)
         {
             // tagAlgoAlign stores part-centered pixel coords (see MptiBridgeRunAlign).
@@ -1171,11 +1266,11 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeDumpAlignDiag(wchar_t* output, int outputLeng
                         const InspAlgo& al = w.vArrAlgoParam[a];
                         p = Append(output, outputLength, p,
                             L"    algoIn[%d]: eAlgoType=%d enable=%d required=%d ptr=%s "
-                            L"light=%d R=%d G=%d B=%d W=%d mix=%d\n",
+                            L"light=%d R=%d G=%d B=%d W=%d lightCnt=%d mix=%d\n",
                             a, (int)al.m_eAlgoType, (int)al.m_bAlgoEnable, (int)al.m_bIsRequired,
                             al.m_ptrInspAlgoParam ? L"set" : L"NULL",
                             (int)al.m_eLightType, al.m_nRedValue, al.m_nGreenValue,
-                            al.m_nBlueValue, al.m_nWhiteValue, al.m_nMixCount);
+                            al.m_nBlueValue, al.m_nWhiteValue, al.m_nLightCnt, al.m_nMixCount);
                     }
                 }
             }

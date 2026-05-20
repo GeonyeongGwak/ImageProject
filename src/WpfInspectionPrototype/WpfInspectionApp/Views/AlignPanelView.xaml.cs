@@ -1,6 +1,6 @@
 using System.Windows;
 using System.Windows.Controls;
-using System.Windows.Media;
+using System.Windows.Input;
 using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp.Views;
@@ -8,6 +8,7 @@ namespace WpfInspectionApp.Views;
 public partial class AlignPanelView : UserControl
 {
     private readonly AlignPanelViewModel _viewModel = new();
+    private bool _suppressUpdateRequests;
 
     public AlignPanelView()
     {
@@ -16,59 +17,42 @@ public partial class AlignPanelView : UserControl
         _viewModel.ActionRequested += (_, e) => ActionRequested?.Invoke(this, e);
     }
 
-    public event SelectionChangedEventHandler? AlignTabSelectionChanged;
+    public event EventHandler? SearchTabSelectionChanged;
     public event EventHandler<AlignPanelUpdateRequestedEventArgs>? UpdateRequested;
     public event EventHandler<AlignPanelActionRequestedEventArgs>? ActionRequested;
 
     public AlignPanelViewModel ViewModel => _viewModel;
 
-    public bool IsSearchTabActive => AlignTabControl.SelectedIndex == 0;
+    public bool IsSearchTabActive => true;
 
     public void ActivateSearchTab()
     {
-        AlignTabControl.SelectedIndex = 0;
+        Keyboard.Focus(SearchNumCombo);
     }
 
     public AlignPanelModelState CaptureModelState(string selectedAlgorithm)
     {
-        return _viewModel.CaptureModelState(selectedAlgorithm);
+        return SuppressUpdateRequests(() => _viewModel.CaptureModelState(selectedAlgorithm));
     }
 
     public void LoadState(AlignPanelModelState state)
     {
-        _viewModel.LoadState(state);
+        SuppressUpdateRequests(() => _viewModel.LoadState(state));
     }
 
     public void SetSearchNum(int value)
     {
-        _viewModel.SetSearchNum(value);
+        SuppressUpdateRequests(() => _viewModel.SetSearchNum(value));
     }
 
     public void SetSearchSize(int width, int height)
     {
-        _viewModel.SetSearchSize(width, height);
-    }
-
-    public void MirrorSearchSizeInput(object? sender)
-    {
-        if (!_viewModel.SameSize)
-        {
-            return;
-        }
-
-        if (sender == SearchSizeXBox)
-        {
-            _viewModel.MirrorSearchSizeFromX();
-        }
-        else if (sender == SearchSizeYBox)
-        {
-            _viewModel.MirrorSearchSizeFromY();
-        }
+        SuppressUpdateRequests(() => _viewModel.SetSearchSize(width, height));
     }
 
     public void SetMaskDensity(int maskDensity)
     {
-        _viewModel.MaskDensityText = $"{maskDensity}%";
+        _viewModel.SetMaskDensity(maskDensity);
     }
 
     public void SetActiveRoiText(string text)
@@ -88,7 +72,7 @@ public partial class AlignPanelView : UserControl
 
     public void UpdatePartTeachingUi()
     {
-        _viewModel.UpdatePartTeachingUi();
+        SuppressUpdateRequests(_viewModel.UpdatePartTeachingUi);
     }
 
     public void SetPartTeachingStatus(string status)
@@ -103,67 +87,58 @@ public partial class AlignPanelView : UserControl
 
     private void AlignTabControl_SelectionChanged(object sender, SelectionChangedEventArgs e)
     {
-        AlignTabSelectionChanged?.Invoke(sender, e);
+        if (ReferenceEquals(e.OriginalSource, AlignTabControl))
+        {
+            SearchTabSelectionChanged?.Invoke(this, EventArgs.Empty);
+        }
     }
 
-    private void SearchNumCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    private void AlignControl_Changed(object sender, RoutedEventArgs e)
     {
-        RequestUpdate(AlignPanelUpdateKind.SearchNum, sender);
-    }
+        if (_suppressUpdateRequests)
+        {
+            return;
+        }
 
-    private void SearchParameter_Changed(object sender, RoutedEventArgs e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.SearchParameter, sender);
-    }
+        if (sender is not FrameworkElement { Tag: AlignPanelUpdateKind kind })
+        {
+            return;
+        }
 
-    private void SearchSizeBox_TextChanged(object sender, TextChangedEventArgs e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.SearchSize, sender);
-    }
-
-    private void Parameter_Changed(object sender, RoutedEventArgs e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.Parameter, sender);
-    }
-
-    private void AlignParameter_Changed(object sender, RoutedEventArgs e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.AlignParameter, sender);
-    }
-
-    private void ThresholdSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.Threshold2D, sender);
-    }
-
-    private void Threshold3DSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.Threshold3D, sender);
-    }
-
-    private void EdgeGainSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.EdgeGain, sender);
-    }
-
-    private void IpcClassCombo_SelectionChanged(object sender, SelectionChangedEventArgs e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.IpcClass, sender);
-    }
-
-    private void PartTeachingOption_Changed(object sender, RoutedEventArgs e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.PartTeachingOption, sender);
-    }
-
-    private void PartTeachingOption_Changed(object sender, SelectionChangedEventArgs e)
-    {
-        RequestUpdate(AlignPanelUpdateKind.PartTeachingOption, sender);
+        RequestUpdate(kind, sender);
     }
 
     private void RequestUpdate(AlignPanelUpdateKind kind, object? source)
     {
         UpdateRequested?.Invoke(this, new AlignPanelUpdateRequestedEventArgs(kind, source));
+    }
+
+    private void SuppressUpdateRequests(Action action)
+    {
+        var wasSuppressing = _suppressUpdateRequests;
+        _suppressUpdateRequests = true;
+        try
+        {
+            action();
+        }
+        finally
+        {
+            _suppressUpdateRequests = wasSuppressing;
+        }
+    }
+
+    private T SuppressUpdateRequests<T>(Func<T> action)
+    {
+        var wasSuppressing = _suppressUpdateRequests;
+        _suppressUpdateRequests = true;
+        try
+        {
+            return action();
+        }
+        finally
+        {
+            _suppressUpdateRequests = wasSuppressing;
+        }
     }
 
 }

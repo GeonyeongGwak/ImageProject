@@ -346,16 +346,17 @@ public static class LegacyRawPartImportAdapter
         algorithm.ApplyCatalogDefaults();
         algorithm.DisplayName = $"{algorithm.DisplayName} #{index}";
         algorithm.AlgorithmRoi = ParseOptionalAlgorithmRoi(element, transform);
-        algorithm.Parameters["Legacy.ID"] = legacyId;
-        algorithm.Parameters["Legacy.Type"] = rawType;
-        algorithm.Parameters["Legacy.TypeMeaning"] = "InspAlgoType ordinal";
-        algorithm.Parameters["Legacy.Source"] = "RawData XML";
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Legacy.ID", legacyId);
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Legacy.Type", rawType);
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Legacy.TypeMeaning", "InspAlgoType ordinal");
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Legacy.Source", "RawData XML");
 
         foreach (var pair in FlattenLeafValues(element))
         {
-            algorithm.Parameters[pair.Key] = pair.Value;
+            AlgorithmParameterStore.Set(algorithm.Parameters, pair.Key, pair.Value);
         }
 
+        ApplyCommonLightParameters(algorithm, element);
         ApplyAlgorithmParameterMapping(algorithm, element, transform);
 
         algorithm.Result = new InspectionResultData
@@ -364,6 +365,37 @@ public static class LegacyRawPartImportAdapter
         };
         algorithm.PanelData = AlgorithmPanelSchema.Create(algorithm);
         return algorithm;
+    }
+
+    private static void ApplyCommonLightParameters(InspectionAlgorithmData algorithm, XElement element)
+    {
+        if (TryReadLeafValue(element, out var lightTypeText, "LightTypeNum", "LightType"))
+        {
+            SetInt(algorithm, "Common.LightTypeNum", NormalizeLegacyLightType(lightTypeText));
+        }
+
+        SetClampedIntIfPresent(algorithm, "Common.RedValue", element, 0, 200, "RedValue");
+        SetClampedIntIfPresent(algorithm, "Common.GreenValue", element, 0, 200, "GreenValue");
+        SetClampedIntIfPresent(algorithm, "Common.BlueValue", element, 0, 200, "BlueValue");
+        SetClampedIntIfPresent(algorithm, "Common.WhiteValue", element, 0, 200, "WhiteValue");
+        SetClampedIntIfPresent(algorithm, "Common.LightCnt", element, 0, 10, "LightCnt", "LightCount");
+
+        SetLightArrayIfPresent(algorithm, "Common.ArrRedValueString", element, -1, 200, "ArrRedValueString", "ArrRedValue", "m_nArrRedValue");
+        SetLightArrayIfPresent(algorithm, "Common.ArrGreenValueString", element, -1, 200, "ArrGreenValueString", "ArrGreenValue", "m_nArrGreenValue");
+        SetLightArrayIfPresent(algorithm, "Common.ArrBlueValueString", element, -1, 200, "ArrBlueValueString", "ArrBlueValue", "m_nArrBlueValue");
+        SetLightArrayIfPresent(algorithm, "Common.ArrWhiteValueString", element, -1, 200, "ArrWhiteValueString", "ArrWhiteValue", "m_nArrWhiteValue");
+        SetLightArrayIfPresent(algorithm, "Common.ArrCalculationString", element, 0, 2, "ArrCalculationString", "ArrCalculation", "m_nArrCalculation");
+        SetLightArrayIfPresent(algorithm, "Common.ArrLightPositionString", element, 0, 2, "ArrLightPositionString", "ArrLightPosition", "m_nArrLightPosition");
+
+        if (!AlgorithmParameterStore.ContainsKey(algorithm.Parameters, "Common.LightTypeNum"))
+        {
+            SetInt(algorithm, "Common.LightTypeNum", 0);
+        }
+
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.RedValue", "100");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.GreenValue", "0");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.BlueValue", "0");
+        AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.WhiteValue", "0");
     }
 
     private static void ApplyAlgorithmParameterMapping(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
@@ -518,28 +550,34 @@ public static class LegacyRawPartImportAdapter
             SetInt(algorithm, "Align.BinaryMax", Round(binaryRange[1]));
             SetInt(algorithm, "Align.Threshold", Round(binaryRange[0]));
         }
+        else
+        {
+            SetIntIfPresent(algorithm, "Align.BinaryMin", element, "MinBinary");
+            SetIntIfPresent(algorithm, "Align.BinaryMax", element, "MaxBinary");
+            SetIntIfPresent(algorithm, "Align.Threshold", element, "MinBinary");
+        }
 
         if (TryReadBoolLeaf(element, out var invertCheck, "InvChk", "InvertCheck", "bInvertCheck"))
         {
             SetBool(algorithm, "Align.InvertCheck", invertCheck);
         }
 
-        if (TryReadBoolLeaf(element, out var use2D, "Use2D"))
+        if (TryReadBoolLeaf(element, out var use2D, "Use2D", "Insp2D"))
         {
             SetBool(algorithm, "Align.Use2D", use2D);
         }
 
-        if (TryReadBoolLeaf(element, out var use3D, "Use3D"))
+        if (TryReadBoolLeaf(element, out var use3D, "Use3D", "Insp3D"))
         {
             SetBool(algorithm, "Align.Use3D", use3D);
         }
 
-        if (TryReadIntLeaf(element, out var range2D, "TPR2D"))
+        if (TryReadIntLeaf(element, out var range2D, "TPR2D", "TypeRange2D", "nTypeRange2D"))
         {
             SetInt(algorithm, "Align.Range2DType", range2D);
         }
 
-        if (TryReadIntLeaf(element, out var range3D, "TPR3D", "Range3D", "nTypeRange3D"))
+        if (TryReadIntLeaf(element, out var range3D, "TPR3D", "TypeRange3D", "Range3D", "nTypeRange3D"))
         {
             SetInt(algorithm, "Align.Range3DType", range3D);
         }
@@ -550,13 +588,19 @@ public static class LegacyRawPartImportAdapter
             SetDouble(algorithm, "Align.HeightRateMax", heightRange[1]);
             SetDouble(algorithm, "Align.HeightAvg", heightRange[2]);
         }
+        else
+        {
+            SetDoubleIfPresent(algorithm, "Align.HeightRateMin", element, "HeightRateMin", "HeightMin");
+            SetDoubleIfPresent(algorithm, "Align.HeightRateMax", element, "HeightRateMax", "HeightMax");
+            SetDoubleIfPresent(algorithm, "Align.HeightAvg", element, "HeightAvg", "HeightAverage");
+        }
 
         if (TryReadBoolLeaf(element, out var useIpc, "UseIPC", "bUseIPC"))
         {
             SetBool(algorithm, "Align.UseIPC", useIpc);
         }
 
-        if (TryReadIntLeaf(element, out var ipcClass, "CSIPC", "IPCClass", "byIPCClass"))
+        if (TryReadIntLeaf(element, out var ipcClass, "CSIPC", "IPCClass", "ClassIPC", "byIPCClass"))
         {
             SetInt(algorithm, "Align.IPCClass", ipcClass);
         }
@@ -570,6 +614,11 @@ public static class LegacyRawPartImportAdapter
         {
             SetDouble(algorithm, "Align.ShiftX", shift[0]);
             SetDouble(algorithm, "Align.ShiftY", shift[1]);
+        }
+        else
+        {
+            SetDoubleIfPresent(algorithm, "Align.ShiftX", element, "ShiftX");
+            SetDoubleIfPresent(algorithm, "Align.ShiftY", element, "ShiftY");
         }
 
         if (TryReadBoolLeaf(element, out var useAngle, "UseAng", "UseAngle"))
@@ -639,17 +688,17 @@ public static class LegacyRawPartImportAdapter
             }
         }
 
-        if (TryReadIntLeaf(element, out var minBlob, "MinBlob"))
+        if (TryReadIntLeaf(element, out var minBlob, "MinBlob", "MinBlobArea"))
         {
             SetInt(algorithm, "Align.MinBlobArea", Math.Max(1, minBlob));
         }
 
-        if (TryReadBoolLeaf(element, out var fillHole, "FH"))
+        if (TryReadBoolLeaf(element, out var fillHole, "FH", "FillHole"))
         {
             SetBool(algorithm, "Align.FillHole", fillHole);
         }
 
-        if (TryReadIntLeaf(element, out var inspOpt, "IOPT", "InspOPT", "byInspOPT"))
+        if (TryReadIntLeaf(element, out var inspOpt, "IOPT", "InspOPT", "InspOption", "byInspOPT"))
         {
             SetInt(algorithm, "Align.InspOPT", inspOpt);
         }
@@ -1005,7 +1054,7 @@ public static class LegacyRawPartImportAdapter
         SetDouble(algorithm, $"{prefix}.Top", roi[1]);
         SetDouble(algorithm, $"{prefix}.Right", roi[2]);
         SetDouble(algorithm, $"{prefix}.Bottom", roi[3]);
-        algorithm.Parameters[$"{prefix}.Raw"] = string.Join(",", roi.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture)));
+        AlgorithmParameterStore.Set(algorithm.Parameters, $"{prefix}.Raw", string.Join(",", roi.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture))));
 
         var leftTop = ConvertLegacyMmPointToPixel(roi[0], roi[1], transform);
         var rightBottom = ConvertLegacyMmPointToPixel(roi[2], roi[3], transform);
@@ -1438,7 +1487,7 @@ public static class LegacyRawPartImportAdapter
         {
             if (TryReadLeafValue(element, out var roi, $"ROI{index}", $"PtrrcGapRect{index}"))
             {
-                algorithm.Parameters[$"{family}.GapRoi{index}.Raw"] = roi;
+                AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.GapRoi{index}.Raw", roi);
                 roiCount++;
             }
         }
@@ -2056,7 +2105,7 @@ public static class LegacyRawPartImportAdapter
 
         if (TryReadLeafValue(element, out var exceptArea, "EA"))
         {
-            algorithm.Parameters[$"{family}.ExceptArea.Raw"] = exceptArea;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.ExceptArea.Raw", exceptArea);
             SetInt(algorithm, $"{family}.ExceptAreaCount", CountDelimitedTokens(exceptArea));
         }
 
@@ -2219,7 +2268,7 @@ public static class LegacyRawPartImportAdapter
 
         if (TryReadNumberArrayLeaf(element, out var data, "Data"))
         {
-            algorithm.Parameters[$"{family}.Data.Raw"] = string.Join(",", data.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture)));
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.Data.Raw", string.Join(",", data.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture))));
             if (data.Length > 0)
             {
                 SetInt(algorithm, $"{family}.LineData", Round(data[0]));
@@ -2399,13 +2448,13 @@ public static class LegacyRawPartImportAdapter
         if (TryReadLeafValue(element, out var modelNames, "ArrModelName"))
         {
             SetInt(algorithm, $"{family}.ModelNameCount", CountDelimitedTokens(modelNames));
-            algorithm.Parameters[$"{family}.ModelName.Raw"] = modelNames;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.ModelName.Raw", modelNames);
         }
 
         if (TryReadLeafValue(element, out var exceptModelNames, "ArrExcModelName"))
         {
             SetInt(algorithm, $"{family}.ExceptModelNameCount", CountDelimitedTokens(exceptModelNames));
-            algorithm.Parameters[$"{family}.ExceptModelName.Raw"] = exceptModelNames;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.ExceptModelName.Raw", exceptModelNames);
         }
 
         SetBool(algorithm, "Import.PatternDiffMapped", true);
@@ -2569,22 +2618,22 @@ public static class LegacyRawPartImportAdapter
     {
         if (TryReadLeafValue(element, out var roi1, "ROI1"))
         {
-            algorithm.Parameters[$"{family}.Roi1.Raw"] = roi1;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.Roi1.Raw", roi1);
         }
 
         if (TryReadLeafValue(element, out var roi2, "ROI2"))
         {
-            algorithm.Parameters[$"{family}.Roi2.Raw"] = roi2;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.Roi2.Raw", roi2);
         }
 
         if (TryReadLeafValue(element, out var roi1Mm, "ROI1_mm"))
         {
-            algorithm.Parameters[$"{family}.Roi1.Mm"] = roi1Mm;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.Roi1.Mm", roi1Mm);
         }
 
         if (TryReadLeafValue(element, out var roi2Mm, "ROI2_mm"))
         {
-            algorithm.Parameters[$"{family}.Roi2.Mm"] = roi2Mm;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.Roi2.Mm", roi2Mm);
         }
     }
 
@@ -2633,7 +2682,7 @@ public static class LegacyRawPartImportAdapter
     {
         if (TryReadLeafValue(element, out var value, names))
         {
-            algorithm.Parameters[$"{family}.{key}.Raw"] = value;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.{key}.Raw", value);
         }
     }
 
@@ -2659,7 +2708,7 @@ public static class LegacyRawPartImportAdapter
                 var key = string.IsNullOrWhiteSpace(suffix)
                     ? $"{family}.{targetPrefix}"
                     : $"{family}.{targetPrefix}.{suffix}";
-                algorithm.Parameters[key] = leaf.Value.Trim();
+                AlgorithmParameterStore.Set(algorithm.Parameters, key, leaf.Value.Trim());
                 copied++;
                 break;
             }
@@ -2686,7 +2735,7 @@ public static class LegacyRawPartImportAdapter
         {
             foreach (var leaf in container.Descendants().Where(candidate => !candidate.HasElements && !string.IsNullOrWhiteSpace(candidate.Value)))
             {
-                algorithm.Parameters[$"{family}.{targetPrefix}.{leaf.Name.LocalName}"] = leaf.Value.Trim();
+                AlgorithmParameterStore.Set(algorithm.Parameters, $"{family}.{targetPrefix}.{leaf.Name.LocalName}", leaf.Value.Trim());
                 copied++;
             }
         }
@@ -2750,7 +2799,7 @@ public static class LegacyRawPartImportAdapter
             SetDouble(algorithm, $"{prefix}.Top", roi[1]);
             SetDouble(algorithm, $"{prefix}.Right", roi[2]);
             SetDouble(algorithm, $"{prefix}.Bottom", roi[3]);
-            algorithm.Parameters[$"{prefix}.Raw"] = string.Join(",", roi.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture)));
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{prefix}.Raw", string.Join(",", roi.Select(value => value.ToString("0.########", CultureInfo.InvariantCulture))));
 
             var leftTop = ConvertLegacyMmPointToPixel(roi[0], roi[1], transform);
             var rightBottom = ConvertLegacyMmPointToPixel(roi[2], roi[3], transform);
@@ -2796,7 +2845,7 @@ public static class LegacyRawPartImportAdapter
 
         if (TryReadLeafValue(element, out var models, $"ArrMo{zeroBasedIndex}"))
         {
-            algorithm.Parameters[$"{prefix}.Models"] = models;
+            AlgorithmParameterStore.Set(algorithm.Parameters, $"{prefix}.Models", models);
         }
 
         if (zeroBasedIndex == 0)
@@ -2931,7 +2980,7 @@ public static class LegacyRawPartImportAdapter
 
         if (TryReadLeafValue(element, out var amRoi, "AMROI"))
         {
-            algorithm.Parameters["PadBW.MaskRoi"] = amRoi;
+            AlgorithmParameterStore.Set(algorithm.Parameters, "PadBW.MaskRoi", amRoi);
         }
 
         if (TryReadIntLeaf(element, out var blobInfoCount, "BlobInfoCnt_"))
@@ -3073,6 +3122,115 @@ public static class LegacyRawPartImportAdapter
         }
     }
 
+    private static void SetClampedIntIfPresent(InspectionAlgorithmData algorithm, string key, XElement element, int min, int max, params string[] names)
+    {
+        if (TryReadIntLeaf(element, out var value, names))
+        {
+            SetInt(algorithm, key, Net48Compat.Clamp(value, min, max));
+        }
+    }
+
+    private static void SetLightArrayIfPresent(
+        InspectionAlgorithmData algorithm,
+        string key,
+        XElement element,
+        int min,
+        int max,
+        params string[] names)
+    {
+        if (!TryReadLightArrayValue(element, out var raw, names))
+        {
+            return;
+        }
+
+        var values = ParseLegacyIntArray(raw)
+            .Take(10)
+            .Select(value => Net48Compat.Clamp(value, min, max))
+            .ToList();
+        if (values.Count == 0)
+        {
+            return;
+        }
+
+        AlgorithmParameterStore.Set(algorithm.Parameters, key, string.Join("|", values));
+    }
+
+    private static bool TryReadLightArrayValue(XElement element, out string value, params string[] names)
+    {
+        if (TryReadLeafValue(element, out value, names))
+        {
+            return true;
+        }
+
+        foreach (var name in names)
+        {
+            var container = element.Descendants()
+                .FirstOrDefault(candidate => candidate.HasElements
+                    && string.Equals(candidate.Name.LocalName, name, StringComparison.OrdinalIgnoreCase));
+            if (container == null)
+            {
+                continue;
+            }
+
+            var values = container.Descendants()
+                .Where(candidate => !candidate.HasElements && !string.IsNullOrWhiteSpace(candidate.Value))
+                .Select(candidate => candidate.Value.Trim())
+                .ToList();
+            if (values.Count == 0)
+            {
+                continue;
+            }
+
+            value = string.Join("|", values);
+            return true;
+        }
+
+        value = "";
+        return false;
+    }
+
+    private static int NormalizeLegacyLightType(string value)
+    {
+        var text = value.Trim();
+        if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var number))
+        {
+            return Net48Compat.Clamp(number, 0, 8);
+        }
+
+        return text.Replace("_", "").Replace(" ", "").ToUpperInvariant() switch
+        {
+            "TOPLIGHT" or "TOP" => 0,
+            "MIDDLELIGHT" or "MIDDLE" or "MID" => 1,
+            "BOTTOMLIGHT" or "BOTTOM" or "BTM" => 2,
+            "USERLIGHT" or "USER" => 3,
+            "SIDERED" or "SIDE1LIGHT" or "SIDE1" => 4,
+            "SIDEGREEN" or "SIDE2LIGHT" or "SIDE2" => 5,
+            "SIDEBLUE" or "SIDE3LIGHT" or "SIDE3" => 6,
+            "SIDE4LIGHT" or "SIDE4" => 7,
+            "THREED" or "3D" => 8,
+            _ => 0
+        };
+    }
+
+    private static List<int> ParseLegacyIntArray(string raw)
+    {
+        var result = new List<int>();
+        foreach (var token in raw.Split(new[] { '|', ',', ';' }, StringSplitOptions.RemoveEmptyEntries))
+        {
+            var text = token.Trim();
+            if (int.TryParse(text, NumberStyles.Integer, CultureInfo.InvariantCulture, out var value))
+            {
+                result.Add(value);
+            }
+            else if (TryParseDouble(text, out var doubleValue))
+            {
+                result.Add(Round(doubleValue));
+            }
+        }
+
+        return result;
+    }
+
     private static void SetDoubleIfPresent(InspectionAlgorithmData algorithm, string key, XElement element, params string[] names)
     {
         if (TryReadDoubleLeaf(element, out var value, names))
@@ -3085,7 +3243,7 @@ public static class LegacyRawPartImportAdapter
     {
         if (TryReadLeafValue(element, out var value, names))
         {
-            algorithm.Parameters[key] = value;
+            AlgorithmParameterStore.Set(algorithm.Parameters, key, value);
         }
     }
 
@@ -3093,7 +3251,7 @@ public static class LegacyRawPartImportAdapter
     {
         if (index >= 0 && index < values.Count && !string.IsNullOrWhiteSpace(values[index]))
         {
-            algorithm.Parameters[key] = values[index];
+            AlgorithmParameterStore.Set(algorithm.Parameters, key, values[index]);
         }
     }
 
@@ -3297,17 +3455,17 @@ public static class LegacyRawPartImportAdapter
 
     private static void SetInt(InspectionAlgorithmData algorithm, string key, int value)
     {
-        algorithm.Parameters[key] = value.ToString(CultureInfo.InvariantCulture);
+        AlgorithmParameterStore.Set(algorithm.Parameters, key, value.ToString(CultureInfo.InvariantCulture));
     }
 
     private static void SetDouble(InspectionAlgorithmData algorithm, string key, double value)
     {
-        algorithm.Parameters[key] = value.ToString("0.########", CultureInfo.InvariantCulture);
+        AlgorithmParameterStore.Set(algorithm.Parameters, key, value.ToString("0.########", CultureInfo.InvariantCulture));
     }
 
     private static void SetBool(InspectionAlgorithmData algorithm, string key, bool value)
     {
-        algorithm.Parameters[key] = value ? "true" : "false";
+        AlgorithmParameterStore.Set(algorithm.Parameters, key, value ? "true" : "false");
     }
 
     private static bool TryParseDouble(string value, out double parsed)
@@ -3325,8 +3483,8 @@ public static class LegacyRawPartImportAdapter
         };
         algorithm.ApplyCatalogDefaults();
         algorithm.DisplayName = $"{algorithm.DisplayName} #{index}";
-        algorithm.Parameters["Legacy.Source"] = "RawData XML window algorithm flag";
-        algorithm.Parameters["Legacy.WindowID"] = FirstValue(windowElement, "ID");
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Legacy.Source", "RawData XML window algorithm flag");
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Legacy.WindowID", FirstValue(windowElement, "ID"));
         algorithm.Result = new InspectionResultData
         {
             Message = "Imported from legacy RawData window algorithm flag"

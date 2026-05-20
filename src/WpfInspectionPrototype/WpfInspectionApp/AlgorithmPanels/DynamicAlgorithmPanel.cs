@@ -69,11 +69,9 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
         _binding = true;
         _content.Children.Clear();
         _content.Children.Add(Text($"{_catalog.DisplayName.ToUpperInvariant()} ALGORITHM", 13, "#27A6FF", FontWeights.Bold));
-        _content.Children.Add(Text($"{_catalog.Type} | {_catalog.Group}:{_catalog.LegacyName} ({_catalog.LegacyFlag}) | Family {_catalog.ParameterFamily}", 12, "#D6ECFF", FontWeights.SemiBold));
-        _content.Children.Add(Text($"Reference UI: {_profile.SourceControl}", 12, "#80DFFF", FontWeights.Bold));
-        _content.Children.Add(Text($"Window: {_context.Window.Name}", 12, "#8BA5C4", FontWeights.SemiBold));
+        _content.Children.Add(Text($"{_profile.SourceControl} | {_context.Window.Name}", 12, "#D6ECFF", FontWeights.SemiBold));
 
-        var commandGrid = new UniformGrid { Columns = 2, Margin = new Thickness(0, 8, 0, 8) };
+        var commandGrid = new UniformGrid { Columns = 4, Margin = new Thickness(0, 6, 0, 6) };
         commandGrid.Children.Add(Button("Draw Algorithm ROI", () => AlgorithmPanelCommonEvents.RequestAlgorithmRoi(_context)));
         commandGrid.Children.Add(Button("Teach", () => _interaction.ExecuteCommand($"{_catalog.ParameterFamily}.TeachRequested", rebuild: false)));
         commandGrid.Children.Add(Button("Search", () => _interaction.ExecuteCommand($"{_catalog.ParameterFamily}.SearchRequested", rebuild: false)));
@@ -109,6 +107,7 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
     private FrameworkElement BuildReferenceTab(string tab, List<AlgorithmReferenceControl> controls)
     {
         var panel = TabPanel();
+        var editGrid = AlgorithmPanelUi.EditGrid();
 
         if (tab == "ROI / Mask")
         {
@@ -126,9 +125,10 @@ public class DynamicAlgorithmPanel : IAlgorithmPanel
 
         foreach (var control in controls)
         {
-            panel.Children.Add(BuildReferenceControl(control));
+            editGrid.Children.Add(BuildReferenceControl(control));
         }
 
+        panel.Children.Add(editGrid);
         return panel;
     }
 
