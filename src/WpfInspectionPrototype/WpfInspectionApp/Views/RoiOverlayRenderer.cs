@@ -206,28 +206,16 @@ public static class RoiOverlayRenderer
         bool isActive,
         bool isWindowRoi)
     {
-        var marginRoi = context.CreateMarginRoi(roi);
-        var marginRect = context.ToDisplayRect(marginRoi);
         var roiRect = context.ToDisplayRect(roi);
+
+        // Window ROI 는 옐로우 통일, Algorithm ROI 는 기존 시안 톤 유지.
+        // active/inactive 차이는 stroke 두께로만 표현 (색은 동일) — Window 의 경우
+        // 어두운 음영 inactive 가 잘 안 보인다는 의견 반영.
         var activeColor = isWindowRoi ? Color.FromRgb(255, 210, 41) : Color.FromRgb(128, 223, 255);
-        var inactiveColor = isWindowRoi ? Color.FromRgb(160, 129, 28) : Color.FromRgb(54, 137, 168);
+        var inactiveColor = isWindowRoi ? Color.FromRgb(255, 210, 41) : Color.FromRgb(54, 137, 168);
 
-        if (isWindowRoi)
-        {
-            var margin = new Rectangle
-            {
-                Width = marginRect.Width,
-                Height = marginRect.Height,
-                Stroke = new SolidColorBrush(Color.FromRgb(24, 224, 123)),
-                StrokeDashArray = new DoubleCollection { 5, 4 },
-                StrokeThickness = isActive ? 2 : 1,
-                Fill = new SolidColorBrush(Color.FromArgb(34, 24, 224, 123))
-            };
-            Canvas.SetLeft(margin, marginRect.Left);
-            Canvas.SetTop(margin, marginRect.Top);
-            overlay.Children.Add(margin);
-        }
-
+        // Window ROI margin (녹색 점선 박스) 와 점선 stroke 는 모두 제거.
+        // Algorithm ROI 만 기존처럼 짧은 점선으로 구분.
         var rectangle = new Rectangle
         {
             Width = roiRect.Width,
@@ -235,9 +223,12 @@ public static class RoiOverlayRenderer
             Stroke = new SolidColorBrush(isActive ? activeColor : inactiveColor),
             StrokeDashArray = isWindowRoi ? null : new DoubleCollection { 2, 2 },
             StrokeThickness = isActive ? 2.2 : 1.4,
-            Fill = new SolidColorBrush(isWindowRoi
-                ? (isActive ? Color.FromArgb(34, 255, 210, 41) : Color.FromArgb(18, 255, 210, 41))
-                : (isActive ? Color.FromArgb(42, 128, 223, 255) : Color.FromArgb(20, 128, 223, 255)))
+            // Window ROI 내부는 완전 투명 (Fill=null). Algorithm ROI 만 살짝 색조 유지.
+            Fill = isWindowRoi
+                ? null
+                : new SolidColorBrush(isActive
+                    ? Color.FromArgb(42, 128, 223, 255)
+                    : Color.FromArgb(20, 128, 223, 255))
         };
         Canvas.SetLeft(rectangle, roiRect.Left);
         Canvas.SetTop(rectangle, roiRect.Top);

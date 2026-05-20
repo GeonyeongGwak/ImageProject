@@ -11,6 +11,15 @@ using WpfInspectionApp.Services.FlowAlgorithms;
 
 namespace WpfInspectionApp.ViewModels;
 
+// CAM-03 (오른쪽 카메라) 가 어떤 화면을 보여줄지 결정하는 모드.
+// Origin = PTT + Light 합성 그레이 원본, Binary = threshold preview 결과.
+// 라벨은 "전환 후 모드" 를 표시 (현재 Origin 이면 버튼 라벨 "Binary").
+public enum Cam03PreviewMode
+{
+    Origin,
+    Binary
+}
+
 public sealed class MainViewModel : ViewModelBase
 {
     private InspectionModel _model;
@@ -30,8 +39,13 @@ public sealed class MainViewModel : ViewModelBase
     private double _imageZoomPercent = 100;
     private ImageSource? _sourceImage;
     private ImageSource? _binaryImage;
+    // CAM-01 전용 컬러(BGRA32) 이미지. PTT 로드 시 1 회만 갱신되며 Light 슬라이더에는 영향 없음.
+    private ImageSource? _cam01ColorImage;
     private object? _activeAlgorithmPanelContent;
     private string _selectedWindowTypeFilter = AllWindowTypesFilter;
+    // CAM-03 가 Light 합성 원본을 보여줄지(Origin), 이진화 결과를 보여줄지(Binary).
+    // 기본값은 기존 동작 유지(Binary).
+    private Cam03PreviewMode _cam03Mode = Cam03PreviewMode.Binary;
     private const string AllWindowTypesFilter = "All";
 
     private readonly IDialogOwner _dialogOwner;
@@ -47,8 +61,16 @@ public sealed class MainViewModel : ViewModelBase
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IInspectionWorkflowService _inspectionWorkflowService;
     private readonly IInspectionFlowService _inspectionFlowService;
+    private readonly IAlignFlowRequestFactory _alignFlowRequestFactory;
     private readonly IThresholdPreviewWorkflowService _thresholdPreviewWorkflowService;
+    private readonly IAlgorithmLightService _algorithmLightService;
+    private readonly IPttLightPreviewService _pttLightPreviewService;
+    private readonly IPttViewerWorkflowService _pttViewerWorkflowService;
+    private bool _isImporting;
+    private string _importProgressText = "";
     private string? _lastFlowPttPath;
+    private int _lastPttWidth;
+    private int _lastPttHeight;
     private AlgorithmPanelFactory? _algorithmPanelFactory;
     private IAlgorithmPanel? _activeAlgorithmPanel;
     private bool _alignSearchTabActive;
@@ -69,7 +91,11 @@ public sealed class MainViewModel : ViewModelBase
         IImageRuntimeStateService imageRuntimeStateService,
         IInspectionWorkflowService inspectionWorkflowService,
         IInspectionFlowService inspectionFlowService,
+        IAlignFlowRequestFactory alignFlowRequestFactory,
         IThresholdPreviewWorkflowService thresholdPreviewWorkflowService,
+        IAlgorithmLightService algorithmLightService,
+        IPttLightPreviewService pttLightPreviewService,
+        IPttViewerWorkflowService pttViewerWorkflowService,
         FlowAlgorithmRegistry flowAlgorithmRegistry)
     {
         _model = model;
@@ -88,7 +114,12 @@ public sealed class MainViewModel : ViewModelBase
         _imageRuntimeStateService = imageRuntimeStateService;
         _inspectionWorkflowService = inspectionWorkflowService;
         _inspectionFlowService = inspectionFlowService;
+        _alignFlowRequestFactory = alignFlowRequestFactory;
         _thresholdPreviewWorkflowService = thresholdPreviewWorkflowService;
+        _algorithmLightService = algorithmLightService;
+        _pttLightPreviewService = pttLightPreviewService;
+        _pttViewerWorkflowService = pttViewerWorkflowService;
+        LightControl = new LightControlViewModel(_algorithmLightService, HandleLightPanelChanged);
         AlgorithmTypes = new ObservableCollection<string>(AlgorithmCatalog.All.Select(item => item.Type));
         InspectionTreeNodes = [];
 
@@ -114,8 +145,9 @@ public sealed class MainViewModel : ViewModelBase
         LoadPttCommand = new RelayCommand(BrowseAndLoadPtt);
         SaveModelCommand = new RelayCommand(SaveModel);
         LoadModelCommand = new RelayCommand(BrowseAndLoadModel);
-        ImportPartCommand = new RelayCommand(BrowseAndImportPart);
+        ImportPartCommand = new AsyncRelayCommand(BrowseAndImportPartAsync, () => !IsImporting);
         AddAlgorithmCommand = new RelayCommand(AddAlgorithm);
+        DrawAlgorithmRoiCommand = new RelayCommand(EnableAlgorithmRoiDrawing);
         RunInspectionCommand = new AsyncRelayCommand(RunInspectionAsync, () => CanRunInspection);
         RunFlowCommand = new AsyncRelayCommand(RunFlowAsync, () => !IsInspectionRunning);
         SelectThemeCommand = new RelayCommand(parameter => SetSelectedTheme(parameter?.ToString() ?? "Dark"));
@@ -126,6 +158,7 @@ public sealed class MainViewModel : ViewModelBase
         MoveSelectedWindowToBottomCommand = new RelayCommand(() => MoveSelectedWindow(int.MaxValue));
         MoveSelectedWindowToTopCommand = new RelayCommand(() => MoveSelectedWindow(int.MinValue));
         WindowTypeFilters = new ObservableCollection<string> { AllWindowTypesFilter };
+        Cam03ToggleCommand = new RelayCommand(ToggleCam03PreviewMode);
         ZoomOneCommand = DisabledCommand();
         ZoomFitCommand = DisabledCommand();
     }
@@ -149,17 +182,13 @@ public sealed class MainViewModel : ViewModelBase
 
         try
         {
-            // Pull resolution from Part Import metadata if the model has it. The service
-            // falls back to reading the .pot file when these are 0, and finally to 1.0
-            // mm/pixel inside the native bridge.
-            var resX = _model.Part?.PixelResolutionX ?? 0.0;
-            var resY = _model.Part?.PixelResolutionY ?? 0.0;
-            var result = await _inspectionFlowService.RunAlignAsync(new AlignFlowRequest(
-                PttPath: pttPath!,
-                WindowWidth: 0,
-                WindowHeight: 0,
-                PixelResolutionX: resX,
-                PixelResolutionY: resY));
+            ModelSyncFromUiRequested?.Invoke();
+            var request = _alignFlowRequestFactory.Create(
+                _model,
+                pttPath!,
+                _imageRuntimeStateService.SourceWidth,
+                _imageRuntimeStateService.SourceHeight);
+            var result = await _inspectionFlowService.RunAlignAsync(request);
             ApplyFlowResult(result);
         }
         catch (Exception ex)
@@ -420,11 +449,17 @@ public sealed class MainViewModel : ViewModelBase
         SelectedAlgorithm = state.SelectedAlgorithm;
         _model.Part.Name = _model.ModelName;
         _model.Threshold2D = state.Threshold2D;
+        _model.Threshold2DMax = Net48Compat.Clamp(state.Threshold2DMax, 0, 255);
         _model.Threshold3D = state.Threshold3D;
+        _model.Threshold3DMax = Net48Compat.Clamp(state.Threshold3DMax, 0, 255);
         _model.EdgeGain = state.EdgeGain;
         _model.Use2D = state.Use2D;
         _model.Use3D = state.Use3D;
         _model.UseEdge = state.UseEdge;
+        _model.AlignRange2DType = Net48Compat.Clamp(state.Range2DType, 0, 3);
+        _model.AlignRange3DType = Net48Compat.Clamp(state.Range3DType, 0, 3);
+        _model.AlignInvertCheck = state.InvertCheck;
+        _model.AlignHeightAverage = ReadDouble(state.HeightAverage, _model.AlignHeightAverage);
         _model.AlignSearchNum = Net48Compat.Clamp(ReadInt(state.SearchNum, _model.AlignSearchNum, 1, 4), 1, 4);
         _model.AlignSearchMargin = ReadInt(state.SearchMargin, _model.AlignSearchMargin, 0, 100000);
         _model.AlignSearchSizeX = ReadInt(state.SearchSizeX, _model.AlignSearchSizeX, 1, Math.Max(1, sourceWidth));
@@ -617,7 +652,7 @@ public sealed class MainViewModel : ViewModelBase
                 if (request.ParameterName != null && request.ParameterValue != null)
                 {
                     algorithm.ApplyCatalogDefaults();
-                    algorithm.Parameters[request.ParameterName] = request.ParameterValue;
+                    AlgorithmParameterStore.Set(algorithm.Parameters, request.ParameterName, request.ParameterValue);
                     ThresholdScheduleRequested?.Invoke();
                 }
                 break;
@@ -669,13 +704,20 @@ public sealed class MainViewModel : ViewModelBase
         ModelViewRefreshRequested?.Invoke(null, true);
     }
 
-    private void BrowseAndImportPart()
+    private async Task BrowseAndImportPartAsync()
     {
         var path = _fileDialogService.BrowsePart(_dialogOwner.GetDialogOwner(), _applicationPathService.GetModelDirectory());
         if (!string.IsNullOrWhiteSpace(path))
         {
-            ImportPartFromPath(path!);
+            await ImportPartFromPathAsync(path!);
         }
+    }
+
+    // 외부 호출자 (예: 테스트, drag-drop) 호환을 위한 sync 래퍼. 내부적으로 async 본체를 동기
+    // 대기. UI 가 freezing 되어도 알림 띄울 필요가 없는 코드 경로 (smoke test 등) 에서 사용.
+    public bool ImportPartFromPath(string path)
+    {
+        return ImportPartFromPathAsync(path).ConfigureAwait(false).GetAwaiter().GetResult();
     }
 
     public bool LoadImageFromPath(string path)
@@ -692,18 +734,29 @@ public sealed class MainViewModel : ViewModelBase
         return true;
     }
 
-    public bool ImportPartFromPath(string path)
+    // Part Import 본체. UI freezing 을 막기 위해 무거운 단계 (XML 파싱 + 모델 변환,
+    // PTT 네이티브 로드, 이미지 디코드) 는 Task.Run 으로 백그라운드에서 수행하고, 단계
+    // 사이마다 ImportProgressText 를 갱신해서 사용자가 어떤 작업이 진행 중인지 알 수 있게 한다.
+    public async Task<bool> ImportPartFromPathAsync(string path)
     {
+        IsImporting = true;
         try
         {
+            ImportProgressText = "Reading part file...";
             ModelSyncFromUiRequested?.Invoke();
-            var result = _partImportWorkflowService.ImportIntoModel(_model, path);
+            // UI 가 오버레이를 paint 할 시간을 주고 무거운 XML 파싱 + 모델 적용은 background.
+            await Task.Yield();
+
+            ImportProgressText = "Parsing XML and normalizing algorithms...";
+            var result = await Task.Run(() => _partImportWorkflowService.ImportIntoModel(_model, path));
             if (!result.Success)
             {
                 StatusMessage = result.StatusMessage;
                 return false;
             }
 
+            ImportProgressText = "Applying model to UI...";
+            await Task.Yield();
             _roi.ResetDrawing();
             DisableRoiDrawing();
             ModelViewRefreshRequested?.Invoke(result.SelectedWindowId, false);
@@ -715,13 +768,17 @@ public sealed class MainViewModel : ViewModelBase
 
             if (!string.IsNullOrWhiteSpace(result.PttPath))
             {
-                PttLoadRequested?.Invoke(result.PttPath!, false);
+                ImportProgressText = "Loading PTT (large file, may take a few seconds)...";
+                await Task.Yield();
+                await LoadPttAsync(result.PttPath!, prepareMpti: false);
             }
 
             var loadedImportImage = false;
             if (!string.IsNullOrWhiteSpace(result.ImagePath))
             {
-                loadedImportImage = LoadImageFromPath(result.ImagePath!);
+                ImportProgressText = "Loading source image...";
+                await Task.Yield();
+                loadedImportImage = await Task.Run(() => LoadImageFromPath(result.ImagePath!));
             }
 
             if (!loadedImportImage)
@@ -729,6 +786,7 @@ public sealed class MainViewModel : ViewModelBase
                 RequestOverlayAndThresholdRefresh();
             }
 
+            ImportProgressText = "Finalizing...";
             StatusMessage = result.StatusMessage;
             return true;
         }
@@ -738,12 +796,63 @@ public sealed class MainViewModel : ViewModelBase
             StatusMessage = $"Part import failed: {ex.Message}";
             return false;
         }
+        finally
+        {
+            IsImporting = false;
+            ImportProgressText = "";
+        }
+    }
+
+    // PTT 네이티브 로드는 무겁다 (50MB 이상). Task.Run 으로 백그라운드에서 수행하고 결과만
+    // UI thread 에서 ApplyPttLoad 로 반영한다. PttLoadRequested 이벤트 경로는 다른 sync
+    // 호출 (LoadPttCommand 등) 호환을 위해 그대로 유지.
+    private async Task LoadPttAsync(string path, bool prepareMpti)
+    {
+        var result = await Task.Run(() => _pttViewerWorkflowService.Load(path, prepareMpti));
+        ApplyPttLoad(result.Success, result.Path, result.StatusMessage, result.Width, result.Height);
     }
 
     private void RequestOverlayAndThresholdRefresh()
     {
         OverlayRefreshRequested?.Invoke();
         ThresholdScheduleRequested?.Invoke();
+    }
+
+    private void HandleLightPanelChanged()
+    {
+        // SourceImage 는 항상 갱신 (CAM-01 메인 뷰에서도 쓰임).
+        ApplyPttLightPreviewForActiveAlgorithm();
+
+        // CAM-03 가 Origin 모드면 binary 는 굳이 재계산하지 않는다 — 사용자가 Binary 로
+        // 토글할 때 ToggleCam03PreviewMode 가 lazy 재계산을 트리거.
+        OverlayRefreshRequested?.Invoke();
+        if (Cam03Mode == Cam03PreviewMode.Binary)
+        {
+            ThresholdScheduleRequested?.Invoke();
+        }
+    }
+
+    private bool ApplyPttLightPreviewForActiveAlgorithm()
+    {
+        if (_lastPttWidth <= 0 || _lastPttHeight <= 0 || ActiveAlgorithm == null)
+        {
+            return false;
+        }
+
+        var state = _algorithmLightService.ReadState(ActiveAlgorithm);
+        var preview = _pttLightPreviewService.Render(state, _lastPttWidth, _lastPttHeight);
+        if (!preview.Success || preview.Frame == null)
+        {
+            StatusMessage = $"PTT light preview failed: {preview.StatusMessage}";
+            return false;
+        }
+
+        _imageRuntimeStateService.SetSourceFrame(preview.Frame);
+        SourceImage = preview.Frame.SourceBitmap;
+        BinaryImage = preview.Frame.BinaryBitmap;
+        MarkImageLoaded(preview.Frame.Width, preview.Frame.Height);
+        StatusMessage = $"PTT light preview updated: {LightControl.LightTypeLabel}";
+        return true;
     }
 
     private static int ReadInt(string text, int fallback, int min, int max)
@@ -777,6 +886,8 @@ public sealed class MainViewModel : ViewModelBase
 
     public ObservableCollection<ThemeOptionViewModel> ThemeOptions { get; }
 
+    public LightControlViewModel LightControl { get; }
+
     public ObservableCollection<InspectionTreeNodeViewModel> InspectionTreeNodes { get; }
 
     // PTT path / resolution lookups used by each runner. Centralized here so that all
@@ -805,6 +916,33 @@ public sealed class MainViewModel : ViewModelBase
         get => _statusMessage;
         set => SetProperty(ref _statusMessage, value);
     }
+
+    // Part Import 진행 중 여부. 변경되면 오버레이 Visibility 도 갱신된다.
+    public bool IsImporting
+    {
+        get => _isImporting;
+        private set
+        {
+            if (SetProperty(ref _isImporting, value))
+            {
+                OnPropertyChanged(nameof(ImportOverlayVisibility));
+                if (ImportPartCommand is AsyncRelayCommand asyncCommand)
+                {
+                    asyncCommand.RaiseCanExecuteChanged();
+                }
+            }
+        }
+    }
+
+    // 현재 진행 중인 import 단계를 사용자에게 표시하기 위한 문자열.
+    public string ImportProgressText
+    {
+        get => _importProgressText;
+        private set => SetProperty(ref _importProgressText, value);
+    }
+
+    // 오버레이 UI 가 IsImporting 에 직접 바인딩하지 않고 Visibility 로 가져갈 수 있게 변환.
+    public Visibility ImportOverlayVisibility => IsImporting ? Visibility.Visible : Visibility.Collapsed;
 
     public string BridgeState
     {
@@ -948,7 +1086,7 @@ public sealed class MainViewModel : ViewModelBase
 
             Model.Algorithm = next;
             OnPropertyChanged(nameof(SelectedAlgorithmText));
-            OnPropertyChanged(nameof(ActiveAlgorithm));
+            NotifyActiveAlgorithmStateChanged();
         }
     }
 
@@ -961,6 +1099,8 @@ public sealed class MainViewModel : ViewModelBase
             return $"Selected: {catalog.Type} | {catalog.DisplayName} | {catalog.Group}:{catalog.LegacyName} ({catalog.LegacyFlag}) | UI: {profile.SourceControl}";
         }
     }
+
+    public bool HasActiveAlgorithm => ActiveAlgorithm != null;
 
     public bool WheelZoomEnabled
     {
@@ -1011,13 +1151,82 @@ public sealed class MainViewModel : ViewModelBase
     public ImageSource? SourceImage
     {
         get => _sourceImage;
-        set => SetProperty(ref _sourceImage, value);
+        set
+        {
+            if (SetProperty(ref _sourceImage, value) && Cam03Mode == Cam03PreviewMode.Origin)
+            {
+                // CAM-03 가 Origin 모드일 때만 SourceImage 변경이 화면 갱신으로 이어진다.
+                OnPropertyChanged(nameof(Cam03Image));
+            }
+        }
     }
 
     public ImageSource? BinaryImage
     {
         get => _binaryImage;
-        set => SetProperty(ref _binaryImage, value);
+        set
+        {
+            if (SetProperty(ref _binaryImage, value) && Cam03Mode == Cam03PreviewMode.Binary)
+            {
+                // CAM-03 가 Binary 모드일 때만 BinaryImage 변경이 화면 갱신으로 이어진다.
+                OnPropertyChanged(nameof(Cam03Image));
+            }
+        }
+    }
+
+    // CAM-01 전용 컬러 이미지. PTT 의 TR/TG/TB 채널을 R=G=B=100 baseline 으로 BGRA32 합성한
+    // 결과. Light 슬라이더에는 반응하지 않는다 (의도적 — 사용자가 색 자체를 보는 용도).
+    public ImageSource? Cam01ColorImage
+    {
+        get => _cam01ColorImage;
+        private set => SetProperty(ref _cam01ColorImage, value);
+    }
+
+    // CAM-03 가 어떤 그림을 보여줄지 결정. Origin = 2D Light 합성, Binary = 이진화 결과.
+    // 사용자가 헤더의 토글 버튼으로 직접 전환한다.
+    public Cam03PreviewMode Cam03Mode
+    {
+        get => _cam03Mode;
+        private set
+        {
+            if (!SetProperty(ref _cam03Mode, value))
+            {
+                return;
+            }
+
+            OnPropertyChanged(nameof(Cam03Image));
+            OnPropertyChanged(nameof(Cam03ToggleLabel));
+            OnPropertyChanged(nameof(Cam03Title));
+        }
+    }
+
+    // CAM-03 가 실제로 보여줄 비트맵. 모드 + SourceImage/BinaryImage 변경 모두에 반응.
+    public ImageSource? Cam03Image => Cam03Mode == Cam03PreviewMode.Binary ? _binaryImage : _sourceImage;
+
+    // 토글 버튼 라벨은 "전환 후 모드" 를 표시한다 (현재 Origin 이면 클릭 시 Binary 가 되므로 "Binary").
+    public string Cam03ToggleLabel => Cam03Mode == Cam03PreviewMode.Binary ? "Origin" : "Binary";
+
+    // 카메라 헤더 타이틀. 현재 모드 + 라벨.
+    public string Cam03Title => Cam03Mode == Cam03PreviewMode.Binary
+        ? "CAM-03 | BINARY RESULT"
+        : "CAM-03 | ORIGIN";
+
+    private void ToggleCam03PreviewMode()
+    {
+        var next = Cam03Mode == Cam03PreviewMode.Binary ? Cam03PreviewMode.Origin : Cam03PreviewMode.Binary;
+        Cam03Mode = next;
+
+        // Origin 모드 동안에는 Light 변경 시 binary 재계산을 skip 했으므로,
+        // 다시 Binary 모드로 들어올 때 한 번 lazy 하게 재계산해서 최신 상태로 보여준다.
+        if (next == Cam03PreviewMode.Binary)
+        {
+            RequestOverlayAndThresholdRefresh();
+        }
+        else
+        {
+            // Origin 으로 돌아갈 때는 overlay 만 재그리기 (binary 는 안 건드림).
+            OverlayRefreshRequested?.Invoke();
+        }
     }
 
     public double ImageZoomMaximum
@@ -1043,12 +1252,14 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand LoadModelCommand { get; private set; }
     public ICommand ImportPartCommand { get; private set; }
     public ICommand AddAlgorithmCommand { get; private set; }
+    public ICommand DrawAlgorithmRoiCommand { get; private set; }
     public ICommand ExpandAllTreeNodesCommand { get; private set; } = null!;
     public ICommand CollapseAllTreeNodesCommand { get; private set; } = null!;
     public ICommand MoveSelectedWindowUpCommand { get; private set; } = null!;
     public ICommand MoveSelectedWindowDownCommand { get; private set; } = null!;
     public ICommand MoveSelectedWindowToTopCommand { get; private set; } = null!;
     public ICommand MoveSelectedWindowToBottomCommand { get; private set; } = null!;
+    public ICommand Cam03ToggleCommand { get; private set; } = null!;
 
     // 인스펙션 트리 툴바: Window 타입 필터 ComboBox 의 항목들 ("All" + 현재 모델에
     // 존재하는 모든 distinct TypeName). RebuildInspectionTree 가 매번 갱신.
@@ -1116,10 +1327,18 @@ public sealed class MainViewModel : ViewModelBase
     public ICommand ZoomOneCommand { get; private set; }
     public ICommand ZoomFitCommand { get; private set; }
 
+    // ComboBox 의 SelectedValue TwoWay 바인딩이 들어올 수 있게 public setter.
+    // setter 가 호출되면 SetSelectedTheme 로 위임해서 ThemeOptions.IsSelected /
+    // ThemeChanged 이벤트가 같이 처리되도록 한다. 같은 키가 들어오면 무시 (재진입 방지).
     public string SelectedThemeKey
     {
         get => _selectedThemeKey;
-        private set => SetProperty(ref _selectedThemeKey, value);
+        set
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            if (string.Equals(_selectedThemeKey, value, StringComparison.OrdinalIgnoreCase)) return;
+            SetSelectedTheme(value);
+        }
     }
 
     private void SetSelectedTheme(string key, bool raiseEvent = true)
@@ -1127,7 +1346,8 @@ public sealed class MainViewModel : ViewModelBase
         var next = ThemeOptions.FirstOrDefault(item => string.Equals(item.Key, key, StringComparison.OrdinalIgnoreCase))
             ?? ThemeOptions.First(item => item.Key == "Dark");
 
-        SelectedThemeKey = next.Key;
+        // 백킹 필드에 직접 써서 INPC 만 발화 — public setter 를 재호출하지 않아 재진입 없음.
+        SetProperty(ref _selectedThemeKey, next.Key, nameof(SelectedThemeKey));
         foreach (var option in ThemeOptions)
         {
             option.IsSelected = ReferenceEquals(option, next);
@@ -1172,7 +1392,15 @@ public sealed class MainViewModel : ViewModelBase
         OnPropertyChanged(nameof(ImageZoomText));
         OnPropertyChanged(nameof(SelectedAlgorithmText));
         OnPropertyChanged(nameof(ActiveWindow));
+        NotifyActiveAlgorithmStateChanged();
+    }
+
+    private void NotifyActiveAlgorithmStateChanged()
+    {
         OnPropertyChanged(nameof(ActiveAlgorithm));
+        OnPropertyChanged(nameof(HasActiveAlgorithm));
+        LightControl.Load(ActiveAlgorithm);
+        ApplyPttLightPreviewForActiveAlgorithm();
     }
 
     public void MarkImageLoaded(int width, int height)
@@ -1202,18 +1430,49 @@ public sealed class MainViewModel : ViewModelBase
         PttInfoBrush = new SolidColorBrush(Color.FromRgb(255, 176, 32));
     }
 
-    public void ApplyPttLoad(bool success, string path, string statusMessage)
+    public void ApplyPttLoad(bool success, string path, string statusMessage, int width, int height)
     {
+        StatusMessage = statusMessage;
         if (success)
         {
             MarkPttLoaded(path);
+            _lastFlowPttPath = path;
+            _lastPttWidth = width;
+            _lastPttHeight = height;
+            // CAM-01 컬러 이미지는 PTT 로드 시점에 1 회만 native 가 TR/TG/TB 채널을 BGRA32 로
+            // 합성해서 반환한다. 이후 Light 변경은 이 값에 영향 없음.
+            ApplyPttColorPreview();
+            if (ApplyPttLightPreviewForActiveAlgorithm())
+            {
+                RequestOverlayAndThresholdRefresh();
+            }
         }
         else
         {
             MarkPttLoadFailed();
+            _lastPttWidth = 0;
+            _lastPttHeight = 0;
+            Cam01ColorImage = null;
+        }
+    }
+
+    private void ApplyPttColorPreview()
+    {
+        if (_lastPttWidth <= 0 || _lastPttHeight <= 0)
+        {
+            Cam01ColorImage = null;
+            return;
         }
 
-        StatusMessage = statusMessage;
+        var color = _pttLightPreviewService.RenderColor(_lastPttWidth, _lastPttHeight);
+        if (!color.Success || color.ColorImage == null)
+        {
+            DiagnosticsLog.Write($"PTT color preview failed: {color.StatusMessage}");
+            Cam01ColorImage = null;
+            return;
+        }
+
+        Cam01ColorImage = color.ColorImage;
     }
 
     public void MarkBridgeState(bool usedNative)
@@ -1593,9 +1852,64 @@ public sealed class MainViewModel : ViewModelBase
         }
     }
 
+    private string ReadActiveAlgorithmParameter(string key, string fallback)
+    {
+        var algorithm = ActiveAlgorithm;
+        if (algorithm == null)
+        {
+            return fallback;
+        }
+
+        algorithm.ApplyCatalogDefaults();
+        return AlgorithmParameterStore.GetValue(algorithm.Parameters, key, fallback);
+    }
+
+    private int ReadActiveAlgorithmInt(string key, int fallback, int min, int max)
+    {
+        var text = ReadActiveAlgorithmParameter(key, fallback.ToString());
+        return int.TryParse(text, out var value)
+            ? Net48Compat.Clamp(value, min, max)
+            : Net48Compat.Clamp(fallback, min, max);
+    }
+
+    private void SetActiveAlgorithmIntParameter(string key, string? value, int fallback, int min, int max, string propertyName)
+    {
+        var raw = value?.Trim() ?? "";
+        var nextValue = int.TryParse(raw, out var parsed) ? parsed : fallback;
+        nextValue = Net48Compat.Clamp(nextValue, min, max);
+        var next = nextValue.ToString();
+        SetActiveAlgorithmParameter(key, next, propertyName, !string.Equals(raw, next, StringComparison.Ordinal));
+    }
+
+    private void SetActiveAlgorithmParameter(string key, string? value, string propertyName, bool forceNotify = false)
+    {
+        var algorithm = ActiveAlgorithm;
+        if (algorithm == null)
+        {
+            return;
+        }
+
+        algorithm.ApplyCatalogDefaults();
+        var next = string.IsNullOrWhiteSpace(value) ? "0" : value!;
+        var current = AlgorithmParameterStore.GetValue(algorithm.Parameters, key, "");
+        if (string.Equals(current, next, StringComparison.Ordinal))
+        {
+            if (forceNotify)
+            {
+                OnPropertyChanged(propertyName);
+            }
+
+            return;
+        }
+
+        AlgorithmParameterStore.Set(algorithm.Parameters, key, next);
+        OnPropertyChanged(propertyName);
+        ThresholdScheduleRequested?.Invoke();
+    }
+
     private static string Lookup(Dictionary<string, string> parameters, string key, string fallback = "")
     {
-        return parameters.TryGetValue(key, out var value) ? value : fallback;
+        return AlgorithmParameterStore.GetValue(parameters, key, fallback);
     }
 
     private string FormatRoi(RoiRect? roi)

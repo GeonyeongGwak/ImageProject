@@ -30,17 +30,13 @@ public partial class MainWindow : Window, IDialogOwner
     private readonly IImageRuntimeStateService _imageRuntimeStateService;
     private readonly IRoiGeometryService _roiGeometryService;
     private readonly RoiCanvasViewModel _roiCanvasViewModel;
-    private readonly IPem3DViewerHostService _pem3DViewerHostService;
     private readonly IPttViewerWorkflowService _pttViewerWorkflowService;
     private readonly MainViewModel _viewModel;
     private readonly Dictionary<string, CameraDockState> _cameraDockStates = new(StringComparer.OrdinalIgnoreCase);
     private DispatcherTimer? _cameraDockPreviewTimer;
     private CameraDockState? _draggingCameraState;
-    private System.Windows.Forms.Integration.WindowsFormsHost? _pttViewerHost;
-    private System.Windows.Forms.Panel? _pttViewerPanel;
     private bool _uiReady;
     private bool _applyingModel;
-    private bool _syncingSearchSize;
     private bool _cameraDockOperation;
     private bool _closingMainWindow;
     private bool _isImagePanning;
@@ -65,7 +61,6 @@ public partial class MainWindow : Window, IDialogOwner
         _imageRuntimeStateService = App.Services.ImageRuntimeState;
         _roiGeometryService = App.Services.RoiGeometry;
         _roiCanvasViewModel = new RoiCanvasViewModel(App.Services.RoiInteraction, App.Services.RoiModel);
-        _pem3DViewerHostService = App.Services.Pem3DViewerHost;
         _pttViewerWorkflowService = App.Services.PttViewerWorkflow;
         _viewModel = new MainViewModel(
             new InspectionModel(),
@@ -82,7 +77,11 @@ public partial class MainWindow : Window, IDialogOwner
             _imageRuntimeStateService,
             App.Services.InspectionWorkflow,
             App.Services.InspectionFlow,
+            App.Services.AlignFlowRequestFactory,
             App.Services.ThresholdPreviewWorkflow,
+            App.Services.AlgorithmLight,
+            App.Services.PttLightPreview,
+            App.Services.PttViewerWorkflow,
             App.Services.FlowAlgorithms);
         DataContext = _viewModel;
         _viewModel.ConfigureCommands(ZoomOne, ZoomFit);
@@ -331,33 +330,9 @@ public partial class MainWindow : Window, IDialogOwner
         InputMethod.SetPreferredImeState(element, InputMethodState.Off);
     }
 
-    private System.Windows.Forms.Panel EnsurePttViewerPanel()
-    {
-        if (_pttViewerPanel != null && _pttViewerHost != null)
-        {
-            return _pttViewerPanel;
-        }
-
-        _pttViewerPanel = new System.Windows.Forms.Panel
-        {
-            BackColor = System.Drawing.Color.FromArgb(2, 5, 10)
-        };
-        _pttViewerPanel.Resize += (_, _) => _pem3DViewerHostService.ResizeExternalViewer(_pttViewerPanel);
-
-        _pttViewerHost = new System.Windows.Forms.Integration.WindowsFormsHost
-        {
-            Background = System.Windows.Media.Brushes.Transparent,
-            Child = _pttViewerPanel,
-            Visibility = Visibility.Collapsed
-        };
-
-        PttViewerSurface.Children.Insert(0, _pttViewerHost);
-        return _pttViewerPanel;
-    }
-
     private void SubscribeAlignPanelEvents()
     {
-        AlignPanel.AlignTabSelectionChanged += AlignTabControl_SelectionChanged;
+        AlignPanel.SearchTabSelectionChanged += AlignPanel_SearchTabSelectionChanged;
         AlignPanel.UpdateRequested += AlignPanel_UpdateRequested;
         AlignPanel.ActionRequested += AlignPanel_ActionRequested;
     }
@@ -367,7 +342,7 @@ public partial class MainWindow : Window, IDialogOwner
     private void InitializeCameraDocking()
     {
         RegisterCameraDock("CAM01", "CAM-01 | 2D SOURCE", Cam01DockHost, Cam01Panel, Cam01DockPlaceholder, Cam01DockButton);
-        RegisterCameraDock("CAM02", "CAM-02 | 3D SOURCE", Cam02DockHost, Cam02Panel, Cam02DockPlaceholder, Cam02DockButton);
+        RegisterCameraDock("CAM02", "CAM-02 | PTT DATA", Cam02DockHost, Cam02Panel, Cam02DockPlaceholder, Cam02DockButton);
         RegisterCameraDock("CAM03", "CAM-03 | BINARY RESULT", Cam03DockHost, Cam03Panel, Cam03DockPlaceholder, Cam03DockButton);
     }
 
@@ -684,10 +659,6 @@ public partial class MainWindow : Window, IDialogOwner
         Dispatcher.BeginInvoke(new Action(() =>
         {
             DrawRoiOverlays();
-            if (_pttViewerPanel != null)
-            {
-                _pem3DViewerHostService.ResizeExternalViewer(_pttViewerPanel);
-            }
         }), DispatcherPriority.Background);
     }
 
@@ -898,7 +869,6 @@ public partial class MainWindow : Window, IDialogOwner
 
     protected override void OnClosed(EventArgs e)
     {
-        _pem3DViewerHostService.Dispose();
         base.OnClosed(e);
     }
 
@@ -939,11 +909,6 @@ public partial class MainWindow : Window, IDialogOwner
         return null;
     }
 
-    private void DrawAlgorithmRoiButton_Click(object sender, RoutedEventArgs e)
-    {
-        _viewModel.EnableAlgorithmRoiDrawing();
-    }
-
     // AlgorithmCombo_SelectionChanged 제거: ALGORITHM TYPE ComboBox UI 가 삭제되어
     // 더 이상 XAML 에서 호출되지 않음. SelectedAlgorithm 변경 시 모델/패널/threshold
     // 동기화가 필요하면 ViewModel 의 SelectedAlgorithm setter 또는 인스펙션 트리
@@ -979,8 +944,3 @@ public partial class MainWindow : Window, IDialogOwner
     }
 
 }
-
-
-
-
-

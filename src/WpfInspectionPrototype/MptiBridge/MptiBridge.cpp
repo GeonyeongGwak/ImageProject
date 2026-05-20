@@ -56,6 +56,24 @@ struct MptiBridgeAlignResult
     int     errorCode;
     wchar_t message[256];
 };
+
+struct MptiBridgeLightPreviewParams
+{
+    int width;
+    int height;
+    int lightType;
+    int redValue;
+    int greenValue;
+    int blueValue;
+    int whiteValue;
+    int lightCount;
+    int arrRedValue[10];
+    int arrGreenValue[10];
+    int arrBlueValue[10];
+    int arrWhiteValue[10];
+    int arrLightPosition[10];
+    int arrCalculation[10];
+};
 #pragma pack(pop)
 
 int MPTI_SetFovPixelNumber(int numX, int numY);
@@ -213,6 +231,298 @@ MPTI_BRIDGE_API int MptiBridgeLoadPtt(const wchar_t* pttPath, int* width, int* h
     catch (...)
     {
         return GuardedUnknownFailure(message, messageLength, L"MPTI_GetPttFileLoad");
+    }
+}
+
+namespace
+{
+    constexpr int LightTop = 0;
+    constexpr int LightMiddle = 1;
+    constexpr int LightBottom = 2;
+    constexpr int LightUser = 3;
+    constexpr int LightSideRed = 4;
+    constexpr int LightSideGreen = 5;
+    constexpr int LightSideBlue = 6;
+
+    constexpr int ChannelTR = 0;
+    constexpr int ChannelTG = 1;
+    constexpr int ChannelTB = 2;
+    constexpr int ChannelBR = 3;
+    constexpr int ChannelBB = 4;
+    constexpr int ChannelMR = 5;
+    constexpr int ChannelMB = 6;
+    constexpr int ChannelTW = 7;
+
+    static int ClampInt(int value, int minValue, int maxValue)
+    {
+        return std::max(minValue, std::min(maxValue, value));
+    }
+
+    static UCHAR* LoadedPttChannel(int channel)
+    {
+        return MPTI_GetPttFileChannel(channel);
+    }
+
+    static UCHAR* RequiredChannel(int channel, wchar_t* message, int messageLength)
+    {
+        auto* buffer = LoadedPttChannel(channel);
+        if (buffer == nullptr)
+        {
+            Failure(message, messageLength, -4, L"MPTI PTT channel buffer is empty");
+        }
+
+        return buffer;
+    }
+
+    static int ComposeNormalLightPreview(
+        const MptiBridgeLightPreviewParams* params,
+        UCHAR* output,
+        int imageSize,
+        wchar_t* message,
+        int messageLength)
+    {
+        UCHAR* red = nullptr;
+        UCHAR* green = nullptr;
+        UCHAR* blue = nullptr;
+        UCHAR* white = nullptr;
+
+        switch (params->lightType)
+        {
+        case LightMiddle:
+            red = LoadedPttChannel(ChannelMR);
+            blue = LoadedPttChannel(ChannelMB);
+            green = red;
+            white = red;
+            break;
+        case LightBottom:
+            red = LoadedPttChannel(ChannelBR);
+            blue = LoadedPttChannel(ChannelBB);
+            green = red;
+            white = red;
+            break;
+        case LightSideRed:
+        case LightSideGreen:
+        case LightSideBlue:
+            red = LoadedPttChannel(ChannelTR);
+            green = LoadedPttChannel(ChannelTG);
+            blue = LoadedPttChannel(ChannelTB);
+            white = red;
+            break;
+        case LightTop:
+        default:
+            red = LoadedPttChannel(ChannelTR);
+            green = LoadedPttChannel(ChannelTG);
+            blue = LoadedPttChannel(ChannelTB);
+            white = LoadedPttChannel(ChannelTW);
+            break;
+        }
+
+        if (red == nullptr)
+        {
+            return Failure(message, messageLength, -5, L"MPTI PTT red channel buffer is empty");
+        }
+
+        green = green == nullptr ? red : green;
+        blue = blue == nullptr ? red : blue;
+        white = white == nullptr ? red : white;
+
+        MPTI_FULLImgCompose(
+            red,
+            green,
+            blue,
+            white,
+            imageSize,
+            params->width,
+            params->height,
+            0.0,
+            0.0,
+            0,
+            0,
+            ClampInt(params->redValue, 0, 200),
+            ClampInt(params->greenValue, 0, 200),
+            ClampInt(params->blueValue, 0, 200),
+            ClampInt(params->whiteValue, 0, 200),
+            output);
+
+        return 0;
+    }
+
+    static int ComposeUserLightPreview(
+        const MptiBridgeLightPreviewParams* params,
+        UCHAR* output,
+        wchar_t* message,
+        int messageLength)
+    {
+        auto* tr = RequiredChannel(ChannelTR, message, messageLength);
+        auto* tg = RequiredChannel(ChannelTG, message, messageLength);
+        auto* tb = RequiredChannel(ChannelTB, message, messageLength);
+        auto* tw = LoadedPttChannel(ChannelTW);
+        auto* mr = LoadedPttChannel(ChannelMR);
+        auto* mb = LoadedPttChannel(ChannelMB);
+        auto* br = LoadedPttChannel(ChannelBR);
+        auto* bb = LoadedPttChannel(ChannelBB);
+
+        if (tr == nullptr || tg == nullptr || tb == nullptr)
+        {
+            return -4;
+        }
+
+        int red[10] = {};
+        int green[10] = {};
+        int blue[10] = {};
+        int white[10] = {};
+        int position[10] = {};
+        int calculation[10] = {};
+
+        const auto count = ClampInt(params->lightCount, 1, 10);
+        for (int i = 0; i < count; ++i)
+        {
+            red[i] = ClampInt(params->arrRedValue[i], -1, 200);
+            green[i] = ClampInt(params->arrGreenValue[i], -1, 200);
+            blue[i] = ClampInt(params->arrBlueValue[i], -1, 200);
+            white[i] = ClampInt(params->arrWhiteValue[i], -1, 200);
+            position[i] = ClampInt(params->arrLightPosition[i], LightTop, LightBottom);
+            calculation[i] = ClampInt(params->arrCalculation[i], 0, 2);
+        }
+
+        LightTypeBuf lightImage;
+        lightImage.m_pucTRed = tr;
+        lightImage.m_pucTGreen = tg;
+        lightImage.m_pucTBlue = tb;
+        lightImage.m_pucTWhite = tw == nullptr ? tr : tw;
+        lightImage.m_pucMRed = mr == nullptr ? tr : mr;
+        lightImage.m_pucMBlue = mb == nullptr ? tr : mb;
+        lightImage.m_pucBRed = br == nullptr ? tr : br;
+        lightImage.m_pucBBlue = bb == nullptr ? tr : bb;
+        lightImage.m_nImgCnt = count;
+        lightImage.m_nImgWidth = params->width;
+        lightImage.m_nImgHeight = params->height;
+        lightImage.m_pnRedValue = red;
+        lightImage.m_pnGreenValue = green;
+        lightImage.m_pnBlueValue = blue;
+        lightImage.m_pnWhiteValue = white;
+        lightImage.m_pnPosition = position;
+        lightImage.m_pnCalculation = calculation;
+
+        MPTI_FullImageClaculCompose(lightImage, output);
+        return 0;
+    }
+}
+
+// CAM-01 컬러 미리보기. PTT 의 TR/TG/TB 채널을 그대로 BGRA32 로 합성한다.
+// Light 슬라이더(redValue/greenValue/blueValue)에는 영향을 받지 않으며, 사용자가 명시한
+// 고정 가중치 R=G=B=100 즉 baseline 강도로 합성한다. 가중치는 200 이 max 이고 100 이
+// 1.0 배 (즉 채널 그대로) 이므로 별도 스케일링이 필요 없다 (cv::merge 와 동등 결과).
+MPTI_BRIDGE_API int MptiBridgeRenderColorPreview(
+    int width,
+    int height,
+    unsigned char* output,
+    int outputLength,
+    wchar_t* message,
+    int messageLength)
+{
+    if (output == nullptr)
+    {
+        return Failure(message, messageLength, -1, L"MptiBridgeRenderColorPreview invalid argument");
+    }
+
+    if (width <= 0 || height <= 0)
+    {
+        return Failure(message, messageLength, -2, L"MptiBridgeRenderColorPreview invalid image dimensions");
+    }
+
+    const auto pixelCount = width * height;
+    const auto requiredBytes = pixelCount * 4;
+    if (pixelCount <= 0 || outputLength < requiredBytes)
+    {
+        return Failure(message, messageLength, -3, L"MptiBridgeRenderColorPreview output buffer too small");
+    }
+
+    try
+    {
+        if (!EnsureInitialized(message, messageLength))
+        {
+            return -200;
+        }
+
+        auto* red = LoadedPttChannel(ChannelTR);
+        auto* green = LoadedPttChannel(ChannelTG);
+        auto* blue = LoadedPttChannel(ChannelTB);
+        if (red == nullptr || green == nullptr || blue == nullptr)
+        {
+            return Failure(message, messageLength, -4, L"MPTI PTT RGB channel buffer is empty");
+        }
+
+        // BGRA32: [B, G, R, A] per pixel. Light 값과 무관하게 채널 raw 값 그대로 사용.
+        for (int i = 0; i < pixelCount; ++i)
+        {
+            const auto offset = i * 4;
+            output[offset + 0] = blue[i];
+            output[offset + 1] = green[i];
+            output[offset + 2] = red[i];
+            output[offset + 3] = 255;
+        }
+
+        return Success(message, messageLength, L"MptiBridgeRenderColorPreview completed");
+    }
+    catch (const std::exception&)
+    {
+        return Failure(message, messageLength, -100, L"MptiBridgeRenderColorPreview C++ exception");
+    }
+    catch (...)
+    {
+        return GuardedUnknownFailure(message, messageLength, L"MptiBridgeRenderColorPreview");
+    }
+}
+
+MPTI_BRIDGE_API int MptiBridgeRenderLightPreview(
+    const MptiBridgeLightPreviewParams* params,
+    unsigned char* output,
+    int outputLength,
+    wchar_t* message,
+    int messageLength)
+{
+    if (params == nullptr || output == nullptr)
+    {
+        return Failure(message, messageLength, -1, L"MptiBridgeRenderLightPreview invalid argument");
+    }
+
+    if (params->width <= 0 || params->height <= 0)
+    {
+        return Failure(message, messageLength, -2, L"MptiBridgeRenderLightPreview invalid image dimensions");
+    }
+
+    const auto imageSize = params->width * params->height;
+    if (imageSize <= 0 || outputLength < imageSize)
+    {
+        return Failure(message, messageLength, -3, L"MptiBridgeRenderLightPreview output buffer too small");
+    }
+
+    try
+    {
+        if (!EnsureInitialized(message, messageLength))
+        {
+            return -200;
+        }
+
+        std::fill(output, output + imageSize, 0);
+        const auto code = params->lightType == LightUser
+            ? ComposeUserLightPreview(params, output, message, messageLength)
+            : ComposeNormalLightPreview(params, output, imageSize, message, messageLength);
+        if (code != 0)
+        {
+            return code;
+        }
+
+        return Success(message, messageLength, L"MptiBridgeRenderLightPreview completed");
+    }
+    catch (const std::exception&)
+    {
+        return Failure(message, messageLength, -100, L"MptiBridgeRenderLightPreview C++ exception");
+    }
+    catch (...)
+    {
+        return GuardedUnknownFailure(message, messageLength, L"MptiBridgeRenderLightPreview");
     }
 }
 

@@ -551,7 +551,10 @@
 
     <Grid Margin="10">
         <Grid.RowDefinitions>
-            <RowDefinition Height="42" />
+            <!-- TopBar 행 높이를 50 으로 확장. 이전 42 였을 때 테마 옵션 버튼 / Bridge 상태
+                 라벨의 윗부분이 잘려 보이는 현상이 있었다 (콘텐츠 윗쪽이 Grid bounds 위로
+                 튀어나가 Window 가 클립). WindowChrome.CaptionHeight=50 과도 자연스럽게 맞음. -->
+            <RowDefinition Height="50" />
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
 
@@ -581,39 +584,35 @@
                            VerticalAlignment="Center"
                            Foreground="{DynamicResource MutedText}"
                            Text="{Binding StatusMessage}" />
-                <ItemsControl Grid.Column="2"
-                              Margin="0,0,12,0"
-                              VerticalAlignment="Center"
-                              WindowChrome.IsHitTestVisibleInChrome="True"
-                              ItemsSource="{Binding ThemeOptions}">
-                    <ItemsControl.ItemsPanel>
-                        <ItemsPanelTemplate>
-                            <StackPanel Orientation="Horizontal" />
-                        </ItemsPanelTemplate>
-                    </ItemsControl.ItemsPanel>
-                    <ItemsControl.ItemTemplate>
+                <!-- 테마 선택: ItemsControl + 가로 Button 3개 → ComboBox 로 변경.
+                     이전 가로 버튼 묶음은 TopBar 행 안에서 콘텐츠 윗부분이 잘리는 문제가
+                     있었음. ComboBox 는 단일 라인이고 표준 ControlTemplate 이라 작은 행
+                     높이에도 잘 맞춰진다. SelectedValue TwoWay 로 SelectedThemeKey 와
+                     연결되어 setter 에서 SetSelectedTheme 가 호출되며 ThemeChanged 이벤트도
+                     같이 발화. -->
+                <ComboBox Grid.Column="2"
+                          Margin="0,0,12,0"
+                          MinWidth="130"
+                          VerticalAlignment="Center"
+                          WindowChrome.IsHitTestVisibleInChrome="True"
+                          ItemsSource="{Binding ThemeOptions}"
+                          SelectedValuePath="Key"
+                          SelectedValue="{Binding SelectedThemeKey, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}">
+                    <ComboBox.ItemTemplate>
                         <DataTemplate>
-                            <Button Command="{Binding DataContext.SelectThemeCommand, RelativeSource={RelativeSource AncestorType=Window}}"
-                                    CommandParameter="{Binding Key}"
-                                    Background="{Binding ButtonBackground}"
-                                    BorderBrush="{Binding ButtonBorderBrush}"
-                                    Style="{StaticResource ThemeOptionButton}"
-                                    WindowChrome.IsHitTestVisibleInChrome="True">
-                                <StackPanel Orientation="Horizontal">
-                                    <Border Width="10"
-                                            Height="10"
-                                            CornerRadius="2"
-                                            Background="{Binding SwatchBrush}"
-                                            Margin="0,0,5,0"
-                                            VerticalAlignment="Center" />
-                                    <TextBlock Text="{Binding DisplayName}"
-                                               Foreground="{DynamicResource PrimaryText}"
-                                               VerticalAlignment="Center" />
-                                </StackPanel>
-                            </Button>
+                            <StackPanel Orientation="Horizontal">
+                                <Border Width="10"
+                                        Height="10"
+                                        CornerRadius="2"
+                                        Background="{Binding SwatchBrush}"
+                                        Margin="0,0,6,0"
+                                        VerticalAlignment="Center" />
+                                <TextBlock Text="{Binding DisplayName}"
+                                           VerticalAlignment="Center" />
+                            </StackPanel>
                         </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                    </ComboBox.ItemTemplate>
+                </ComboBox>
                 <TextBlock x:Name="BridgeStateText"
                            Grid.Column="3"
                            VerticalAlignment="Center"
@@ -658,7 +657,7 @@
                 <ColumnDefinition Width="6" />
                 <ColumnDefinition Width="2*" MinWidth="260" />
                 <ColumnDefinition Width="6" />
-                <ColumnDefinition Width="390" MinWidth="320" />
+                <ColumnDefinition Width="500" MinWidth="420" />
             </Grid.ColumnDefinitions>
 
             <Grid x:Name="Cam01DockHost" Grid.Column="0">
@@ -691,7 +690,7 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="CAM-01 | 2D SOURCE" Style="{StaticResource PanelTitle}" />
+                            <TextBlock Grid.Column="0" Text="CAM-01 | COLOR (R/G/B)" Style="{StaticResource PanelTitle}" />
                             <TextBlock x:Name="SourceInfoText"
                                        Grid.Column="1"
                                        Foreground="{Binding SourceInfoBrush}"
@@ -707,7 +706,7 @@
                         </Grid>
                         <Grid Background="{DynamicResource SurfaceBackground}" ClipToBounds="True">
                             <Image x:Name="SourceImage"
-                                   Source="{Binding SourceImage}"
+                                   Source="{Binding Cam01ColorImage}"
                                    Stretch="Uniform"
                                    SnapsToDevicePixels="True"
                                    RenderTransformOrigin="0.5,0.5">
@@ -766,7 +765,7 @@
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="CAM-02 | 3D SOURCE" Style="{StaticResource PanelTitle}" />
+                            <TextBlock Grid.Column="0" Text="CAM-02 | PTT DATA" Style="{StaticResource PanelTitle}" />
                             <TextBlock x:Name="PttInfoText"
                                        Grid.Column="1"
                                        Foreground="{Binding PttInfoBrush}"
@@ -824,16 +823,27 @@
                                 <ColumnDefinition Width="*" />
                                 <ColumnDefinition Width="Auto" />
                                 <ColumnDefinition Width="Auto" />
+                                <ColumnDefinition Width="Auto" />
                             </Grid.ColumnDefinitions>
-                            <TextBlock Grid.Column="0" Text="CAM-03 | BINARY RESULT" Style="{StaticResource PanelTitle}" />
+                            <TextBlock Grid.Column="0"
+                                       Text="{Binding Cam03Title}"
+                                       Style="{StaticResource PanelTitle}" />
                             <TextBlock x:Name="TimingText"
                                        Grid.Column="1"
                                        Foreground="{DynamicResource AccentBlue}"
                                        FontWeight="Bold"
                                        Text="{Binding TimingText}"
                                        VerticalAlignment="Center" />
-                            <Button x:Name="Cam03DockButton"
+                            <!-- Cam03 보기 모드 토글: 라벨 = 전환 후 모드 (현재 Origin 이면 "Binary"). -->
+                            <Button x:Name="Cam03ModeToggleButton"
                                     Grid.Column="2"
+                                    Content="{Binding Cam03ToggleLabel}"
+                                    Command="{Binding Cam03ToggleCommand}"
+                                    Style="{StaticResource DockToolButton}"
+                                    Margin="0,0,6,0"
+                                    MinWidth="64" />
+                            <Button x:Name="Cam03DockButton"
+                                    Grid.Column="3"
                                     Content="FLOAT"
                                     Tag="CAM03"
                                     Style="{StaticResource DockToolButton}"
@@ -841,7 +851,7 @@
                         </Grid>
                         <Grid Background="{DynamicResource SurfaceBackground}" ClipToBounds="True">
                             <Image x:Name="BinaryImage"
-                                   Source="{Binding BinaryImage}"
+                                   Source="{Binding Cam03Image}"
                                    Stretch="Uniform"
                                    SnapsToDevicePixels="True"
                                    RenderTransformOrigin="0.5,0.5">
@@ -893,7 +903,7 @@
                             <TextBlock Text="IMAGE VIEWER" Style="{StaticResource PanelTitle}" />
                             <Button x:Name="LoadImageButton" Content="Load 2D Image" Command="{Binding LoadImageCommand}" />
                             <Button x:Name="LoadPttButton"
-                                    Content="Load 3D PTT"
+                                    Content="Load PTT Data"
                                     Margin="0,6,0,0"
                                     Command="{Binding LoadPttCommand}" />
                             <CheckBox x:Name="WheelZoomCheck"
@@ -1091,6 +1101,8 @@
                          속성은 유지 — 인스펙션 트리/AlignPanel 등 다른 경로에서
                          여전히 사용됨. -->
 
+                    <views:LightControlView DataContext="{Binding LightControl}" />
+
                     <ContentControl x:Name="AlgorithmPanelHost" Content="{Binding ActiveAlgorithmPanelContent}" />
 
                     <Grid x:Name="AlgorithmPanelStaging" Visibility="Collapsed">
@@ -1104,7 +1116,7 @@
                                         Margin="0,0,0,8" />
                             <Button x:Name="DrawGenericAlgorithmRoiButton"
                                     Content="Draw Algorithm ROI"
-                                    Click="DrawAlgorithmRoiButton_Click" />
+                                    Command="{Binding DrawAlgorithmRoiCommand}" />
                          </StackPanel>
                      </Border>
                     </Grid>
@@ -1118,7 +1130,7 @@
                                     IsEnabled="{Binding CanRunInspection}" />
                             <Button x:Name="RunFlowButton"
                                     Margin="0,4,0,0"
-                                    Content="Run MPTI Flow (Align - legacy)"
+                                    Content="Run MPTI Flow (Align)"
                                     Command="{Binding RunFlowCommand}" />
                             <TextBox x:Name="ResultText"
                                      Margin="0,8,0,0"
@@ -1136,6 +1148,41 @@
                     </Border>
                 </StackPanel>
             </ScrollViewer>
+        </Grid>
+
+        <!--
+            Part Import 진행 중 화면 위에 띄우는 modal 오버레이. 외곽은 반투명 검정으로
+            기존 UI 를 dim 시켜서 입력을 차단(IsHitTestVisible 자동)하고, 중앙 Border
+            안에 indeterminate ProgressBar 와 단계 텍스트를 표시한다. MainViewModel 의
+            IsImporting / ImportProgressText 가 변경되면 자동으로 보이고 사라진다.
+        -->
+        <Grid Grid.Row="0"
+              Grid.RowSpan="2"
+              Background="#88000000"
+              Visibility="{Binding ImportOverlayVisibility}">
+            <Border Width="420"
+                    Padding="24,20"
+                    HorizontalAlignment="Center"
+                    VerticalAlignment="Center"
+                    Background="{DynamicResource PanelBackground}"
+                    BorderBrush="{DynamicResource AccentBlue}"
+                    BorderThickness="1"
+                    CornerRadius="6">
+                <StackPanel>
+                    <TextBlock Text="IMPORTING PART"
+                               Foreground="{DynamicResource AccentBlue}"
+                               FontWeight="Bold"
+                               FontSize="14"
+                               Margin="0,0,0,12" />
+                    <ProgressBar IsIndeterminate="True"
+                                 Height="6"
+                                 Margin="0,0,0,12" />
+                    <TextBlock Text="{Binding ImportProgressText}"
+                               Foreground="{DynamicResource PrimaryText}"
+                               FontFamily="Consolas"
+                               TextWrapping="Wrap" />
+                </StackPanel>
+            </Border>
         </Grid>
     </Grid>
 </Window>
