@@ -756,25 +756,10 @@ public partial class MainWindow : Window, IDialogOwner
         FpExceptionGuard.Diag("MainWindow.StartupLoadWork entered");
         try
         {
-            var defaultImage = _applicationPathService.FindDefaultImagePath();
-            if (defaultImage != null)
-            {
-                if (App.StartupStabilityGuardsEnabled)
-                {
-                    FpExceptionGuard.Diag("MainWindow.StartupLoadWork: default image auto-load skipped for native-debug guard");
-                    ViewModel.StatusMessage = "Default image auto-load skipped while native debugging is attached.";
-                }
-                else
-                {
-                    FpExceptionGuard.Diag("MainWindow.StartupLoadWork: loading default image");
-                    ViewModel.LoadImageFromPath(defaultImage);
-                    FpExceptionGuard.Diag("MainWindow.StartupLoadWork: default image loaded");
-                }
-            }
-            else
-            {
-                ViewModel.StatusMessage = "Default Image/2D.jpg was not found.";
-            }
+            // 기본 2D 이미지 (Image/2D.jpg) 자동 로딩은 사용자 요청으로 제거 — 시작 시
+            // CAM-01 / CAM-03 영역이 빈 상태로 남아있고, 실제 PTT / Part Import 시에만
+            // 이미지가 채워진다. FindDefaultImagePath 자체는 다른 호출자가 있을 수 있어 남김.
+            ViewModel.StatusMessage = "Ready. Use Part Import or Load PTT to begin.";
 
             var importPath = ResolveStartupImportPath(Environment.GetCommandLineArgs().Skip(1));
             DiagnosticsLog.Write($"Startup args: {string.Join(" | ", Environment.GetCommandLineArgs().Skip(1))}");

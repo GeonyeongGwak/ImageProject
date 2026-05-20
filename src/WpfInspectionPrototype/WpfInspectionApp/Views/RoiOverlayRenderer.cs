@@ -236,7 +236,7 @@ public static class RoiOverlayRenderer
 
         var label = new TextBlock
         {
-            Text = $"{labelText} {roi.Width}x{roi.Height}px",
+            Text = $"{labelText} {FormatRoiSize(context, roi)}",
             Foreground = Brushes.Black,
             Background = new SolidColorBrush(isActive ? activeColor : inactiveColor),
             FontFamily = new FontFamily("Consolas"),
@@ -246,5 +246,23 @@ public static class RoiOverlayRenderer
         Canvas.SetLeft(label, roiRect.Left);
         Canvas.SetTop(label, Math.Max(0, roiRect.Top - 21));
         overlay.Children.Add(label);
+    }
+
+    // ROI 라벨에 표시할 사이즈 문자열. Part.PixelResolutionX/Y (mm/pixel) 가 유효하면
+    // 픽셀을 mm 로 환산해서 "WxH mm" 로 보여주고, 둘 중 하나라도 0/음수 면 안전하게
+    // 기존 픽셀 표시로 fallback. legacy 모델에서 resolution 값이 안 들어왔을 때 빈
+    // 사이즈가 보이는 일이 없도록.
+    private static string FormatRoiSize(RoiOverlayRenderContext context, RoiRect roi)
+    {
+        var resolutionX = context.Model.Part?.PixelResolutionX ?? 0;
+        var resolutionY = context.Model.Part?.PixelResolutionY ?? 0;
+        if (resolutionX > 0 && resolutionY > 0)
+        {
+            var widthMm = roi.Width * resolutionX;
+            var heightMm = roi.Height * resolutionY;
+            return $"{widthMm:F2}x{heightMm:F2} mm";
+        }
+
+        return $"{roi.Width}x{roi.Height} px";
     }
 }
