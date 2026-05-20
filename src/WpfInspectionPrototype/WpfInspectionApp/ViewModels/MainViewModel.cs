@@ -839,7 +839,7 @@ public sealed class MainViewModel : ViewModelBase
             return false;
         }
 
-        var state = _algorithmLightService.ReadState(ActiveAlgorithm);
+        var state = LightControl.CreatePreviewState(_algorithmLightService.ReadState(ActiveAlgorithm));
         var preview = _pttLightPreviewService.Render(state, _lastPttWidth, _lastPttHeight);
         if (!preview.Success || preview.Frame == null)
         {

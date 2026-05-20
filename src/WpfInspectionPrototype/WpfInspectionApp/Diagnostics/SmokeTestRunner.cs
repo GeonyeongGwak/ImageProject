@@ -1,6 +1,7 @@
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
+using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp.Diagnostics;
 
@@ -113,6 +114,7 @@ internal static class SmokeTestRunner
         write("running service regression checks...");
         VerifyPartRuntimeHandlesCaseDuplicateKeys();
         VerifyLightServiceRoundTrip(services.AlgorithmLight);
+        VerifyUserLightViewModelReferenceFlow(services.AlgorithmLight);
         VerifyLegacyLightImportParsing();
         write("service regression checks passed");
     }
@@ -158,6 +160,48 @@ internal static class SmokeTestRunner
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrRedValueString") == "120|80", "Light service should store red user-light array.");
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrCalculationString") == "1|2", "Light service should store user-light operators.");
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrLightPositionString") == "0|2", "Light service should store user-light positions.");
+    }
+
+    private static void VerifyUserLightViewModelReferenceFlow(IAlgorithmLightService service)
+    {
+        var algorithm = new InspectionAlgorithmData { Type = "AlgoShapeX", DisplayName = "Light ViewModel" };
+        algorithm.ApplyCatalogDefaults();
+        service.SaveState(algorithm, new AlgorithmLightState
+        {
+            LightType = AlgorithmLightService.UserLight,
+            UserCells =
+            [
+                new AlgorithmLightCell { Position = AlgorithmLightService.TopLight, Operator = 0, RedValue = 100, GreenValue = 0, BlueValue = 0, WhiteValue = 0 }
+            ]
+        });
+
+        var previewRequests = 0;
+        var viewModel = new LightControlViewModel(service, () => previewRequests++);
+        viewModel.Load(algorithm);
+
+        Assert(viewModel.UserCells.Count == 1, "User Light view model should load one cell.");
+        var first = viewModel.UserCells[0];
+        viewModel.ToggleUserCellOperatorCommand.Execute(first);
+        Assert(viewModel.UserCells.Count == 2, "Last blank operator should append a new User Light cell.");
+        Assert(first.OperatorType == 1, "First operator should become Add.");
+        Assert(viewModel.SelectedUserCell == viewModel.UserCells[1], "Newly appended User Light cell should be selected.");
+
+        viewModel.ToggleUserCellOperatorCommand.Execute(first);
+        Assert(viewModel.UserCells.Count == 2, "Add operator should cycle to Sub without changing cell count.");
+        Assert(first.OperatorType == 2, "First operator should become Sub.");
+
+        viewModel.ToggleUserCellOperatorCommand.Execute(first);
+        Assert(viewModel.UserCells.Count == 1, "Second-last operator returning to blank should remove the trailing cell.");
+        Assert(first.OperatorType == 0, "First operator should return to None.");
+
+        first.Channels[2].PresetCommand?.Execute(null);
+        Assert(first.Channels[0].Value == 0 && first.Channels[2].Value == 100, "Channel preset should solo the selected channel.");
+
+        viewModel.ToggleUserPreviewModeCommand.Execute(null);
+        var previewState = viewModel.CreatePreviewState(service.ReadState(algorithm));
+        Assert(!viewModel.IsUserMixPreview, "Preview mode should toggle to selected-cell preview.");
+        Assert(previewState.UserCells.Count == 1, "Selected-cell preview should render only one User Light cell.");
+        Assert(previewRequests > 0, "User Light view model should request preview refreshes.");
     }
 
     private static void VerifyLegacyLightImportParsing()

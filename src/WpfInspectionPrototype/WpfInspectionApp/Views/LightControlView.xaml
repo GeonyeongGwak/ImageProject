@@ -46,6 +46,75 @@
             <Setter Property="FontWeight" Value="Bold" />
         </Style>
 
+        <Style x:Key="UserLightTileBorder" TargetType="Border">
+            <Setter Property="Width" Value="90" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Padding" Value="6,5" />
+            <Setter Property="BorderThickness" Value="1" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="Background" Value="{DynamicResource ComboDarkBackground}" />
+            <Setter Property="CornerRadius" Value="3" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                    <Setter Property="BorderBrush" Value="{DynamicResource AccentYellow}" />
+                    <Setter Property="Background" Value="#172313" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="UserLightLayerBand" TargetType="Border">
+            <Setter Property="Height" Value="7" />
+            <Setter Property="Margin" Value="0,0,0,3" />
+            <Setter Property="CornerRadius" Value="1" />
+            <Setter Property="Background" Value="#243041" />
+        </Style>
+
+        <Style x:Key="UserLightTopBand" TargetType="Border" BasedOn="{StaticResource UserLightLayerBand}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Position}" Value="0">
+                    <Setter Property="Background" Value="#38B4DF" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="UserLightMiddleBand" TargetType="Border" BasedOn="{StaticResource UserLightLayerBand}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Position}" Value="1">
+                    <Setter Property="Background" Value="#A3E635" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="UserLightBottomBand" TargetType="Border" BasedOn="{StaticResource UserLightLayerBand}">
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Position}" Value="2">
+                    <Setter Property="Background" Value="#F59E0B" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <Style x:Key="UserLightOperatorButton" TargetType="Button">
+            <Setter Property="Width" Value="24" />
+            <Setter Property="Height" Value="46" />
+            <Setter Property="Margin" Value="4,0,0,0" />
+            <Setter Property="Padding" Value="0" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+            <Setter Property="Background" Value="#0F1A26" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="FontSize" Value="15" />
+            <Setter Property="FontWeight" Value="Black" />
+        </Style>
+
+        <Style x:Key="UserLightPresetButton" TargetType="Button">
+            <Setter Property="MinHeight" Value="26" />
+            <Setter Property="Margin" Value="0,0,6,0" />
+            <Setter Property="Padding" Value="4,2" />
+            <Setter Property="Foreground" Value="{DynamicResource PrimaryText}" />
+            <Setter Property="Background" Value="{DynamicResource ComboDarkBackground}" />
+            <Setter Property="BorderBrush" Value="{DynamicResource ControlBorder}" />
+            <Setter Property="FontWeight" Value="Bold" />
+        </Style>
+
         <DataTemplate x:Key="LightChannelTemplate">
             <Grid Margin="0,0,0,8">
                 <Grid.ColumnDefinitions>
@@ -75,6 +144,53 @@
                          Text="{Binding ValueText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
                          IsEnabled="{Binding IsEditable}" />
                 <TextBlock Grid.Column="4"
+                           Text="{Binding PercentText}"
+                           Foreground="{DynamicResource SecondaryText}"
+                           FontFamily="Consolas"
+                           FontWeight="Bold"
+                           TextAlignment="Right"
+                           VerticalAlignment="Center" />
+            </Grid>
+        </DataTemplate>
+
+        <DataTemplate x:Key="UserLightChannelTemplate">
+            <Grid Margin="0,0,0,8">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="54" />
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="44" />
+                    <ColumnDefinition Width="42" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0"
+                        Style="{StaticResource UserLightPresetButton}"
+                        Command="{Binding PresetCommand}"
+                        IsEnabled="{Binding IsEditable}"
+                        ToolTip="Set this channel to 100 and clear the other editable channels.">
+                    <StackPanel Orientation="Horizontal"
+                                HorizontalAlignment="Center">
+                        <Ellipse Width="9"
+                                 Height="9"
+                                 Fill="{Binding Swatch}"
+                                 VerticalAlignment="Center"
+                                 Margin="0,0,5,0" />
+                        <TextBlock Text="{Binding Code}"
+                                   FontFamily="Consolas"
+                                   FontWeight="Black" />
+                    </StackPanel>
+                </Button>
+                <Slider Grid.Column="1"
+                        Minimum="0"
+                        Maximum="{Binding Maximum}"
+                        TickFrequency="10"
+                        IsSnapToTickEnabled="False"
+                        Value="{Binding Value, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                        IsEnabled="{Binding IsEditable}"
+                        Margin="0,0,8,0" />
+                <TextBox Grid.Column="2"
+                         Style="{StaticResource LightValueTextBox}"
+                         Text="{Binding ValueText, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}"
+                         IsEnabled="{Binding IsEditable}" />
+                <TextBlock Grid.Column="3"
                            Text="{Binding PercentText}"
                            Foreground="{DynamicResource SecondaryText}"
                            FontFamily="Consolas"
@@ -119,6 +235,7 @@
                             <ColumnDefinition Width="*" />
                             <ColumnDefinition Width="Auto" />
                             <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="Auto" />
                         </Grid.ColumnDefinitions>
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <TextBlock Text="USER MIX"
@@ -130,10 +247,15 @@
                                        FontWeight="Bold" />
                         </StackPanel>
                         <Button Grid.Column="1"
+                                Content="{Binding UserPreviewModeText}"
+                                Style="{StaticResource LightActionButton}"
+                                Command="{Binding ToggleUserPreviewModeCommand}"
+                                ToolTip="Switch User Light preview between the full mix and the selected cell." />
+                        <Button Grid.Column="2"
                                 Content="ADD"
                                 Style="{StaticResource LightActionButton}"
                                 Command="{Binding AddUserCellCommand}" />
-                        <Button Grid.Column="2"
+                        <Button Grid.Column="3"
                                 Content="DEL"
                                 Style="{StaticResource LightActionButton}"
                                 Margin="0"
@@ -157,31 +279,68 @@
                         <ListBox.ItemContainerStyle>
                             <Style TargetType="ListBoxItem">
                                 <Setter Property="Padding" Value="0" />
-                                <Setter Property="Margin" Value="0,0,6,6" />
+                                <Setter Property="Margin" Value="0,0,8,8" />
                                 <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+                                <Setter Property="Background" Value="Transparent" />
+                                <Setter Property="BorderThickness" Value="0" />
                             </Style>
                         </ListBox.ItemContainerStyle>
                         <ListBox.ItemTemplate>
                             <DataTemplate>
-                                <Grid Width="74" Height="34">
-                                    <Border BorderThickness="1"
-                                            BorderBrush="{DynamicResource ControlBorder}"
-                                            Background="{DynamicResource ComboDarkBackground}" />
-                                    <TextBlock Text="{Binding HeaderText}"
-                                               Foreground="{DynamicResource PrimaryText}"
-                                               FontSize="10"
-                                               FontWeight="Bold"
-                                               TextAlignment="Center"
-                                               VerticalAlignment="Center"
-                                               TextTrimming="CharacterEllipsis"
-                                               Margin="4,0" />
-                                    <TextBlock Text="{Binding OperatorText}"
-                                               Foreground="{DynamicResource AccentYellow}"
-                                               FontSize="14"
-                                               FontWeight="Black"
-                                               HorizontalAlignment="Right"
-                                               VerticalAlignment="Top"
-                                               Margin="0,-2,4,0" />
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Border Style="{StaticResource UserLightTileBorder}"
+                                            ToolTip="{Binding CellToolTip}">
+                                        <Grid>
+                                            <Grid.ColumnDefinitions>
+                                                <ColumnDefinition Width="14" />
+                                                <ColumnDefinition Width="*" />
+                                            </Grid.ColumnDefinitions>
+                                            <StackPanel Grid.Column="0"
+                                                        VerticalAlignment="Center"
+                                                        Margin="0,0,6,0">
+                                                <Border Style="{StaticResource UserLightTopBand}" />
+                                                <Border Style="{StaticResource UserLightMiddleBand}" />
+                                                <Border Style="{StaticResource UserLightBottomBand}"
+                                                        Margin="0" />
+                                            </StackPanel>
+                                            <StackPanel Grid.Column="1"
+                                                        VerticalAlignment="Center">
+                                                <Grid>
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition Width="*" />
+                                                        <ColumnDefinition Width="Auto" />
+                                                    </Grid.ColumnDefinitions>
+                                                    <TextBlock Text="{Binding PositionShortText}"
+                                                               Foreground="{Binding PositionBrush}"
+                                                               FontSize="11"
+                                                               FontWeight="Black" />
+                                                    <TextBlock Grid.Column="1"
+                                                               Text="{Binding DisplayIndex}"
+                                                               Foreground="{DynamicResource MutedText}"
+                                                               FontFamily="Consolas"
+                                                               FontSize="10"
+                                                               FontWeight="Bold" />
+                                                </Grid>
+                                                <TextBlock Text="{Binding ChannelSummaryText}"
+                                                           Foreground="{DynamicResource PrimaryText}"
+                                                           FontFamily="Consolas"
+                                                           FontSize="10"
+                                                           FontWeight="Bold"
+                                                           TextTrimming="CharacterEllipsis" />
+                                            </StackPanel>
+                                        </Grid>
+                                    </Border>
+                                    <Button Grid.Column="1"
+                                            Style="{StaticResource UserLightOperatorButton}"
+                                            Content="{Binding OperatorButtonText}"
+                                            Visibility="{Binding OperatorButtonVisibility}"
+                                            ToolTip="{Binding OperatorToolTip}"
+                                            Command="{Binding DataContext.ToggleUserCellOperatorCommand, RelativeSource={RelativeSource AncestorType=UserControl}}"
+                                            CommandParameter="{Binding}" />
                                 </Grid>
                             </DataTemplate>
                         </ListBox.ItemTemplate>
@@ -214,8 +373,9 @@
                                           SelectedValuePath="Value"
                                           SelectedValue="{Binding SelectedUserCell.OperatorType, Mode=TwoWay, UpdateSourceTrigger=PropertyChanged}" />
                             </Grid>
+
                             <ItemsControl ItemsSource="{Binding SelectedUserCell.Channels}"
-                                          ItemTemplate="{StaticResource LightChannelTemplate}" />
+                                          ItemTemplate="{StaticResource UserLightChannelTemplate}" />
                         </StackPanel>
                     </Grid>
                 </StackPanel>
