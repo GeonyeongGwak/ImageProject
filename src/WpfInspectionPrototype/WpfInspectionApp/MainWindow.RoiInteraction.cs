@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
@@ -15,13 +16,61 @@ public partial class MainWindow
             return;
         }
 
+        // Drawing 모드가 켜져 있으면 기존처럼 ROI 그리기 시작.
         if (_roiCanvasViewModel.TryBegin(canvas, e.GetPosition(canvas), _imageRuntimeStateService.SourceWidth, _imageRuntimeStateService.SourceHeight, _viewModel.CurrentImageZoom))
         {
             e.Handled = true;
             return;
         }
 
+        // Drawing 모드가 아니면 클릭 좌표를 source-space 로 환원해서 어느 Window ROI 안인지
+        // hit-test. 매칭되는 게 있으면 오른쪽 트리에서 그 Window 를 선택 상태로 만든다.
+        if (TrySelectWindowAtPoint(canvas, e.GetPosition(canvas)))
+        {
+            e.Handled = true;
+            return;
+        }
+
         e.Handled = TryBeginImagePan(canvas, e.GetPosition(this));
+    }
+
+    private bool TrySelectWindowAtPoint(Canvas canvas, Point canvasPoint)
+    {
+        var width = _imageRuntimeStateService.SourceWidth;
+        var height = _imageRuntimeStateService.SourceHeight;
+        if (width <= 0 || height <= 0)
+        {
+            return false;
+        }
+
+        // 캔버스 좌표 → 이미지 픽셀 좌표 (zoom + letterbox 포함) 변환.
+        var display = _roiGeometryService.GetImageDisplayRect(
+            canvas.ActualWidth,
+            canvas.ActualHeight,
+            width,
+            height,
+            _viewModel.CurrentImageZoom);
+        if (display.IsEmpty)
+        {
+            return false;
+        }
+
+        var imagePoint = _roiGeometryService.ToImagePixel(canvasPoint, display, width, height);
+        var sx = (int)imagePoint.X;
+        var sy = (int)imagePoint.Y;
+
+        // 클릭 지점이 들어가는 가장 작은 Window ROI 를 우선 선택 (중첩된 ROI 가 있을 경우
+        // 안쪽 것이 우선되도록). 매칭이 없으면 false 반환해서 호출자가 pan 으로 fallback.
+        var hit = _viewModel.Model.Part.Windows
+            .Where(w => w.Roi.IsValid
+                        && sx >= w.Roi.X
+                        && sx < w.Roi.X + w.Roi.Width
+                        && sy >= w.Roi.Y
+                        && sy < w.Roi.Y + w.Roi.Height)
+            .OrderBy(w => w.Roi.Width * w.Roi.Height)
+            .FirstOrDefault();
+
+        return hit != null && _viewModel.TrySelectWindowById(hit.Id);
     }
 
     private void ImageOverlay_MouseMove(object sender, MouseEventArgs e)

@@ -228,7 +228,10 @@ public static class RoiOverlayRenderer
                 ? null
                 : new SolidColorBrush(isActive
                     ? Color.FromArgb(42, 128, 223, 255)
-                    : Color.FromArgb(20, 128, 223, 255))
+                    : Color.FromArgb(20, 128, 223, 255)),
+            // 선택되지 않은 ROI 는 Opacity 를 낮춰 시각적으로 후퇴시킴 — 사용자가 현재
+            // 선택한 ROI 가 더 두드러져 보이도록.
+            Opacity = isActive ? 1.0 : 0.4
         };
         Canvas.SetLeft(rectangle, roiRect.Left);
         Canvas.SetTop(rectangle, roiRect.Top);
@@ -241,7 +244,8 @@ public static class RoiOverlayRenderer
             Background = new SolidColorBrush(isActive ? activeColor : inactiveColor),
             FontFamily = new FontFamily("Consolas"),
             FontWeight = FontWeights.Bold,
-            Padding = new Thickness(4, 1, 4, 1)
+            Padding = new Thickness(4, 1, 4, 1),
+            Opacity = isActive ? 1.0 : 0.4
         };
         Canvas.SetLeft(label, roiRect.Left);
         Canvas.SetTop(label, Math.Max(0, roiRect.Top - 21));

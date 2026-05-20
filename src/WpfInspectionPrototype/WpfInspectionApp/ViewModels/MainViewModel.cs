@@ -1684,6 +1684,38 @@ public sealed class MainViewModel : ViewModelBase
             : algorithm.Type;
     }
 
+    // 이미지 오버레이에서 ROI 사각형을 클릭했을 때 호출. 해당 Window 를 선택 상태로
+    // 만들고 트리 highlight + ROI overlay active 상태 + 알고리즘 패널까지 동기화.
+    // SelectTreeNode 와 동일한 후처리를 따르되, 인자가 윈도우 노드가 아니라 ID 기반.
+    public bool TrySelectWindowById(string windowId)
+    {
+        if (_refreshingTree || string.IsNullOrWhiteSpace(windowId))
+        {
+            return false;
+        }
+
+        var window = Model.Part.Windows.FirstOrDefault(candidate => candidate.Id == windowId);
+        if (window == null)
+        {
+            return false;
+        }
+
+        Model.SelectedWindowId = window.Id;
+        var firstAlgorithm = window.Algorithms.FirstOrDefault();
+        if (firstAlgorithm != null && AlgorithmTypes.Contains(firstAlgorithm.Type))
+        {
+            SelectedAlgorithm = firstAlgorithm.Type;
+        }
+
+        RefreshModelBindings();
+        // 트리 노드의 IsSelected highlight 갱신을 위해 명시적 rebuild 요청.
+        // (SelectTreeNode 경로는 WPF TreeView 가 자체적으로 highlight 처리해서 rebuild 불필요했지만
+        // 외부 트리거인 ROI 클릭은 TreeView 가 모르기 때문에 수동 갱신.)
+        TreeRefreshRequested?.Invoke(window.Id);
+        SelectionChanged?.Invoke();
+        return true;
+    }
+
     public bool SelectTreeNode(InspectionTreeNodeViewModel? node)
     {
         if (_refreshingTree)
