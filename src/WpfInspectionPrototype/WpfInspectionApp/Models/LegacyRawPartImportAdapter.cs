@@ -390,6 +390,12 @@ public static class LegacyRawPartImportAdapter
 
     private static void ApplyCommonLightParameters(InspectionAlgorithmData algorithm, XElement element)
     {
+        // legacy pemto RawData 의 algorithm 마다 <LTInfo>LightType,R,G,B,W,extra</LTInfo>
+        // CSV 형태로 light 값이 들어있다. 예: <LTInfo>0,100,0,0,100,0</LTInfo>
+        // 별도 <LightTypeNum>/<RedValue> tag 는 없는 경우가 더 많아서 LTInfo 를
+        // 1순위로 파싱한다. 이후 명시 tag 가 있으면 그 값이 덮어쓴다 (호환 보존).
+        ApplyLtInfoCsvIfPresent(algorithm, element);
+
         if (TryReadLeafValue(element, out var lightTypeText, "LightTypeNum", "LightType"))
         {
             SetInt(algorithm, "Common.LightTypeNum", NormalizeLegacyLightType(lightTypeText));
@@ -417,6 +423,54 @@ public static class LegacyRawPartImportAdapter
         AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.GreenValue", "0");
         AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.BlueValue", "0");
         AlgorithmParameterStore.SetDefault(algorithm.Parameters, "Common.WhiteValue", "0");
+    }
+
+    // 참조 프로젝트 RawData 의 <LTInfo> 는 "LightType,R,G,B,W,extra" 6 필드 CSV.
+    // 예: <LTInfo>0,100,0,0,100,0</LTInfo>  (TOP / R=100 / G=0 / B=0 / W=100)
+    // 값이 [-1, 200] 범위면 LightType 별 채널 가용성을 무시하고 그대로 저장. 음수면 비활성으로 간주.
+    // 별도 <LightTypeNum>/<RedValue> 가 있는 경우 이후 호출에서 덮어쓰므로 명시 tag 우선순위 유지.
+    private static void ApplyLtInfoCsvIfPresent(InspectionAlgorithmData algorithm, XElement element)
+    {
+        if (!TryReadLeafValue(element, out var raw, "LTInfo"))
+        {
+            return;
+        }
+
+        var parts = raw.Split(',');
+        if (parts.Length < 5)
+        {
+            return;
+        }
+
+        if (TryParseInt(parts[0], out var lightType))
+        {
+            SetInt(algorithm, "Common.LightTypeNum", NormalizeLegacyLightType(lightType.ToString()));
+        }
+
+        if (TryParseInt(parts[1], out var redValue))
+        {
+            SetInt(algorithm, "Common.RedValue", Net48Compat.Clamp(redValue, 0, 200));
+        }
+
+        if (TryParseInt(parts[2], out var greenValue))
+        {
+            SetInt(algorithm, "Common.GreenValue", Net48Compat.Clamp(greenValue, 0, 200));
+        }
+
+        if (TryParseInt(parts[3], out var blueValue))
+        {
+            SetInt(algorithm, "Common.BlueValue", Net48Compat.Clamp(blueValue, 0, 200));
+        }
+
+        if (TryParseInt(parts[4], out var whiteValue))
+        {
+            SetInt(algorithm, "Common.WhiteValue", Net48Compat.Clamp(whiteValue, 0, 200));
+        }
+    }
+
+    private static bool TryParseInt(string raw, out int value)
+    {
+        return int.TryParse(raw?.Trim(), System.Globalization.NumberStyles.Integer, System.Globalization.CultureInfo.InvariantCulture, out value);
     }
 
     private static void ApplyAlgorithmParameterMapping(InspectionAlgorithmData algorithm, XElement element, LegacyRoiTransform transform)
@@ -3333,6 +3387,16 @@ public static class LegacyRawPartImportAdapter
             Round(transform.OriginY + yMm / transform.PixelResolutionY));
     }
 
+    private static (int X, int Y) ConvertLegacyPixelPointToPixel(double x, double y, LegacyRoiTransform transform)
+    {
+        if ((x < 0 || y < 0) && transform.SourceWidth > 0 && transform.SourceHeight > 0)
+        {
+            return (Round(transform.OriginX + x), Round(transform.OriginY + y));
+        }
+
+        return (Round(x), Round(y));
+    }
+
     private static bool TryReadNumberArrayLeaf(XElement element, out double[] values, params string[] names)
     {
         values = Array.Empty<double>();
@@ -3525,6 +3589,20 @@ public static class LegacyRawPartImportAdapter
         var rawHeight = ReadDouble(roiElement, "h", "Height", "SizeY");
         var cx = ReadDouble(roiElement, "cx", "CenterX", "X");
         var cy = ReadDouble(roiElement, "cy", "CenterY", "Y");
+
+        // ROI 회전: RelRoi 의 <a> + Part 전체의 회전(<PartData>/<Roi>/<a>) 의 합.
+        // axis-aligned RoiRect 로 표현하는 한계 안에서 90/270° 부근이면 W/H 만 스왑한다.
+        // - U25 (2.zip) 처럼 Part 자체가 270° 회전 + Window RelRoi.a 가 0 인 케이스에 핵심.
+        // - 0/180° 부근은 스왑 없음 → RefID_2 같은 정상 part 회귀 없음.
+        var localAngle = ReadDouble(roiElement, "a", "Angle");
+        var combinedAngle = ((localAngle + transform.PartAngleDegrees) % 360.0 + 360.0) % 360.0;
+        var shouldSwapWh = (combinedAngle > 45.0 && combinedAngle <= 135.0)
+                        || (combinedAngle > 225.0 && combinedAngle <= 315.0);
+        if (shouldSwapWh)
+        {
+            (rawWidth, rawHeight) = (rawHeight, rawWidth);
+        }
+
         if (transform.HasResolution && LooksLikeMillimeterRoi(rawWidth, rawHeight))
         {
             var widthPixels = Math.Max(1, Round(rawWidth / transform.PixelResolutionX));
@@ -3559,7 +3637,83 @@ public static class LegacyRawPartImportAdapter
             .FirstOrDefault(element => element.Name.LocalName.Contains("Roi", StringComparison.OrdinalIgnoreCase)
                 && element.Element("w") != null
                 && element.Element("h") != null);
-        return roi == null ? null : ParseRoi(roi, transform);
+        if (roi != null)
+        {
+            return ParseRoi(roi, transform);
+        }
+
+        return ParseOptionalCsvAlgorithmRoi(algorithmElement, transform);
+    }
+
+    private static RoiRect? ParseOptionalCsvAlgorithmRoi(XElement algorithmElement, LegacyRoiTransform transform)
+    {
+        if (TryReadNumberArrayLeaf(algorithmElement, out var roi1Mm, "ROI1_mm") && HasLegacyCornerArea(roi1Mm))
+        {
+            return CreateRoiFromLegacyCorners(roi1Mm, transform, isMillimeter: true);
+        }
+
+        if (TryReadNumberArrayLeaf(algorithmElement, out var roi1, "ROI1") && HasLegacyCornerArea(roi1))
+        {
+            return CreateRoiFromLegacyCorners(roi1, transform, isMillimeter: false);
+        }
+
+        if (TryReadNumberArrayLeaf(algorithmElement, out var roi2Mm, "ROI2_mm") && HasLegacyCornerArea(roi2Mm))
+        {
+            return CreateRoiFromLegacyCorners(roi2Mm, transform, isMillimeter: true);
+        }
+
+        if (TryReadNumberArrayLeaf(algorithmElement, out var roi2, "ROI2") && HasLegacyCornerArea(roi2))
+        {
+            return CreateRoiFromLegacyCorners(roi2, transform, isMillimeter: false);
+        }
+
+        return null;
+    }
+
+    private static bool HasLegacyCornerArea(double[] values)
+    {
+        return values.Length >= 4
+            && Math.Abs(values[2] - values[0]) > double.Epsilon
+            && Math.Abs(values[3] - values[1]) > double.Epsilon;
+    }
+
+    private static RoiRect CreateRoiFromLegacyCorners(double[] values, LegacyRoiTransform transform, bool isMillimeter)
+    {
+        var first = isMillimeter
+            ? ConvertLegacyMmPointToPixel(values[0], values[1], transform)
+            : ConvertLegacyPixelPointToPixel(values[0], values[1], transform);
+        var second = isMillimeter
+            ? ConvertLegacyMmPointToPixel(values[2], values[3], transform)
+            : ConvertLegacyPixelPointToPixel(values[2], values[3], transform);
+
+        var left = Math.Min(first.X, second.X);
+        var top = Math.Min(first.Y, second.Y);
+        var right = Math.Max(first.X, second.X);
+        var bottom = Math.Max(first.Y, second.Y);
+
+        if (transform.SourceWidth > 0)
+        {
+            left = Net48Compat.Clamp(left, 0, Math.Max(0, transform.SourceWidth - 1));
+            right = Net48Compat.Clamp(right, left + 1, transform.SourceWidth);
+        }
+        else
+        {
+            left = Math.Max(0, left);
+            right = Math.Max(left + 1, right);
+        }
+
+        if (transform.SourceHeight > 0)
+        {
+            top = Net48Compat.Clamp(top, 0, Math.Max(0, transform.SourceHeight - 1));
+            bottom = Net48Compat.Clamp(bottom, top + 1, transform.SourceHeight);
+        }
+        else
+        {
+            top = Math.Max(0, top);
+            bottom = Math.Max(top + 1, bottom);
+        }
+
+        return new RoiRect(left, top, Math.Max(1, right - left), Math.Max(1, bottom - top));
     }
 
     private static LegacyRoiTransform CreateRoiTransform(XElement root, XElement? initRoot, XElement? partElement)
@@ -3574,13 +3728,19 @@ public static class LegacyRawPartImportAdapter
         var partRoi = partElement?.Element("Roi") ?? root.Element("Roi");
         var sourceWidth = ReadOptionalInt(initRoot, "ImageWidth", "SourceWidth", "Width");
         var sourceHeight = ReadOptionalInt(initRoot, "ImageHeight", "SourceHeight", "Height");
+        sourceWidth = sourceWidth > 0 ? sourceWidth : ReadInt(root, "ImageWidth", "SourceWidth", "Width");
+        sourceHeight = sourceHeight > 0 ? sourceHeight : ReadInt(root, "ImageHeight", "SourceHeight", "Height");
         if (partRoi != null && resolutionX > 0 && resolutionY > 0)
         {
             sourceWidth = sourceWidth > 0 ? sourceWidth : Math.Max(1, Round(ReadDouble(partRoi, "w", "Width", "SizeX") / resolutionX));
             sourceHeight = sourceHeight > 0 ? sourceHeight : Math.Max(1, Round(ReadDouble(partRoi, "h", "Height", "SizeY") / resolutionY));
         }
 
-        return new LegacyRoiTransform(resolutionX, resolutionY, sourceWidth, sourceHeight);
+        // Part 전체 좌표계의 회전각. <PartData>/<Roi>/<a> 에 위치 (예: U25 는 270°).
+        // RelRoi 의 <a> 와 합쳐서 W/H 스왑 결정에 사용.
+        var partAngle = partRoi != null ? ReadDouble(partRoi, "a", "Angle") : 0.0;
+
+        return new LegacyRoiTransform(resolutionX, resolutionY, sourceWidth, sourceHeight, partAngle);
     }
 
     private static bool LooksLikeMillimeterRoi(double width, double height)
@@ -3916,7 +4076,14 @@ public static class LegacyRawPartImportAdapter
         return fallback;
     }
 
-    private readonly record struct LegacyRoiTransform(double PixelResolutionX, double PixelResolutionY, int SourceWidth, int SourceHeight)
+    // PartAngleDegrees: <PartData>/<Roi>/<a> 의 값. RelRoi.a 와 합쳐서 ROI W/H 스왑
+    // 결정에 사용. 0 이면 무시 (RefID_2 같은 회전 없는 part).
+    private readonly record struct LegacyRoiTransform(
+        double PixelResolutionX,
+        double PixelResolutionY,
+        int SourceWidth,
+        int SourceHeight,
+        double PartAngleDegrees = 0.0)
     {
         public bool HasResolution => PixelResolutionX > 0 && PixelResolutionY > 0;
         public double OriginX => SourceWidth > 0 ? SourceWidth / 2.0 : 0;

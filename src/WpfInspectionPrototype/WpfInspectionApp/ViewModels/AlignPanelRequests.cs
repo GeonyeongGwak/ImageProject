@@ -35,6 +35,7 @@ public enum AlignPanelActionKind
     DrawWindowRoi,
     DrawAlgorithmRoi,
     Teach,
+    LeadWindowTeach,
     PartTeachingIc,
     PartTeachingOk,
     PartTeachingClose
@@ -54,8 +55,10 @@ public static class AlignPanelUpdateKindExtensions
             AlignPanelUpdateKind.Parameter => AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.MaskDensity | AlignPanelUpdateEffect.Threshold,
             AlignPanelUpdateKind.AlignParameter => AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.RoiText,
             AlignPanelUpdateKind.Threshold2D => AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.Threshold,
-            AlignPanelUpdateKind.Threshold3D => AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.MaskDensity,
-            AlignPanelUpdateKind.EdgeGain => AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.MaskDensity,
+            // Threshold3D / EdgeGain 도 binary preview 갱신 대상이라 Threshold flag 가 필요했다.
+            // (3D MIN/MAX 슬라이더, Edge gain 등을 조작해도 CAM-03 binary 가 안 바뀌던 원인.)
+            AlignPanelUpdateKind.Threshold3D => AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.MaskDensity | AlignPanelUpdateEffect.Threshold,
+            AlignPanelUpdateKind.EdgeGain => AlignPanelUpdateEffect.Model | AlignPanelUpdateEffect.MaskDensity | AlignPanelUpdateEffect.Threshold,
             AlignPanelUpdateKind.IpcClass => AlignPanelUpdateEffect.Model,
             AlignPanelUpdateKind.PartTeachingOption => AlignPanelUpdateEffect.PartTeachingUi | AlignPanelUpdateEffect.Model,
             _ => AlignPanelUpdateEffect.None
