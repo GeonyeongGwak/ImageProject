@@ -301,7 +301,14 @@ enum MptiBridgeAlgoFamily
     MPTI_FAMILY_BGA     = 5,
     MPTI_FAMILY_PADBW   = 6,
     MPTI_FAMILY_SHAPEX  = 7,
-    MPTI_FAMILY_BW      = 8
+    MPTI_FAMILY_BW      = 8,
+    // 3D 측정 계열 (Height_Mean, Height_Diff, Volume, PackageThickness).
+    // native side struct 들은 모두 AlgoBaseBW 상속 + 3D 전용 필드 보유.
+    // 현재 family lookup 만 노출 — MptiBridgeAddAlgo / MptiBridgeSetAlgoParams* /
+    // MptiBridgeResult* 까지 풀 flow path 구현은 별도 작업.
+    MPTI_FAMILY_HEIGHT  = 9,
+    // 2D gray 측정 계열 (Gray_Mean, Gray_Diff). Height 와 짝.
+    MPTI_FAMILY_GRAY    = 10
 };
 
 MPTI_BRIDGE_FLOW_API int MptiBridgeGetAlgoFamily(int algoType)
@@ -340,6 +347,16 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeGetAlgoFamily(int algoType)
         return MPTI_FAMILY_SHAPEX;
     case eAlgoBW:
         return MPTI_FAMILY_BW;
+    // 3D measurement family
+    case eAlgoHeight_Mean:
+    case eAlgoHeight_Diff:
+    case eAlgoVolume:
+    case eAlgoPackageThickness:
+        return MPTI_FAMILY_HEIGHT;
+    // 2D gray measurement family
+    case eAlgoGray_Mean:
+    case eAlgoGray_Diff:
+        return MPTI_FAMILY_GRAY;
     default:
         return MPTI_FAMILY_UNKNOWN;
     }

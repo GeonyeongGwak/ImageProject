@@ -836,6 +836,16 @@ internal static class SmokeTestRunner
             // 단일 algorithm 인 family 들
             ("AlgoPadBW",  MptiFlowNativeBridge.FAMILY_PADBW,  NativeAlgoTypeIds.PadBw),
             ("AlgoShapeX", MptiFlowNativeBridge.FAMILY_SHAPEX, NativeAlgoTypeIds.ShapeX),
+
+            // FAMILY_HEIGHT — 3D 측정 (lookup 만, 풀 flow path 미구현)
+            ("AlgoHeight_Mean",      MptiFlowNativeBridge.FAMILY_HEIGHT, NativeAlgoTypeIds.HeightMean),
+            ("AlgoHeight_Diff",      MptiFlowNativeBridge.FAMILY_HEIGHT, NativeAlgoTypeIds.HeightDiff),
+            ("AlgoVolume",           MptiFlowNativeBridge.FAMILY_HEIGHT, NativeAlgoTypeIds.Volume),
+            ("AlgoPackageThickness", MptiFlowNativeBridge.FAMILY_HEIGHT, NativeAlgoTypeIds.PackageThickness),
+
+            // FAMILY_GRAY — 2D gray 측정 (lookup 만, 풀 flow path 미구현)
+            ("AlgoGray_Mean", MptiFlowNativeBridge.FAMILY_GRAY, NativeAlgoTypeIds.GrayMean),
+            ("AlgoGray_Diff", MptiFlowNativeBridge.FAMILY_GRAY, NativeAlgoTypeIds.GrayDiff),
             // FAMILY_BW: AlgoBW 는 NativeAlgoType=Unknown (flow path 미연결) 이지만 native
             // GetAlgoFamily 자체는 eAlgoBW 에 대해 BW family 를 반환한다. 카탈로그 NativeAlgoType
             // 이 0 이라 직접 검증은 별도 처리 (아래 BW 전용 assert).

@@ -173,6 +173,11 @@ public static class MptiFlowNativeBridge
     public const int FAMILY_PADBW   = 6;
     public const int FAMILY_SHAPEX  = 7;
     public const int FAMILY_BW      = 8;
+    // 3D 측정 family (Height_Mean, Height_Diff, Volume, PackageThickness).
+    // family lookup 만 — 풀 flow path 구현은 별도 작업.
+    public const int FAMILY_HEIGHT  = 9;
+    // 2D gray 측정 family (Gray_Mean, Gray_Diff).
+    public const int FAMILY_GRAY    = 10;
 
     [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
     public static extern int MptiBridgeGetAlgoFamily(int algoType);
