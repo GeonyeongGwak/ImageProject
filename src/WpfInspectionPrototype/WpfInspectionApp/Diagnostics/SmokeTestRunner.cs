@@ -1,6 +1,8 @@
+using System.IO;
 using WpfInspectionApp.Infrastructure;
 using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
+using WpfInspectionApp.Services.FlowAlgorithms;
 using WpfInspectionApp.ViewModels;
 
 namespace WpfInspectionApp.Diagnostics;
@@ -95,10 +97,58 @@ internal static class SmokeTestRunner
             padBWSw.Stop();
             Write($"PadBW bridge ({padBWSw.ElapsedMilliseconds}ms): available={padBWResp.Available} success={padBWResp.Success} isOK={padBWResp.IsOK} areaRate={padBWResp.AreaRate:F1}% message={padBWResp.Message}");
 
+            Write("calling MptiAlgorithmNativeBridge.RunEdge...");
+            var edgeParams = new Interop.MptiBridgeEdgeParams
+            {
+                BinaryMin = 128, BinaryMax = 255, UseInsp2D = 1, MinBlobArea = 5,
+                UseArea = 0, AreaMin = 1, AreaMax = 1_000_000,
+                UseShift = 0, ShiftX = 10, ShiftY = 10,
+                UseAngle = 0, TeachRotate = 0, AngleTolerance = 5,
+                ExpectedCenterX = 128, ExpectedCenterY = 128,
+                SetLineCnt = 1, LineFindRate = 100
+            };
+            var edgeSw = System.Diagnostics.Stopwatch.StartNew();
+            var edgeResp = Interop.MptiAlgorithmNativeBridge.RunEdge(pixels, width, height, stride, new RoiRect(50, 50, 156, 156), edgeParams);
+            edgeSw.Stop();
+            Write($"Edge bridge ({edgeSw.ElapsedMilliseconds}ms): available={edgeResp.Available} success={edgeResp.Success} isOK={edgeResp.IsOK} angle={edgeResp.Theta:F3} message={edgeResp.Message}");
+
+            Write("calling MptiAlgorithmNativeBridge.RunPattern...");
+            var patternParams = new Interop.MptiBridgePatternParams
+            {
+                BinaryMin = 128, BinaryMax = 255, UseInsp2D = 1, MinPatternArea = 5,
+                AcceptScore = 0.8, UseShift = 0, ShiftX = 10, ShiftY = 10,
+                ExpectedCenterX = 128, ExpectedCenterY = 128,
+                RangeAngle = 10, WndAngle = 0, SearchAngleRangeMin = -10, SearchAngleRangeMax = 10,
+                SamplingAngle = 1, CntPatternPath = 1,
+                FactorRed = 1, FactorGreen = 1, FactorBlue = 1,
+                ModelPathInspect1 = string.Empty,
+                ModelPathTeach = string.Empty
+            };
+            var patternSw = System.Diagnostics.Stopwatch.StartNew();
+            var patternResp = Interop.MptiAlgorithmNativeBridge.RunPattern(pixels, width, height, stride, new RoiRect(50, 50, 156, 156), patternParams);
+            patternSw.Stop();
+            Write($"Pattern bridge ({patternSw.ElapsedMilliseconds}ms): available={patternResp.Available} success={patternResp.Success} isOK={patternResp.IsOK} score={patternResp.AreaRate:F3} message={patternResp.Message}");
+
+            Write("calling MptiAlgorithmNativeBridge.RunBGA...");
+            var bgaParams = new Interop.MptiBridgeBGAParams
+            {
+                BinaryMin = 128, BinaryMax = 255, UseInsp2D = 1, MinBlobArea = 5,
+                UseArea = 1, AreaMin = 10, AreaMax = 1_000_000,
+                TeachArea = 100, TeachVolume = 0,
+                UseShift = 0, ShiftX = 10, ShiftY = 10,
+                ExpectedCenterX = 128, ExpectedCenterY = 128,
+                UseCircleRate = 0, TeachCircleRate = 80,
+                UseCoplanarity = 0, CoplanarityMin = 0, CoplanarityMax = 100
+            };
+            var bgaSw = System.Diagnostics.Stopwatch.StartNew();
+            var bgaResp = Interop.MptiAlgorithmNativeBridge.RunBGA(pixels, width, height, stride, new RoiRect(50, 50, 156, 156), bgaParams);
+            bgaSw.Stop();
+            Write($"BGA bridge ({bgaSw.ElapsedMilliseconds}ms): available={bgaResp.Available} success={bgaResp.Success} isOK={bgaResp.IsOK} areaRatio={bgaResp.AreaRate:F3} message={bgaResp.Message}");
+
             RunServiceRegressionChecks(services, Write);
 
-            var allAvailable = alignResp.Available && shapeXResp.Available && padBWResp.Available;
-            var allSuccess = alignResp.Success && shapeXResp.Success && padBWResp.Success;
+            var allAvailable = alignResp.Available && shapeXResp.Available && padBWResp.Available && edgeResp.Available && patternResp.Available && bgaResp.Available;
+            var allSuccess = alignResp.Success && shapeXResp.Success && padBWResp.Success && edgeResp.Success && patternResp.Success && bgaResp.Success;
             Write(allAvailable && allSuccess ? "PASS: all bridges native + success" : $"PARTIAL: available={allAvailable} success={allSuccess}");
             return allAvailable && allSuccess ? 0 : 1;
         }
@@ -113,9 +163,28 @@ internal static class SmokeTestRunner
     {
         write("running service regression checks...");
         VerifyPartRuntimeHandlesCaseDuplicateKeys();
+        VerifyPartRuntimeRoutesBlobBridge();
+        VerifyPartRuntimeRoutesBGABridge();
+        VerifyPartRuntimeRoutesEdgeBridge();
+        VerifyPartRuntimeRoutesPatternBridge();
+        // 2026-05-21 handoff (exact-flow-algorithm-types) 에서 추가된 새 algorithm type 들의
+        // per-algo bridge fallback 회귀 커버. flow-first path (Runtime.FlowBridge=native-flow)
+        // 는 PTT 파일이 필요하므로 별도 GUI 검증이 필요하며, 여기서는 fallback 라우팅이
+        // 망가지지 않았음만 보장한다.
+        VerifyPartRuntimeRoutesNgBlobToBlobBridge();
+        VerifyPartRuntimeRoutesBodyEdgeToEdgeBridge();
+        VerifyPartRuntimeRoutesPatternDiffToPatternBridge();
+        VerifyPartRuntimeRoutesOcrToPatternBridge();
+        VerifyPartRuntimeRoutesPocrToPatternBridge();
+        VerifyFlowAlgorithmExecutionServiceRejectsMissingPtt();
         VerifyLightServiceRoundTrip(services.AlgorithmLight);
+        VerifyNormalLightViewModelQuickPreset(services.AlgorithmLight);
         VerifyUserLightViewModelReferenceFlow(services.AlgorithmLight);
         VerifyLegacyLightImportParsing();
+        VerifyLegacyCsvAlgorithmRoiParsing();
+        VerifyAlignSearchSizeDoesNotResizeWindow(services);
+        VerifyAlignNextRoiUsesSearchSlot(services);
+        VerifyAlignDeleteClearsSearchSlot(services);
         write("service regression checks passed");
     }
 
@@ -162,6 +231,37 @@ internal static class SmokeTestRunner
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrLightPositionString") == "0|2", "Light service should store user-light positions.");
     }
 
+    private static void VerifyNormalLightViewModelQuickPreset(IAlgorithmLightService service)
+    {
+        var algorithm = new InspectionAlgorithmData { Type = "AlgoShapeX", DisplayName = "Normal Light ViewModel" };
+        algorithm.ApplyCatalogDefaults();
+        service.SaveState(algorithm, new AlgorithmLightState
+        {
+            LightType = AlgorithmLightService.TopLight,
+            RedValue = 100,
+            GreenValue = 0,
+            BlueValue = 0,
+            WhiteValue = 0
+        });
+
+        var observedPreviewStates = new List<AlgorithmLightState>();
+        var viewModel = new LightControlViewModel(service, () => observedPreviewStates.Add(service.ReadState(algorithm)));
+        viewModel.Load(algorithm);
+
+        var bluePreset = viewModel.NormalChannels[2].PresetCommand;
+        Assert(bluePreset != null, "Normal Light channel should expose a quick preset command.");
+        bluePreset!.Execute(null);
+
+        Assert(viewModel.NormalChannels[0].Value == 0, "Normal Light preset should clear red.");
+        Assert(viewModel.NormalChannels[1].Value == 0, "Normal Light preset should clear green.");
+        Assert(viewModel.NormalChannels[2].Value == 100, "Normal Light preset should set blue to 100.");
+        Assert(viewModel.NormalChannels[3].Value == 0, "Normal Light preset should clear white.");
+        Assert(observedPreviewStates.Count == 1, "Normal Light preset should save and preview once after all channel values are applied.");
+        Assert(observedPreviewStates[0].RedValue == 0 && observedPreviewStates[0].BlueValue == 100, "Normal Light preview should not restore red while applying a blue quick preset.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.RedValue") == "0", "Normal Light preset should persist red as zero.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.BlueValue") == "100", "Normal Light preset should persist blue as 100.");
+    }
+
     private static void VerifyUserLightViewModelReferenceFlow(IAlgorithmLightService service)
     {
         var algorithm = new InspectionAlgorithmData { Type = "AlgoShapeX", DisplayName = "Light ViewModel" };
@@ -194,8 +294,10 @@ internal static class SmokeTestRunner
         Assert(viewModel.UserCells.Count == 1, "Second-last operator returning to blank should remove the trailing cell.");
         Assert(first.OperatorType == 0, "First operator should return to None.");
 
+        var previewRequestsBeforePreset = previewRequests;
         first.Channels[2].PresetCommand?.Execute(null);
         Assert(first.Channels[0].Value == 0 && first.Channels[2].Value == 100, "Channel preset should solo the selected channel.");
+        Assert(previewRequests == previewRequestsBeforePreset + 1, "User Light preset should save and preview once after all channel values are applied.");
 
         viewModel.ToggleUserPreviewModeCommand.Execute(null);
         var previewState = viewModel.CreatePreviewState(service.ReadState(algorithm));
@@ -257,6 +359,484 @@ internal static class SmokeTestRunner
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrGreenValueString") == "30|-1", "Import should parse comma-separated light array.");
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrBlueValueString") == "20|40", "Import should parse semicolon-separated light array.");
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Common.ArrWhiteValueString") == "10|-1", "Import should parse pipe-separated light array.");
+
+        var previewRequests = 0;
+        var lightViewModel = new LightControlViewModel(new AlgorithmLightService(), () => previewRequests++);
+        lightViewModel.Load(algorithm);
+
+        Assert(lightViewModel.LightType == AlgorithmLightService.UserLight, "Imported light type should show as User Light in the Teaching UI.");
+        Assert(lightViewModel.IsUserMode, "Teaching Light UI should switch to User Light mode for imported User data.");
+        Assert(lightViewModel.UserCells.Count == 2, "Teaching Light UI should show imported User Light cells.");
+
+        var topCell = lightViewModel.UserCells[0];
+        Assert(topCell.Position == AlgorithmLightService.TopLight, "First imported User Light cell should keep Top position.");
+        Assert(topCell.OperatorType == 1, "First imported User Light cell should keep Add operator.");
+        Assert(topCell.Channels[0].Value == 120, "First imported User Light cell should show red value.");
+        Assert(topCell.Channels[1].Value == 30, "First imported User Light cell should show green value.");
+        Assert(topCell.Channels[2].Value == 20, "First imported User Light cell should show blue value.");
+        Assert(topCell.Channels[3].Value == 10, "First imported User Light cell should show white value.");
+
+        var bottomCell = lightViewModel.UserCells[1];
+        Assert(bottomCell.Position == AlgorithmLightService.BottomLight, "Second imported User Light cell should keep Bottom position.");
+        Assert(bottomCell.OperatorType == 2, "Second imported User Light cell should keep Sub operator.");
+        Assert(bottomCell.Channels[0].Value == 80, "Second imported User Light cell should show red value.");
+        Assert(!bottomCell.Channels[1].IsEditable && bottomCell.Channels[1].Value == 0, "Bottom User Light should hide imported disabled green value.");
+        Assert(bottomCell.Channels[2].Value == 40, "Second imported User Light cell should show blue value.");
+        Assert(!bottomCell.Channels[3].IsEditable && bottomCell.Channels[3].Value == 0, "Bottom User Light should hide imported disabled white value.");
+        Assert(previewRequests == 0, "Loading imported light should not request a preview before user edits.");
+    }
+
+    private static void VerifyLegacyCsvAlgorithmRoiParsing()
+    {
+        const string xml = """
+            <RawDataContainer>
+              <PixelResolutionX>0.01</PixelResolutionX>
+              <PixelResolutionY>0.01</PixelResolutionY>
+              <ImageWidth>1000</ImageWidth>
+              <ImageHeight>800</ImageHeight>
+              <PartData>
+                <Name>SmokeCsvRoiPart</Name>
+              </PartData>
+              <WindowDataList>
+                <WindowData>
+                  <ID>W1</ID>
+                  <Name>Main</Name>
+                  <RelRoi>
+                    <cx>500</cx>
+                    <cy>400</cy>
+                    <w>600</w>
+                    <h>500</h>
+                  </RelRoi>
+                  <AlgorithmDataList>
+                    <AlgorithmData>
+                      <ID>A1</ID>
+                      <Type>Height_Diff</Type>
+                      <ROI1_mm>-1.5,-2.0,1.5,2.0</ROI1_mm>
+                      <ROI1>-150,-200,150,200</ROI1>
+                      <BROI2>
+                        <BlobBN>1,2,3</BlobBN>
+                        <BlobBF>4,5,6</BlobBF>
+                      </BROI2>
+                    </AlgorithmData>
+                  </AlgorithmDataList>
+                </WindowData>
+              </WindowDataList>
+            </RawDataContainer>
+            """;
+
+        var parsed = LegacyRawPartImportAdapter.TryParse(xml, out var part, out var status);
+        Assert(parsed, $"Legacy CSV ROI XML should parse. Status: {status}");
+
+        var algorithm = part.Windows.Single().Algorithms.Single();
+        Assert(algorithm.AlgorithmRoi.HasValue, "CSV ROI import should create an Algorithm ROI.");
+        var roi = algorithm.AlgorithmRoi!.Value;
+        Assert(roi.X == 350 && roi.Y == 200, $"CSV ROI should be centered by imported image origin, got X={roi.X} Y={roi.Y}.");
+        Assert(roi.Width == 300 && roi.Height == 400, $"CSV ROI should use ROI1_mm size, got W={roi.Width} H={roi.Height}.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Heightdiff.Roi1.Mm") == "-1.5,-2.0,1.5,2.0", "CSV ROI raw mm value should be preserved.");
+    }
+
+    private static void VerifyAlignSearchSizeDoesNotResizeWindow(AppServices services)
+    {
+        var model = CreateSyntheticModel(200, 160);
+        model.Part.SourceWidth = 200;
+        model.Part.SourceHeight = 160;
+        model.AlignSearchNum = 2;
+        model.AlignActiveRoiIndex = 0;
+        model.AlignSameSize = false;
+        model.AlignSearchMargin = 5;
+        model.AlignSearchSizeX = 80;
+        model.AlignSearchSizeY = 30;
+        model.AlignSearchRois[0] = new RoiRect(40, 40, 20, 20);
+
+        var activeWindow = model.Part.Windows[0];
+        var originalWindowRoi = activeWindow.Roi;
+        var viewModel = CreateSmokeMainViewModel(model, services);
+        var changed = viewModel.ResizeActiveSearchRoiFromSearchInputs(200, 160, FormatSmokeRoi);
+
+        Assert(changed, "Search Size edit should resize the active Align Search ROI.");
+        Assert(activeWindow.Roi.Equals(originalWindowRoi), "Search Size edit should not resize the selected Window ROI.");
+        Assert(model.AlignSearchRois[0] is { IsValid: true }, "Search Size edit should keep active Align Search ROI valid.");
+
+        var roi = model.AlignSearchRois[0]!.Value;
+        Assert(roi.Width == 80 && roi.Height == 30, $"Search ROI should adopt input size, got W={roi.Width} H={roi.Height}.");
+        Assert(roi.X == 10 && roi.Y == 35, $"Search ROI should keep its center while resizing, got X={roi.X} Y={roi.Y}.");
+
+        var align = activeWindow.Algorithms.First(algorithm => string.Equals(algorithm.Type, "AlgoAlign", StringComparison.OrdinalIgnoreCase));
+        Assert(AlgorithmParameterStore.GetValue(align.Parameters, "Align.SearchSize1.W") == "80", "Search Size edit should persist Align.SearchSize1.W.");
+        Assert(AlgorithmParameterStore.GetValue(align.Parameters, "Align.SearchSize1.H") == "30", "Search Size edit should persist Align.SearchSize1.H.");
+        Assert(AlgorithmParameterStore.GetValue(align.Parameters, "Align.SearchSize2.W") != "80", "Search ROI slot 2 should not overwrite slot 1 parameters.");
+    }
+
+    private static void VerifyAlignNextRoiUsesSearchSlot(AppServices services)
+    {
+        var model = CreateSyntheticModel(200, 160);
+        model.Part.SourceWidth = 200;
+        model.Part.SourceHeight = 160;
+        model.AlignSearchNum = 3;
+        model.AlignActiveRoiIndex = 0;
+        model.AlignSearchSizeX = 77;
+        model.AlignSearchSizeY = 55;
+        model.AlignSearchRois[1] = null;
+
+        var selectedWindowId = model.SelectedWindowId;
+        var selectedWindowRoi = model.Part.Windows[0].Roi;
+        var viewModel = CreateSmokeMainViewModel(model, services);
+
+        viewModel.SelectNextAlignRoi();
+        Assert(model.SelectedWindowId == selectedWindowId, "Next ROI should not change the selected Window.");
+        Assert(model.Part.Windows[0].Roi.Equals(selectedWindowRoi), "Next ROI should not resize or replace the selected Window ROI.");
+        Assert(model.AlignActiveRoiIndex == 1, $"Next ROI should advance AlignActiveRoiIndex to slot 1, got {model.AlignActiveRoiIndex}.");
+
+        var sync = viewModel.CreateRoiUiSyncState(200, 160, FormatSmokeRoi);
+        Assert(sync.ActiveRoiText == "ROI - 2 / 3", $"Active ROI label should describe the search slot, got '{sync.ActiveRoiText}'.");
+        Assert(!sync.SearchSizeRoi.HasValue, "Empty active search slot should not overwrite Search Size text boxes.");
+        Assert(model.AlignSearchSizeX == 77 && model.AlignSearchSizeY == 55, "ROI UI sync should not mutate Search Size from Window ROI.");
+    }
+
+    private static void VerifyAlignDeleteClearsSearchSlot(AppServices services)
+    {
+        var model = CreateSyntheticModel(200, 160);
+        model.Part.SourceWidth = 200;
+        model.Part.SourceHeight = 160;
+        model.AlignSearchNum = 2;
+        model.AlignActiveRoiIndex = 1;
+        model.AlignSearchRois[0] = new RoiRect(10, 20, 30, 40);
+        model.AlignSearchRois[1] = new RoiRect(70, 80, 50, 60);
+
+        var selectedWindowId = model.SelectedWindowId;
+        var windowCount = model.Part.Windows.Count;
+        var activeWindow = model.Part.Windows[0];
+        var align = activeWindow.Algorithms.First(algorithm => string.Equals(algorithm.Type, "AlgoAlign", StringComparison.OrdinalIgnoreCase));
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchPoint1.X", "25");
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchPoint1.Y", "40");
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchSize1.W", "30");
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchSize1.H", "40");
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchPoint2.X", "95");
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchPoint2.Y", "110");
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchSize2.W", "50");
+        AlgorithmParameterStore.Set(align.Parameters, "Align.SearchSize2.H", "60");
+
+        var viewModel = CreateSmokeMainViewModel(model, services);
+        viewModel.DeleteActiveAlignRoi();
+
+        Assert(model.Part.Windows.Count == windowCount, "Delete in Align Search should not delete a Window.");
+        Assert(model.SelectedWindowId == selectedWindowId, "Delete in Align Search should not change selected Window.");
+        Assert(model.AlignSearchRois[0].HasValue, "Delete should preserve other Align Search ROI slots.");
+        Assert(!model.AlignSearchRois[1].HasValue, "Delete should clear the active Align Search ROI slot.");
+        Assert(AlgorithmParameterStore.GetValue(align.Parameters, "Align.SearchPoint1.X") == "25", "Delete should preserve slot 1 parameters.");
+        Assert(!AlgorithmParameterStore.ContainsKey(align.Parameters, "Align.SearchPoint2.X"), "Delete should remove active slot SearchPoint X.");
+        Assert(!AlgorithmParameterStore.ContainsKey(align.Parameters, "Align.SearchSize2.W"), "Delete should remove active slot SearchSize W.");
+    }
+
+    private static void VerifyPartRuntimeRoutesBlobBridge()
+    {
+        const int width = 256;
+        const int height = 256;
+        var model = new InspectionModel
+        {
+            ModelName = "GenericBridgeSmoke",
+            Threshold2D = 128
+        };
+        model.EnsureStructure();
+
+        var window = new InspectionWindowData
+        {
+            Name = "GenericWindow",
+            Roi = new RoiRect(48, 48, 160, 160)
+        };
+        var algorithm = new InspectionAlgorithmData
+        {
+            Type = "AlgoBody_Blob",
+            DisplayName = "Generic Body Blob",
+            AlgorithmRoi = new RoiRect(64, 64, 128, 128)
+        };
+        window.Algorithms.Add(algorithm);
+        model.Part.Windows.Add(window);
+        model.SelectedWindowId = window.Id;
+        model.EnsureStructure();
+
+        var image = new PartRuntimeImage(CreateSyntheticImage(width, height), width, height, width * 4, model.Threshold2D);
+        var result = new PartInspectionRuntime().Run(model, image);
+        var runAlgorithm = result.Windows.Single().Algorithms.Single();
+
+        Assert(runAlgorithm.NativeBridgeName == "Blob", "Body Blob should route through the dedicated Blob C++ bridge.");
+        Assert(runAlgorithm.NativeBridgeMode == "native", "Blob bridge should report native mode when MptiBridgeRunBlob succeeds.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.BlobBridge") == "native", "Blob bridge status should be persisted to algorithm parameters.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.BlobIsOK") == "True", "Blob bridge OK state should be persisted.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.NativeBridgeName") == "Blob", "Unified native bridge name should be persisted.");
+    }
+
+    private static void VerifyPartRuntimeRoutesEdgeBridge()
+    {
+        const int width = 256;
+        const int height = 256;
+        var model = new InspectionModel
+        {
+            ModelName = "EdgeBridgeSmoke",
+            Threshold2D = 128
+        };
+        model.EnsureStructure();
+
+        var window = new InspectionWindowData
+        {
+            Name = "EdgeWindow",
+            Roi = new RoiRect(48, 48, 160, 160)
+        };
+        var algorithm = new InspectionAlgorithmData
+        {
+            Type = "AlgoEdge",
+            DisplayName = "Smoke Edge",
+            AlgorithmRoi = new RoiRect(64, 64, 128, 128)
+        };
+        window.Algorithms.Add(algorithm);
+        model.Part.Windows.Add(window);
+        model.SelectedWindowId = window.Id;
+        model.EnsureStructure();
+
+        var image = new PartRuntimeImage(CreateSyntheticImage(width, height), width, height, width * 4, model.Threshold2D);
+        var result = new PartInspectionRuntime().Run(model, image);
+        var runAlgorithm = result.Windows.Single().Algorithms.Single();
+
+        Assert(runAlgorithm.NativeBridgeName == "Edge", "Edge should route through the dedicated Edge C++ bridge.");
+        Assert(runAlgorithm.NativeBridgeMode == "native", "Edge bridge should report native mode when MptiBridgeRunEdge succeeds.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.EdgeBridge") == "native", "Edge bridge status should be persisted to algorithm parameters.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.EdgeIsOK") == "True", "Edge bridge OK state should be persisted.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.NativeBridgeName") == "Edge", "Unified native bridge name should be persisted.");
+    }
+
+    private static void VerifyPartRuntimeRoutesBGABridge()
+    {
+        const int width = 256;
+        const int height = 256;
+        var model = new InspectionModel
+        {
+            ModelName = "BGABridgeSmoke",
+            Threshold2D = 128
+        };
+        model.EnsureStructure();
+
+        var window = new InspectionWindowData
+        {
+            Name = "BGAWindow",
+            Roi = new RoiRect(48, 48, 160, 160)
+        };
+        var algorithm = new InspectionAlgorithmData
+        {
+            Type = "AlgoBGA",
+            DisplayName = "Smoke BGA",
+            AlgorithmRoi = new RoiRect(64, 64, 128, 128)
+        };
+        window.Algorithms.Add(algorithm);
+        model.Part.Windows.Add(window);
+        model.SelectedWindowId = window.Id;
+        model.EnsureStructure();
+
+        var image = new PartRuntimeImage(CreateSyntheticImage(width, height), width, height, width * 4, model.Threshold2D);
+        var result = new PartInspectionRuntime().Run(model, image);
+        var runAlgorithm = result.Windows.Single().Algorithms.Single();
+
+        Assert(runAlgorithm.NativeBridgeName == "BGA", "BGA should route through the dedicated BGA C++ bridge.");
+        Assert(runAlgorithm.NativeBridgeMode == "native", "BGA bridge should report native mode when MptiBridgeRunBGA succeeds.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.BGABridge") == "native", "BGA bridge status should be persisted to algorithm parameters.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.BGAIsOK") == "True", "BGA bridge OK state should be persisted.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.NativeBridgeName") == "BGA", "Unified native bridge name should be persisted.");
+    }
+
+    private static void VerifyPartRuntimeRoutesPatternBridge()
+    {
+        const int width = 256;
+        const int height = 256;
+        var model = new InspectionModel
+        {
+            ModelName = "PatternBridgeSmoke",
+            Threshold2D = 128
+        };
+        model.EnsureStructure();
+
+        var window = new InspectionWindowData
+        {
+            Name = "PatternWindow",
+            Roi = new RoiRect(48, 48, 160, 160)
+        };
+        var algorithm = new InspectionAlgorithmData
+        {
+            Type = "AlgoPattern",
+            DisplayName = "Smoke Pattern",
+            AlgorithmRoi = new RoiRect(64, 64, 128, 128)
+        };
+        AlgorithmParameterStore.Set(algorithm.Parameters, "Pattern.MatchScore", "80");
+        window.Algorithms.Add(algorithm);
+        model.Part.Windows.Add(window);
+        model.SelectedWindowId = window.Id;
+        model.EnsureStructure();
+
+        var image = new PartRuntimeImage(CreateSyntheticImage(width, height), width, height, width * 4, model.Threshold2D);
+        var result = new PartInspectionRuntime().Run(model, image);
+        var runAlgorithm = result.Windows.Single().Algorithms.Single();
+
+        Assert(runAlgorithm.NativeBridgeName == "Pattern", "Pattern should route through the dedicated Pattern C++ bridge.");
+        Assert(runAlgorithm.NativeBridgeMode == "native", "Pattern bridge should report native mode when MptiBridgeRunPattern succeeds.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.PatternBridge") == "native", "Pattern bridge status should be persisted to algorithm parameters.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.PatternIsOK") == "True", "Pattern bridge OK state should be persisted.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.NativeBridgeName") == "Pattern", "Unified native bridge name should be persisted.");
+    }
+
+    // -------------------------------------------------------------------------------------
+    // 2026-05-21 handoff (exact-flow-algorithm-types) 후속 회귀 테스트.
+    // 새로 flow path 에 연결된 algorithm type 들이 PTT 없는 환경에서도 적어도
+    // per-algo C++ bridge (Blob/Edge/Pattern) 로 안전하게 떨어지는지 확인한다.
+    //
+    // Runtime.FlowBridge=native-flow 의 verification 은 실 PTT 파일이 필요한 통합
+    // 테스트이며, 현재는 docs/2026-05-21-handoff-exact-flow-algorithm-types.md 의 §"다음 추천 작업"
+    // 1 항에 따라 사용자 GUI 검증으로 위임한다.
+    // -------------------------------------------------------------------------------------
+
+    private static void VerifyPartRuntimeRoutesNgBlobToBlobBridge()
+    {
+        VerifyAlgorithmRoutesToBridgeFamily(
+            algorithmType: "AlgoNGBlob",
+            displayName: "Smoke NG Blob",
+            bridgeName: "Blob",
+            runtimeStatusKey: "Runtime.BlobBridge",
+            runtimeIsOkKey: "Runtime.BlobIsOK");
+    }
+
+    private static void VerifyPartRuntimeRoutesBodyEdgeToEdgeBridge()
+    {
+        VerifyAlgorithmRoutesToBridgeFamily(
+            algorithmType: "AlgoBodyEdge",
+            displayName: "Smoke Body Edge",
+            bridgeName: "Edge",
+            runtimeStatusKey: "Runtime.EdgeBridge",
+            runtimeIsOkKey: "Runtime.EdgeIsOK");
+    }
+
+    private static void VerifyPartRuntimeRoutesPatternDiffToPatternBridge()
+    {
+        VerifyAlgorithmRoutesToBridgeFamily(
+            algorithmType: "AlgoPatternDiff",
+            displayName: "Smoke Pattern Diff",
+            bridgeName: "Pattern",
+            runtimeStatusKey: "Runtime.PatternBridge",
+            runtimeIsOkKey: "Runtime.PatternIsOK");
+    }
+
+    private static void VerifyPartRuntimeRoutesOcrToPatternBridge()
+    {
+        VerifyAlgorithmRoutesToBridgeFamily(
+            algorithmType: "AlgoOCR",
+            displayName: "Smoke OCR",
+            bridgeName: "Pattern",
+            runtimeStatusKey: "Runtime.PatternBridge",
+            runtimeIsOkKey: "Runtime.PatternIsOK");
+    }
+
+    private static void VerifyPartRuntimeRoutesPocrToPatternBridge()
+    {
+        VerifyAlgorithmRoutesToBridgeFamily(
+            algorithmType: "AlgoPOCR",
+            displayName: "Smoke POCR",
+            bridgeName: "Pattern",
+            runtimeStatusKey: "Runtime.PatternBridge",
+            runtimeIsOkKey: "Runtime.PatternIsOK");
+    }
+
+    // 공통 helper: synthetic 이미지 + 알고리즘 1 개로 PartInspectionRuntime 을 돌리고,
+    // 기대된 native bridge family 로 라우팅 되었는지 확인.
+    private static void VerifyAlgorithmRoutesToBridgeFamily(
+        string algorithmType,
+        string displayName,
+        string bridgeName,
+        string runtimeStatusKey,
+        string runtimeIsOkKey)
+    {
+        const int width = 256;
+        const int height = 256;
+        var model = new InspectionModel
+        {
+            ModelName = $"{algorithmType}BridgeSmoke",
+            Threshold2D = 128
+        };
+        model.EnsureStructure();
+
+        var window = new InspectionWindowData
+        {
+            Name = $"{algorithmType}Window",
+            Roi = new RoiRect(48, 48, 160, 160)
+        };
+        var algorithm = new InspectionAlgorithmData
+        {
+            Type = algorithmType,
+            DisplayName = displayName,
+            AlgorithmRoi = new RoiRect(64, 64, 128, 128)
+        };
+        window.Algorithms.Add(algorithm);
+        model.Part.Windows.Add(window);
+        model.SelectedWindowId = window.Id;
+        model.EnsureStructure();
+
+        var image = new PartRuntimeImage(CreateSyntheticImage(width, height), width, height, width * 4, model.Threshold2D);
+        var result = new PartInspectionRuntime().Run(model, image);
+        var runAlgorithm = result.Windows.Single().Algorithms.Single();
+
+        Assert(runAlgorithm.NativeBridgeName == bridgeName, $"{algorithmType} should route through the dedicated {bridgeName} C++ bridge.");
+        Assert(runAlgorithm.NativeBridgeMode == "native", $"{bridgeName} bridge should report native mode when MptiBridgeRun{bridgeName} succeeds for {algorithmType}.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, runtimeStatusKey) == "native", $"{bridgeName} bridge status should be persisted to algorithm parameters for {algorithmType}.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, runtimeIsOkKey) == "True", $"{bridgeName} bridge OK state should be persisted for {algorithmType}.");
+        Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.NativeBridgeName") == bridgeName, $"Unified native bridge name should be persisted as {bridgeName} for {algorithmType}.");
+    }
+
+    private static void VerifyFlowAlgorithmExecutionServiceRejectsMissingPtt()
+    {
+        var execution = new FlowAlgorithmExecutionService();
+        var algorithm = new BlobFlowAlgorithm();
+        var result = execution.Run(
+            Path.Combine(Path.GetTempPath(), "missing-flow-smoke.ptt"),
+            algorithm,
+            algorithm.CreateParameters());
+
+        Assert(!result.Success, "Flow algorithm execution should fail cleanly when PTT is missing.");
+        Assert(result.Summary.IndexOf("PTT file", StringComparison.OrdinalIgnoreCase) >= 0, "Missing PTT failure should explain the missing PTT.");
+    }
+
+    private static MainViewModel CreateSmokeMainViewModel(InspectionModel model, AppServices services)
+    {
+        return new MainViewModel(
+            model,
+            new SmokeDialogOwner(),
+            services.FileDialog,
+            services.ModelWorkflow,
+            services.ApplicationPath,
+            services.PartImportWorkflow,
+            services.ImageLoadWorkflow,
+            services.AlignPartTeaching,
+            services.AlignCondition,
+            new RoiCanvasViewModel(services.RoiInteraction, services.RoiModel),
+            services.RoiUiState,
+            services.ImageRuntimeState,
+            services.InspectionWorkflow,
+            services.InspectionFlow,
+            services.AlignFlowRequestFactory,
+            services.ThresholdPreviewWorkflow,
+            services.AlgorithmLight,
+            services.PttLightPreview,
+            services.PttViewerWorkflow,
+            services.FlowAlgorithms);
+    }
+
+    private static string FormatSmokeRoi(RoiRect? roi)
+    {
+        return roi.HasValue
+            ? $"X {roi.Value.X} Y {roi.Value.Y} W {roi.Value.Width} H {roi.Value.Height}"
+            : "none";
+    }
+
+    private sealed class SmokeDialogOwner : IDialogOwner
+    {
+        public System.Windows.Window GetDialogOwner()
+        {
+            return null!;
+        }
     }
 
     private static void Assert(bool condition, string message)
@@ -276,7 +856,10 @@ internal static class SmokeTestRunner
     {
         return string.Equals(type, "AlgoAlign", StringComparison.OrdinalIgnoreCase)
             || string.Equals(type, "AlgoShapeX", StringComparison.OrdinalIgnoreCase)
-            || string.Equals(type, "AlgoPadBW", StringComparison.OrdinalIgnoreCase);
+            || string.Equals(type, "AlgoPadBW", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(type, "AlgoBGA", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(type, "AlgoEdge", StringComparison.OrdinalIgnoreCase)
+            || string.Equals(type, "AlgoPattern", StringComparison.OrdinalIgnoreCase);
     }
 
     private static string ReadParam(Dictionary<string, string> parameters, string key)
