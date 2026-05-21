@@ -3525,21 +3525,6 @@ public static class LegacyRawPartImportAdapter
         var rawHeight = ReadDouble(roiElement, "h", "Height", "SizeY");
         var cx = ReadDouble(roiElement, "cx", "CenterX", "X");
         var cy = ReadDouble(roiElement, "cy", "CenterY", "Y");
-
-        // RelRoi <a> = ROI 의 회전각 (degree). 우리는 화면에 axis-aligned 사각형만
-        // 그리므로 임의 각도는 정확히 표현 못 하지만, 90/270° 부근의 회전은
-        // bounding box 의 가로/세로 길이를 서로 바꿔주면 시각적으로 맞춰진다.
-        // (U25 같은 part 가 회전된 window 를 가지는데 W/H 가 잘못 보였던 문제 해결.)
-        // 0°/180° 부근은 그대로 두어 정상 케이스에 영향 없음.
-        var rawAngle = ReadDouble(roiElement, "a", "Angle");
-        var normalizedAngle = ((rawAngle % 360.0) + 360.0) % 360.0;
-        var shouldSwapWh = (normalizedAngle > 45.0 && normalizedAngle <= 135.0)
-                        || (normalizedAngle > 225.0 && normalizedAngle <= 315.0);
-        if (shouldSwapWh)
-        {
-            (rawWidth, rawHeight) = (rawHeight, rawWidth);
-        }
-
         if (transform.HasResolution && LooksLikeMillimeterRoi(rawWidth, rawHeight))
         {
             var widthPixels = Math.Max(1, Round(rawWidth / transform.PixelResolutionX));
@@ -3562,9 +3547,18 @@ public static class LegacyRawPartImportAdapter
 
     private static RoiRect? ParseOptionalAlgorithmRoi(XElement algorithmElement, LegacyRoiTransform transform)
     {
+        // 기존 휴리스틱은 "이름에 Roi 가 들어가고 자식 element 가 있는 첫 element" 였다.
+        // 그러나 legacy AlgorithmData 안에는 <BROI2> 처럼 이름에 ROI 가 들어가지만
+        // 자식이 <BlobBN>/<BlobBF> 같은 Blob 검사 파라미터인 컨테이너가 존재한다.
+        // 이런 element 를 잡으면 ParseRoi 가 w/h 를 못 찾아 fallback (1,1) 으로 떨어져
+        // 화면에 0.01x0.01 mm 짜리 유령 ROI 가 그려진다 (U25 사례).
+        //
+        // 가드 강화: 실제 ROI element 가 가져야 할 자식인 <w> 와 <h> 가 둘 다 존재할
+        // 때만 후보로 간주. 없으면 algorithm-specific ROI 가 정의 안 된 것으로 보고 null.
         var roi = algorithmElement.Elements()
             .FirstOrDefault(element => element.Name.LocalName.Contains("Roi", StringComparison.OrdinalIgnoreCase)
-                && element.Elements().Any());
+                && element.Element("w") != null
+                && element.Element("h") != null);
         return roi == null ? null : ParseRoi(roi, transform);
     }
 
