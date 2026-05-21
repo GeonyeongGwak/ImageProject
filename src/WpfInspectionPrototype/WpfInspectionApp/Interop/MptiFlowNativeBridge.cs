@@ -149,11 +149,32 @@ public static class MptiFlowNativeBridge
     // NativeSources/MPTILib_Algo/PInsp_Algo/InspParamDef_Algo.h.
     public const int EALGO_BLOB    = 1;
     public const int EALGO_ALIGN   = 2;
+    public const int EALGO_BODY_BLOB = 3;
+    public const int EALGO_OCR     = 5;
     public const int EALGO_PATTERN = 6;
     public const int EALGO_EDGE    = 26;
+    public const int EALGO_POCR    = 31;
     public const int EALGO_BGA     = 37;
+    public const int EALGO_NGBLOB  = 39;
     public const int EALGO_PADBW   = 40;
+    public const int EALGO_BODY_EDGE = 42;
+    public const int EALGO_PATTERN_DIFF = 47;
     public const int EALGO_SHAPEX  = 48;
+
+    // Native MptiBridgeGetAlgoFamily 반환값 — source of truth 는 MptiBridgeFlow.cpp.
+    // 새 family 추가 시 native + 여기 둘 다 업데이트.
+    public const int FAMILY_UNKNOWN = 0;
+    public const int FAMILY_ALIGN   = 1;
+    public const int FAMILY_BLOB    = 2;
+    public const int FAMILY_EDGE    = 3;
+    public const int FAMILY_PATTERN = 4;
+    public const int FAMILY_BGA     = 5;
+    public const int FAMILY_PADBW   = 6;
+    public const int FAMILY_SHAPEX  = 7;
+    public const int FAMILY_BW      = 8;
+
+    [DllImport(Dll, CallingConvention = CallingConvention.Cdecl)]
+    public static extern int MptiBridgeGetAlgoFamily(int algoType);
 }
 
 // Flat mirror of tagAlgoAlign (InspParamDef_Align.h). Pack=8 required on x64 to match

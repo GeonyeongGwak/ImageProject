@@ -3,14 +3,24 @@
 #include "MptiBridgeFlow.h"
 #include "NativeSources/MPTILib_Algo/InspManager.h"
 #include "NativeSources/PInspAlgo/PInspAlgo_Lib.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/InspParamDef_Algo.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/InspParamDef_AlgoBase.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Align/InspParamDef_Align.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/BW/InspParamDef_BW.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/PadBW/InspParamDef_PadBW.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Blob/InspParamDef_Blob.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/BGA/InspParamDef_BGA.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Edge/InspParamDef_Edge.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/Pattern/InspParamDef_Pattern.h"
 #include "NativeSources/MPTILib_Algo/PInsp_Algo/ShapeX/InspParamDef_ShapeX.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/BodyBlob/InspParamDef_BodyBlob.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/NGBlob/InspParamDef_NGBlob.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/BodyEdge/InspParamDef_BodyEdge.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/PatternDiff/InspParamDef_PatternDiff.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/OCR/InspParamDef_OCR.h"
+#include "NativeSources/MPTILib_Algo/PInsp_Algo/POCR/InspParamDef_POCR.h"
 
+#include <cmath>
 #include <cstdarg>
 #include <cstdio>
 #include <cwchar>
@@ -133,6 +143,97 @@ namespace
         return ClampIntValue(value, 0, 200);
     }
 
+    struct BridgeBinaryParams
+    {
+        int useInsp2D;
+        int minBinary;
+        int maxBinary;
+        int typeRange2D;
+        int invertCheck;
+    };
+
+    struct BridgeShiftParams
+    {
+        int useShift;
+        double shiftX;
+        double shiftY;
+    };
+
+    struct BridgeAreaParams
+    {
+        int useArea;
+        double areaMin;
+        double areaMax;
+    };
+
+    template <typename T>
+    void ApplyCommonBinary(T& algo, const BridgeBinaryParams& params)
+    {
+        algo.m_bInsp2D      = params.useInsp2D != 0;
+        algo.m_nMinBinary   = params.minBinary;
+        algo.m_nMaxBinary   = params.maxBinary;
+        algo.m_nTypeRange2D = params.typeRange2D;
+        algo.m_bInvertCheck = params.invertCheck != 0;
+    }
+
+    void ApplyCommonBinary(AlgoAlign& algo, const BridgeBinaryParams& params)
+    {
+        algo.m_bInsp2D      = params.useInsp2D != 0;
+        algo.m_nMinBinary   = params.minBinary;
+        algo.m_nMaxBinary   = params.maxBinary;
+        algo.m_nTypeRange2D = params.typeRange2D;
+        algo.m_InvertCheck  = params.invertCheck != 0;
+    }
+
+    void ApplyCommonBinary(Bin& bin, const BridgeBinaryParams& params)
+    {
+        bin.m_bInsp2D      = params.useInsp2D != 0;
+        bin.m_nMinBinary   = params.minBinary;
+        bin.m_nMaxBinary   = params.maxBinary;
+        bin.m_nTypeRange2D = params.typeRange2D;
+    }
+
+    void ApplyAlgoBaseBW(AlgoBaseBW& algo, const BridgeBinaryParams& params)
+    {
+        algo.m_b2dCheck     = params.useInsp2D != 0;
+        algo.m_nMinValue    = params.minBinary;
+        algo.m_nMaxValue    = params.maxBinary;
+        algo.m_nRange       = params.typeRange2D;
+        algo.m_bInvertCheck = params.invertCheck != 0;
+    }
+
+    template <typename T>
+    void ApplyShift(T& algo, const BridgeShiftParams& params)
+    {
+        algo.m_bShiftIsUse = params.useShift != 0;
+        algo.m_dShiftX     = params.shiftX;
+        algo.m_dShiftY     = params.shiftY;
+    }
+
+    void ApplyShift(AlgoAlign& algo, const BridgeShiftParams& params)
+    {
+        algo.m_bUseShift = params.useShift != 0;
+        algo.m_dShiftX   = params.shiftX;
+        algo.m_dShiftY   = params.shiftY;
+    }
+
+    template <typename T>
+    void ApplyArea(T& algo, const BridgeAreaParams& params)
+    {
+        algo.m_bAreaIsUse = params.useArea != 0;
+        algo.m_dAreaMin   = params.areaMin;
+        algo.m_dAreaMax   = params.areaMax;
+    }
+
+    int ScoreToPercent(double score)
+    {
+        if (score <= 1.0)
+            score *= 100.0;
+        if (score < 0.0) return 0;
+        if (score > 100.0) return 100;
+        return static_cast<int>(score + 0.5);
+    }
+
     void BindLightStorage(InspAlgo& algo, AlgoStorage& storage)
     {
         algo.m_nArrRedValue = storage.lightRed;
@@ -180,6 +281,57 @@ namespace
         {
             return -300;
         }
+    }
+}
+
+// Source of truth for algoType -> family mapping. C# 의 RuntimeFlowAlgorithmAdapter
+// 가 이 함수를 호출해서 어느 family-specific param builder/result reader 를 써야 할지
+// 결정한다. 새 algoType 추가 시 여기에 한 줄만 추가하면 C# 측이 자동으로 따라간다.
+//
+// IPINSP_ALGO 의 polymorphism 자체는 native side InspManager 가 InspAlgorithm /
+// InspAlgorithm_Dll virtual call 로 dispatch 하므로 C# 가 알 필요 없음. C# 가 신경
+// 쓰는 건 "이 algoType 에 어떤 family-specific param struct 를 보낼 것인가" 뿐.
+enum MptiBridgeAlgoFamily
+{
+    MPTI_FAMILY_UNKNOWN = 0,
+    MPTI_FAMILY_ALIGN   = 1,
+    MPTI_FAMILY_BLOB    = 2,
+    MPTI_FAMILY_EDGE    = 3,
+    MPTI_FAMILY_PATTERN = 4,
+    MPTI_FAMILY_BGA     = 5,
+    MPTI_FAMILY_PADBW   = 6,
+    MPTI_FAMILY_SHAPEX  = 7,
+    MPTI_FAMILY_BW      = 8
+};
+
+MPTI_BRIDGE_FLOW_API int MptiBridgeGetAlgoFamily(int algoType)
+{
+    switch (algoType)
+    {
+    case eAlgoAlign:
+        return MPTI_FAMILY_ALIGN;
+    case eAlgoBlob:
+    case eAlgoBody_Blob:
+    case eAlgoNGBlob:
+        return MPTI_FAMILY_BLOB;
+    case eAlgoEdge:
+    case eAlgoBodyEdge:
+        return MPTI_FAMILY_EDGE;
+    case eAlgoPattern:
+    case eAlgoPatternDiff:
+    case eAlgoOCR:
+    case eAlgoPOCR:
+        return MPTI_FAMILY_PATTERN;
+    case eAlgoBGA:
+        return MPTI_FAMILY_BGA;
+    case eAlgoPadBW:
+        return MPTI_FAMILY_PADBW;
+    case eAlgoShapeX:
+        return MPTI_FAMILY_SHAPEX;
+    case eAlgoBW:
+        return MPTI_FAMILY_BW;
+    default:
+        return MPTI_FAMILY_UNKNOWN;
     }
 }
 
@@ -310,12 +462,19 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeAddAlgo(int wndIndex, int algoType, int algoI
         // are skipped at commit-time wiring.
         switch (algoType)
         {
+        case eAlgoBW:      as->Alloc<AlgoBW>(algoType); break;
         case eAlgoAlign:   as->Alloc<AlgoAlign>(algoType); break;
         case eAlgoPadBW:   as->Alloc<AlgoPadBW>(algoType); break;
         case eAlgoBlob:    as->Alloc<AlgoBlob>(algoType); break;
+        case eAlgoBody_Blob: as->Alloc<AlgoBodyBlob>(algoType); break;
+        case eAlgoNGBlob:  as->Alloc<AlgoNGBlob>(algoType); break;
         case eAlgoBGA:     as->Alloc<AlgoBGA>(algoType); break;
         case eAlgoEdge:    as->Alloc<AlgoEdge>(algoType); break;
+        case eAlgoBodyEdge: as->Alloc<AlgoBodyEdge>(algoType); break;
         case eAlgoPattern: as->Alloc<AlgoPattern>(algoType); break;
+        case eAlgoPatternDiff: as->Alloc<AlgoPatternDiff>(algoType); break;
+        case eAlgoOCR:     as->Alloc<AlgoOCR>(algoType); break;
+        case eAlgoPOCR:    as->Alloc<AlgoPOCR>(algoType); break;
         case eAlgoShapeX:  as->Alloc<AlgoShapeX>(algoType); break;
         // Add more algo types here as the WPF UI grows. Pattern:
         //   case eAlgoXxx: as->Alloc<AlgoXxx>(algoType); break;
@@ -411,23 +570,25 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsAlign(
 
         AlgoAlign& a = *algoPtr;
         const int sn = params->searchNum < 1 ? 1 : (params->searchNum > 4 ? 4 : params->searchNum);
+        const BridgeBinaryParams binary = {
+            params->useInsp2D,
+            params->minBinary,
+            params->maxBinary,
+            params->typeRange2D,
+            params->invertCheck
+        };
+        ApplyCommonBinary(a, binary);
         a.m_nSearchNum = sn;
         a.m_nSearchMargin = params->searchMargin < 0 ? 0 : params->searchMargin;
-        a.m_nMinBinary = params->minBinary;
-        a.m_nMaxBinary = params->maxBinary;
-        a.m_nTypeRange2D = params->typeRange2D;
-        a.m_bInsp2D = params->useInsp2D != 0;
         a.m_bInsp3D = params->useInsp3D != 0;
         a.m_dHeightRateMin = params->heightRateMin;
         a.m_dHeightRateMax = params->heightRateMax;
         a.m_dHeightAvg = params->heightAverage;
         a.m_nTypeRange3D = params->typeRange3D;
-        a.m_InvertCheck = params->invertCheck != 0;
         a.m_bUseIPC = params->useIpc != 0;
         a.m_byIPCClass = static_cast<byte>(params->ipcClass < 0 ? 0 : (params->ipcClass > 2 ? 2 : params->ipcClass));
-        a.m_bUseShift = params->useShift != 0;
-        a.m_dShiftX = params->maxShiftX;
-        a.m_dShiftY = params->maxShiftY;
+        const BridgeShiftParams shift = { params->useShift, params->maxShiftX, params->maxShiftY };
+        ApplyShift(a, shift);
         a.m_bUseAngle = params->useAngle != 0;
         a.m_dAngle = params->maxAngle;
         a.m_bSameSize = params->sameSize != 0;
@@ -472,9 +633,14 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPadBW(
         // struct and the per-light sArrInspPad[0] are used downstream depending on
         // m_nTotLightCnt — the default of 1 routes through sArrInspPad[0].stBin which
         // mirrors sDefaultPad, so we keep them in sync.
-        a.sDefaultPad.m_bInsp2D    = params->useInsp2D != 0;
-        a.sDefaultPad.m_nMinBinary = params->binaryMin;
-        a.sDefaultPad.m_nMaxBinary = params->binaryMax;
+        const BridgeBinaryParams binary = {
+            params->useInsp2D,
+            params->binaryMin,
+            params->binaryMax,
+            eTypeRangeIn,
+            params->invertCheck
+        };
+        ApplyCommonBinary(a.sDefaultPad, binary);
         a.sDefaultPad.m_bUseFillHole = params->useFillHole != 0;
         a.sArrInspPad[0].stBin     = a.sDefaultPad;
         a.m_nTotLightCnt           = 1;
@@ -511,33 +677,87 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsBlob(
         if (params == nullptr) return -1;
         auto& store = s_windowStore[wndIndex];
         if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
-        if (store.algoStore[algoIndex]->type != eAlgoBlob) return -13;
-        auto* algoPtr = static_cast<AlgoBlob*>(store.algoStore[algoIndex]->params);
-        if (algoPtr == nullptr) return -14;
+        const BridgeBinaryParams binary = {
+            params->useInsp2D,
+            params->minBinary,
+            params->maxBinary,
+            params->typeRange2D,
+            params->invertCheck
+        };
+        const BridgeAreaParams area = { params->useArea, params->areaMin, params->areaMax };
+        const BridgeShiftParams shift = { params->useShift, params->shiftX, params->shiftY };
 
-        AlgoBlob& a = *algoPtr;
-        a.m_bInsp2D          = params->useInsp2D != 0;
-        a.m_nMinBinary       = params->minBinary;
-        a.m_nMaxBinary       = params->maxBinary;
-        a.m_nTypeRange2D     = params->typeRange2D;
-        a.m_bInvertCheck     = params->invertCheck != 0;
-        a.m_nTypeSelectBlob  = params->typeSelectBlob;
-        a.m_bFillHole        = params->fillHole != 0;
-        a.m_bAreaIsUse       = params->useArea != 0;
-        a.m_dAreaMin         = params->areaMin;
-        a.m_dAreaMax         = params->areaMax;
-        a.m_bShiftIsUse      = params->useShift != 0;
-        a.m_dShiftX          = params->shiftX;
-        a.m_dShiftY          = params->shiftY;
-        a.m_bTeachWidthUse   = params->useTeachWidth != 0;
-        a.m_dTeachWidth      = params->teachWidth;
-        a.m_dTeachWidthRateMin = params->teachWidthRateMin;
-        a.m_dTeachWidthRateMax = params->teachWidthRateMax;
-        a.m_bTeachLengthUse  = params->useTeachLength != 0;
-        a.m_dTeachLength     = params->teachLength;
-        a.m_dTeachLengthRateMin = params->teachLengthRateMin;
-        a.m_dTeachLengthRateMax = params->teachLengthRateMax;
-        return 0;
+        switch (store.algoStore[algoIndex]->type)
+        {
+        case eAlgoBlob:
+        {
+            auto* algoPtr = static_cast<AlgoBlob*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoBlob& a = *algoPtr;
+            ApplyCommonBinary(a, binary);
+            a.m_nTypeSelectBlob  = params->typeSelectBlob;
+            a.m_bFillHole        = params->fillHole != 0;
+            ApplyArea(a, area);
+            ApplyShift(a, shift);
+            a.m_bTeachWidthUse   = params->useTeachWidth != 0;
+            a.m_dTeachWidth      = params->teachWidth;
+            a.m_dTeachWidthRateMin = params->teachWidthRateMin;
+            a.m_dTeachWidthRateMax = params->teachWidthRateMax;
+            a.m_bTeachLengthUse  = params->useTeachLength != 0;
+            a.m_dTeachLength     = params->teachLength;
+            a.m_dTeachLengthRateMin = params->teachLengthRateMin;
+            a.m_dTeachLengthRateMax = params->teachLengthRateMax;
+            return 0;
+        }
+        case eAlgoBody_Blob:
+        {
+            auto* algoPtr = static_cast<AlgoBodyBlob*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoBodyBlob& a = *algoPtr;
+            ApplyCommonBinary(a, binary);
+            a.m_nTypeSelectBlob  = params->typeSelectBlob;
+            a.m_bFillHole        = params->fillHole != 0;
+            ApplyArea(a, area);
+            ApplyShift(a, shift);
+            a.m_bShiftXUse       = params->useShift != 0;
+            a.m_bShiftYUse       = params->useShift != 0;
+            a.m_dTechCenterX     = params->shiftX;
+            a.m_dTechCenterY     = params->shiftY;
+            a.m_bTeachWidthUse   = params->useTeachWidth != 0;
+            a.m_dTeachWidth      = params->teachWidth;
+            a.m_dTeachWidthRateMin = params->teachWidthRateMin;
+            a.m_dTeachWidthRateMax = params->teachWidthRateMax;
+            a.m_bTeachLengthUse  = params->useTeachLength != 0;
+            a.m_dTeachLength     = params->teachLength;
+            a.m_dTeachLengthRateMin = params->teachLengthRateMin;
+            a.m_dTeachLengthRateMax = params->teachLengthRateMax;
+            return 0;
+        }
+        case eAlgoNGBlob:
+        {
+            auto* algoPtr = static_cast<AlgoNGBlob*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoNGBlob& a = *algoPtr;
+            int flags = (params->useInsp2D != 0) ? NGBlob_Bin2D : 0;
+            if (params->useArea != 0) flags |= NGBlob_Area;
+            if (params->useTeachWidth != 0) flags |= NGBlob_Width;
+            if (params->useTeachLength != 0) flags |= NGBlob_Length;
+            if (params->fillHole != 0) flags |= NGBlob_Fillhole;
+            a.narrdata[NGBlob_by_Data] = static_cast<byte>(flags & 0xFF);
+            a.narrdata[NGBlob_by_Min2D] = static_cast<byte>(ClampIntValue(params->minBinary, 0, 255));
+            a.narrdata[NGBlob_by_Max2D] = static_cast<byte>(ClampIntValue(params->maxBinary, 0, 255));
+            a.narrdata[NGBlob_by_Range2D] = static_cast<byte>(params->typeRange2D);
+            a.farrdata[NGBlob_F_Area] = static_cast<float>(params->areaMax > 0 ? params->areaMax : params->areaMin);
+            a.farrdata[NGBlob_F_Width] = static_cast<float>(params->teachWidth);
+            a.farrdata[NGBlob_F_Length] = static_cast<float>(params->teachLength);
+            return 0;
+        }
+        default:
+            return -13;
+        }
     }
     catch (...) { return -100; }
 }
@@ -557,21 +777,22 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsBGA(
         if (algoPtr == nullptr) return -14;
 
         AlgoBGA& a = *algoPtr;
-        a.m_bInsp2D          = params->useInsp2D != 0;
-        a.m_nMinBinary       = params->minBinary;
-        a.m_nMaxBinary       = params->maxBinary;
-        a.m_nTypeRange2D     = params->typeRange2D;
-        a.m_bInvertCheck     = params->invertCheck != 0;
+        const BridgeBinaryParams binary = {
+            params->useInsp2D,
+            params->minBinary,
+            params->maxBinary,
+            params->typeRange2D,
+            params->invertCheck
+        };
+        ApplyCommonBinary(a, binary);
         a.m_nTypeSelectBlob  = params->typeSelectBlob;
         a.m_bFillHole        = params->fillHole != 0;
-        a.m_bAreaIsUse       = params->useArea != 0;
-        a.m_dAreaMin         = params->areaMin;
-        a.m_dAreaMax         = params->areaMax;
+        const BridgeAreaParams area = { params->useArea, params->areaMin, params->areaMax };
+        ApplyArea(a, area);
         a.m_dTeachArea       = params->teachArea;
         a.m_dTeachVolume     = params->teachVolume;
-        a.m_bShiftIsUse      = params->useShift != 0;
-        a.m_dShiftX          = params->shiftX;
-        a.m_dShiftY          = params->shiftY;
+        const BridgeShiftParams shift = { params->useShift, params->shiftX, params->shiftY };
+        ApplyShift(a, shift);
         a.m_bTeachWidthUse   = params->useTeachWidth != 0;
         a.m_dTeachWidth      = params->teachWidth;
         a.m_dTeachWidthRateMin = params->teachWidthRateMin;
@@ -597,37 +818,73 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsEdge(
         if (params == nullptr) return -1;
         auto& store = s_windowStore[wndIndex];
         if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
-        if (store.algoStore[algoIndex]->type != eAlgoEdge) return -13;
-        auto* algoPtr = static_cast<AlgoEdge*>(store.algoStore[algoIndex]->params);
-        if (algoPtr == nullptr) return -14;
+        const BridgeBinaryParams binary = {
+            params->useInsp2D,
+            params->minBinary,
+            params->maxBinary,
+            params->typeRange2D,
+            params->invertCheck
+        };
+        const BridgeShiftParams shift = { params->useShift, params->shiftX, params->shiftY };
+        const BridgeAreaParams area = { params->useArea, params->areaMin, params->areaMax };
 
-        AlgoEdge& a = *algoPtr;
-        a.m_bInsp2D          = params->useInsp2D != 0;
-        a.m_nMinBinary       = params->minBinary;
-        a.m_nMaxBinary       = params->maxBinary;
-        a.m_nTypeRange2D     = params->typeRange2D;
-        a.m_bInvertCheck     = params->invertCheck != 0;
-        a.m_bShiftIsUse      = params->useShift != 0;
-        a.m_dShiftX          = params->shiftX;
-        a.m_dShiftY          = params->shiftY;
-        a.m_bAreaIsUse       = params->useArea != 0;
-        a.m_dAreaMin         = params->areaMin;
-        a.m_dAreaMax         = params->areaMax;
-        // EdgeLineTotalCnt cap (defined in AlgoBase). Clamp to keep
-        // m_bArrIsHorizon[] index safe.
-        const int lineCntMax = sizeof(a.m_bArrIsHorizon) / sizeof(a.m_bArrIsHorizon[0]);
-        a.m_nSetLineCnt      = (params->setLineCnt < 1) ? 1 :
-                                (params->setLineCnt > lineCntMax ? lineCntMax : params->setLineCnt);
-        a.m_bGroup           = params->useGroup != 0;
-        a.m_nLineFindType    = params->lineFindType;
-        a.m_dLineFindRate    = params->lineFindRate;
-        a.m_bUseAngle        = params->useAngle != 0;
-        a.m_dTeachRotate     = params->teachRotate;
-        a.m_bDistanceX       = params->useDistanceX != 0;
-        a.m_dTeachDistanceX  = params->teachDistanceX;
-        a.m_bDistanceY       = params->useDistanceY != 0;
-        a.m_dTeachDistanceY  = params->teachDistanceY;
-        return 0;
+        switch (store.algoStore[algoIndex]->type)
+        {
+        case eAlgoEdge:
+        {
+            auto* algoPtr = static_cast<AlgoEdge*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoEdge& a = *algoPtr;
+            ApplyCommonBinary(a, binary);
+            ApplyShift(a, shift);
+            ApplyArea(a, area);
+            // EdgeLineTotalCnt cap (defined in AlgoBase). Clamp to keep
+            // m_bArrIsHorizon[] index safe.
+            const int lineCntMax = sizeof(a.m_bArrIsHorizon) / sizeof(a.m_bArrIsHorizon[0]);
+            a.m_nSetLineCnt      = (params->setLineCnt < 1) ? 1 :
+                                    (params->setLineCnt > lineCntMax ? lineCntMax : params->setLineCnt);
+            a.m_bGroup           = params->useGroup != 0;
+            a.m_nLineFindType    = params->lineFindType;
+            a.m_dLineFindRate    = params->lineFindRate;
+            a.m_bUseAngle        = params->useAngle != 0;
+            a.m_dTeachRotate     = params->teachRotate;
+            a.m_bDistanceX       = params->useDistanceX != 0;
+            a.m_dTeachDistanceX  = params->teachDistanceX;
+            a.m_bDistanceY       = params->useDistanceY != 0;
+            a.m_dTeachDistanceY  = params->teachDistanceY;
+            return 0;
+        }
+        case eAlgoBodyEdge:
+        {
+            auto* algoPtr = static_cast<AlgoBodyEdge*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoBodyEdge& a = *algoPtr;
+            int flags = (params->useInsp2D != 0) ? BodyEdge_Data_Bin2D : 0;
+            if (params->useShift != 0)
+                flags |= BodyEdge_Data_UseShift | BodyEdge_Data_UseShiftX | BodyEdge_Data_UseShiftY;
+            if (params->useAngle != 0)
+                flags |= BodyEdge_Data_UseAngle;
+            if (params->useDistanceX != 0 || params->useDistanceY != 0)
+                flags |= BodyEdge_Data_UseDistance;
+            a.narrdata[BodyEdge_N_Data] = flags;
+            a.narrdata[BodyEdge_N_Min2D] = ClampIntValue(params->minBinary, 0, 255);
+            a.narrdata[BodyEdge_N_Max2D] = ClampIntValue(params->maxBinary, 0, 255);
+            a.narrdata[BodyEdge_N_Range2D] = params->typeRange2D;
+            a.narrdata[BodyEdge_N_AreaNum] = (params->setLineCnt < 1) ? 1 :
+                                             (params->setLineCnt > BODY_EDGE_RECT_CNTS ? BODY_EDGE_RECT_CNTS : params->setLineCnt);
+            a.farrdata[BodyEdge_F_ShiftX] = static_cast<float>(params->shiftX);
+            a.farrdata[BodyEdge_F_ShiftY] = static_cast<float>(params->shiftY);
+            a.farrdata[BodyEdge_F_Angle] = static_cast<float>(params->teachRotate);
+            a.farrdata[BodyEdge_F_StandardAngle] = static_cast<float>(params->teachRotate);
+            a.farrdata[BodyEdge_F_TeachDistanceX] = static_cast<float>(params->teachDistanceX);
+            a.farrdata[BodyEdge_F_TeachDistanceY] = static_cast<float>(params->teachDistanceY);
+            return 0;
+        }
+        default:
+            return -13;
+        }
     }
     catch (...) { return -100; }
 }
@@ -642,35 +899,96 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeSetAlgoParamsPattern(
         if (params == nullptr) return -1;
         auto& store = s_windowStore[wndIndex];
         if (algoIndex < 0 || algoIndex >= static_cast<int>(store.algos.size())) return -12;
-        if (store.algoStore[algoIndex]->type != eAlgoPattern) return -13;
-        auto* algoPtr = static_cast<AlgoPattern*>(store.algoStore[algoIndex]->params);
-        if (algoPtr == nullptr) return -14;
 
-        AlgoPattern& a = *algoPtr;
-        a.m_bUsePolarity            = params->usePolarity != 0;
-        a.m_dAcceptScore            = params->acceptScore;
-        a.m_bShiftIsUse             = params->useShift != 0;
-        a.m_dShiftX                 = params->shiftX;
-        a.m_dShiftY                 = params->shiftY;
-        a.m_dRangeAngle             = params->rangeAngle;
-        a.m_dWndAngle               = params->wndAngle;
-        a.m_dSearchAngleRange_Min   = params->searchAngleRangeMin;
-        a.m_dSearchAngleRange_Max   = params->searchAngleRangeMax;
-        a.m_SamplingAngle           = params->samplingAngle;
-        a.m_bUseNGOpt               = params->useNgOpt != 0;
-        a.m_bUseCharacter           = params->useCharacter != 0;
-        a.m_nModelFilter            = params->modelFilter;
-        a.m_nCntPatternPath         = params->cntPatternPath < 1 ? 1 : params->cntPatternPath;
-        a.m_factor_red              = params->factorRed;
-        a.m_factor_green            = params->factorGreen;
-        a.m_factor_blue             = params->factorBlue;
+        switch (store.algoStore[algoIndex]->type)
+        {
+        case eAlgoPattern:
+        {
+            auto* algoPtr = static_cast<AlgoPattern*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
 
-        // Copy model paths only when non-empty (first wchar != 0). 260 == MAX_STRLEN.
-        if (params->modelPathInspect1[0] != L'\0')
-            wcsncpy_s(a.m_sArrPathModelInspect1, MAX_STRLEN, params->modelPathInspect1, _TRUNCATE);
-        if (params->modelPathTeach[0] != L'\0')
-            wcsncpy_s(a.m_sPathModelTeach, MAX_STRLEN, params->modelPathTeach, _TRUNCATE);
-        return 0;
+            AlgoPattern& a = *algoPtr;
+            a.m_bUsePolarity            = params->usePolarity != 0;
+            a.m_dAcceptScore            = params->acceptScore;
+            a.m_bShiftIsUse             = params->useShift != 0;
+            a.m_dShiftX                 = params->shiftX;
+            a.m_dShiftY                 = params->shiftY;
+            a.m_dRangeAngle             = params->rangeAngle;
+            a.m_dWndAngle               = params->wndAngle;
+            a.m_dSearchAngleRange_Min   = params->searchAngleRangeMin;
+            a.m_dSearchAngleRange_Max   = params->searchAngleRangeMax;
+            a.m_SamplingAngle           = params->samplingAngle;
+            a.m_bUseNGOpt               = params->useNgOpt != 0;
+            a.m_bUseCharacter           = params->useCharacter != 0;
+            a.m_nModelFilter            = params->modelFilter;
+            a.m_nCntPatternPath         = params->cntPatternPath < 1 ? 1 : params->cntPatternPath;
+            a.m_factor_red              = params->factorRed;
+            a.m_factor_green            = params->factorGreen;
+            a.m_factor_blue             = params->factorBlue;
+
+            // Copy model paths only when non-empty (first wchar != 0). 260 == MAX_STRLEN.
+            if (params->modelPathInspect1[0] != L'\0')
+                wcsncpy_s(a.m_sArrPathModelInspect1, MAX_STRLEN, params->modelPathInspect1, _TRUNCATE);
+            if (params->modelPathTeach[0] != L'\0')
+                wcsncpy_s(a.m_sPathModelTeach, MAX_STRLEN, params->modelPathTeach, _TRUNCATE);
+            return 0;
+        }
+        case eAlgoPatternDiff:
+        {
+            auto* algoPtr = static_cast<AlgoPatternDiff*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoPatternDiff& a = *algoPtr;
+            a.m_bUsePattern = params->modelPathInspect1[0] != L'\0' || params->modelPathTeach[0] != L'\0';
+            a.m_bPatternMatching = TRUE;
+            a.m_nModelAddCnt = params->cntPatternPath < 1 ? 1 : params->cntPatternPath;
+            a.m_dTheta = params->wndAngle;
+            a.m_nAcceptAlignScore = ScoreToPercent(params->acceptScore);
+            if (params->modelPathInspect1[0] != L'\0')
+            {
+                wcsncpy_s(a.m_sModelPath, MAX_STRLEN, params->modelPathInspect1, _TRUNCATE);
+                wcsncpy_s(a.m_sModelPath1, MAX_STRLEN, params->modelPathInspect1, _TRUNCATE);
+            }
+            if (params->modelPathTeach[0] != L'\0')
+                wcsncpy_s(a.m_sModelPath, MAX_STRLEN, params->modelPathTeach, _TRUNCATE);
+            return 0;
+        }
+        case eAlgoOCR:
+        {
+            auto* algoPtr = static_cast<AlgoOCR*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoOCR& a = *algoPtr;
+            a.m_bUsePolarity = params->usePolarity != 0;
+            a.m_dStdCharScore = ScoreToPercent(params->acceptScore);
+            a.m_bUseCharScore = TRUE;
+            a.m_dWndAngle = params->wndAngle;
+            a.m_nThreshVal = 128;
+            if (params->modelPathTeach[0] != L'\0')
+                wcsncpy_s(a.m_sTargetFont, MAX_STRLEN, params->modelPathTeach, _TRUNCATE);
+            if (params->modelPathInspect1[0] != L'\0')
+                wcsncpy_s(a.m_sFontPath, MAX_STRLEN, params->modelPathInspect1, _TRUNCATE);
+            return 0;
+        }
+        case eAlgoPOCR:
+        {
+            auto* algoPtr = static_cast<AlgoPOCR*>(store.algoStore[algoIndex]->params);
+            if (algoPtr == nullptr) return -14;
+
+            AlgoPOCR& a = *algoPtr;
+            a.m_bUsePolarity = params->usePolarity != 0;
+            a.m_dStdCharScore[0] = ScoreToPercent(params->acceptScore);
+            a.m_dWndAngle = params->wndAngle;
+            a.m_nThreshVal = 128;
+            if (params->modelPathTeach[0] != L'\0')
+                wcsncpy_s(a.m_sTargetFont, MAX_STRLEN, params->modelPathTeach, _TRUNCATE);
+            if (params->modelPathInspect1[0] != L'\0')
+                wcsncpy_s(a.m_sFontPath, MAX_STRLEN, params->modelPathInspect1, _TRUNCATE);
+            return 0;
+        }
+        default:
+            return -13;
+        }
     }
     catch (...) { return -100; }
 }
@@ -953,14 +1271,13 @@ namespace
         }
     }
 
-    // Resolves (wndType, wndIdx, algoIdx, expectedAlgoType) -> InspAlgoResult* and
-    // fills the common header on `hdr`. Returns 0 on success. Negative codes:
+    // Resolves (wndType, wndIdx, algoIdx) -> InspAlgoResult* and fills the common
+    // header on `hdr`. Returns 0 on success. Negative codes:
     //   -1 inspection result missing  -2 wndType not supported / array null
     //   -3 wndIdx OOB                  -4 algoIdx OOB or null
-    //   -5 algo's m_eAlgoType != expectedAlgoType
     //   -6 m_vRstInspAlgo is null (algorithm didn't actually run)
-    int ResolveAlgoResult(int wndType, int wndIdx, int algoIdx, int expectedAlgoType,
-                          MptiBridgeFlowWndAlgoHeader* hdr, InspAlgoResult** outAr)
+    int ResolveAlgoResultAny(int wndType, int wndIdx, int algoIdx,
+                             MptiBridgeFlowWndAlgoHeader* hdr, InspAlgoResult** outAr)
     {
         *outAr = nullptr;
         if (!s_inspected) return -1;
@@ -973,7 +1290,6 @@ namespace
         if (wnd.m_vArrRstInspAlgo == nullptr || algoIdx < 0 || algoIdx >= wnd.m_nAlgorithmCnt)
             return -4;
         InspAlgoResult& ar = wnd.m_vArrRstInspAlgo[algoIdx];
-        if (static_cast<int>(ar.m_nAlgoType) != expectedAlgoType) return -5;
 
         if (hdr)
         {
@@ -990,6 +1306,18 @@ namespace
         if (ar.m_vRstInspAlgo == nullptr) return -6;
         return 0;
     }
+
+    // Same as ResolveAlgoResultAny, with an exact type guard for readers that have
+    // not been generalized yet. Returns -5 for an unexpected algo type.
+    int ResolveAlgoResult(int wndType, int wndIdx, int algoIdx, int expectedAlgoType,
+                          MptiBridgeFlowWndAlgoHeader* hdr, InspAlgoResult** outAr)
+    {
+        int rc = ResolveAlgoResultAny(wndType, wndIdx, algoIdx, hdr, outAr);
+        if (rc != 0) return rc;
+        if (outAr == nullptr || *outAr == nullptr) return -4;
+        if (static_cast<int>((*outAr)->m_nAlgoType) != expectedAlgoType) return -5;
+        return 0;
+    }
 }
 
 MPTI_BRIDGE_FLOW_API int MptiBridgeResultBlob(
@@ -1000,28 +1328,85 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeResultBlob(
         if (out == nullptr) return -1;
         memset(out, 0, sizeof(*out));
         InspAlgoResult* ar = nullptr;
-        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoBlob, &out->hdr, &ar);
+        int rc = ResolveAlgoResultAny(wndType, wndIdx, algoIdx, &out->hdr, &ar);
         if (rc != 0) return rc;
-        const RstAlgoBlob* r = static_cast<const RstAlgoBlob*>(ar->m_vRstInspAlgo);
-        out->rstArea       = r->m_dRstArea;
-        out->rstAreaRate   = r->m_dRstAreaRate;
-        out->rstShiftX     = r->m_dRstShiftX;
-        out->rstShiftY     = r->m_dRstShiftY;
-        out->rstWidth      = r->m_dRstWidth;
-        out->rstLength     = r->m_dRstLength;
-        out->rstHeightMean = r->m_dRstHeightMean;
-        out->okArea        = r->m_bOKArea   ? 1 : 0;
-        out->okShiftX      = r->m_bOKShiftX ? 1 : 0;
-        out->okShiftY      = r->m_bOKShiftY ? 1 : 0;
-        out->okWidth       = r->m_bOKWidth  ? 1 : 0;
-        out->okLength      = r->m_bOKLength ? 1 : 0;
-        out->okHeight      = r->m_bOKHeight ? 1 : 0;
-        out->rectLeft      = r->m_rcRect_I.left;
-        out->rectTop       = r->m_rcRect_I.top;
-        out->rectRight     = r->m_rcRect_I.right;
-        out->rectBottom    = r->m_rcRect_I.bottom;
-        out->arrRectCnt    = r->m_nArrRectCnt;
-        return 0;
+        switch (ar->m_nAlgoType)
+        {
+        case eAlgoBlob:
+        {
+            const RstAlgoBlob* r = static_cast<const RstAlgoBlob*>(ar->m_vRstInspAlgo);
+            out->rstArea       = r->m_dRstArea;
+            out->rstAreaRate   = r->m_dRstAreaRate;
+            out->rstShiftX     = r->m_dRstShiftX;
+            out->rstShiftY     = r->m_dRstShiftY;
+            out->rstWidth      = r->m_dRstWidth;
+            out->rstLength     = r->m_dRstLength;
+            out->rstHeightMean = r->m_dRstHeightMean;
+            out->okArea        = r->m_bOKArea   ? 1 : 0;
+            out->okShiftX      = r->m_bOKShiftX ? 1 : 0;
+            out->okShiftY      = r->m_bOKShiftY ? 1 : 0;
+            out->okWidth       = r->m_bOKWidth  ? 1 : 0;
+            out->okLength      = r->m_bOKLength ? 1 : 0;
+            out->okHeight      = r->m_bOKHeight ? 1 : 0;
+            out->rectLeft      = r->m_rcRect_I.left;
+            out->rectTop       = r->m_rcRect_I.top;
+            out->rectRight     = r->m_rcRect_I.right;
+            out->rectBottom    = r->m_rcRect_I.bottom;
+            out->arrRectCnt    = r->m_nArrRectCnt;
+            return 0;
+        }
+        case eAlgoBody_Blob:
+        {
+            const RstAlgoBodyBlob* r = static_cast<const RstAlgoBodyBlob*>(ar->m_vRstInspAlgo);
+            out->rstArea       = r->m_dRstArea;
+            out->rstAreaRate   = r->m_dRstAreaRate;
+            out->rstShiftX     = r->m_dRstShiftX;
+            out->rstShiftY     = r->m_dRstShiftY;
+            out->rstWidth      = r->m_dRstWidth;
+            out->rstLength     = r->m_dRstLength;
+            out->rstHeightMean = r->m_dRstHeightMean;
+            out->okArea        = r->m_bOKArea   ? 1 : 0;
+            out->okShiftX      = r->m_bOKShiftX ? 1 : 0;
+            out->okShiftY      = r->m_bOKShiftY ? 1 : 0;
+            out->okWidth       = r->m_bOKWidth  ? 1 : 0;
+            out->okLength      = r->m_bOKLength ? 1 : 0;
+            out->okHeight      = r->m_bOKHeight ? 1 : 0;
+            out->rectLeft      = r->m_rcBodyRect.left;
+            out->rectTop       = r->m_rcBodyRect.top;
+            out->rectRight     = r->m_rcBodyRect.right;
+            out->rectBottom    = r->m_rcBodyRect.bottom;
+            out->arrRectCnt    = (r->m_rcBodyRect.right > r->m_rcBodyRect.left &&
+                                  r->m_rcBodyRect.bottom > r->m_rcBodyRect.top) ? 1 : 0;
+            return 0;
+        }
+        case eAlgoNGBlob:
+        {
+            const RstAlgoNGBlob* r = static_cast<const RstAlgoNGBlob*>(ar->m_vRstInspAlgo);
+            const int first = r->blob_count > 0 ? 0 : -1;
+            out->rstArea       = first >= 0 ? r->fRstArea[first] : 0.0;
+            out->rstAreaRate   = 0.0;
+            out->rstShiftX     = 0.0;
+            out->rstShiftY     = 0.0;
+            out->rstWidth      = first >= 0 ? r->fRstWidth[first] : 0.0;
+            out->rstLength     = first >= 0 ? r->fRstLength[first] : 0.0;
+            out->rstHeightMean = first >= 0 ? r->fRstHeight[first] : 0.0;
+            out->okArea        = r->bIsOKArea   ? 1 : 0;
+            out->okShiftX      = 1;
+            out->okShiftY      = 1;
+            out->okWidth       = r->bIsOKWidth  ? 1 : 0;
+            out->okLength      = r->bIsOKLength ? 1 : 0;
+            out->okHeight      = r->bIsOKHeight ? 1 : 0;
+            const RECT& rc     = first >= 0 ? r->m_rcArrRect[first] : r->m_BodyRect;
+            out->rectLeft      = rc.left;
+            out->rectTop       = rc.top;
+            out->rectRight     = rc.right;
+            out->rectBottom    = rc.bottom;
+            out->arrRectCnt    = r->blob_count;
+            return 0;
+        }
+        default:
+            return -5;
+        }
     }
     catch (...) { return -100; }
 }
@@ -1062,26 +1447,56 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeResultEdge(
         if (out == nullptr) return -1;
         memset(out, 0, sizeof(*out));
         InspAlgoResult* ar = nullptr;
-        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoEdge, &out->hdr, &ar);
+        int rc = ResolveAlgoResultAny(wndType, wndIdx, algoIdx, &out->hdr, &ar);
         if (rc != 0) return rc;
-        const RstAlgoEdge* r = static_cast<const RstAlgoEdge*>(ar->m_vRstInspAlgo);
-        out->rstShiftX    = r->m_dRstShiftX;
-        out->rstShiftY    = r->m_dRstShiftY;
-        out->rstRealAngle = r->m_dRstRealAngle;
-        out->rstAngle     = r->m_dRstAngle;
-        out->rstDistance  = r->m_dRstDistance;
-        out->rstDistanceX = r->m_dRstDistanceX;
-        out->rstDistanceY = r->m_dRstDistanceY;
-        out->rstLength0   = r->m_dRstLength[0];
-        out->okShiftX     = r->m_bOKShiftX   ? 1 : 0;
-        out->okShiftY     = r->m_bOKShiftY   ? 1 : 0;
-        out->okAngle      = r->m_bOKAngle    ? 1 : 0;
-        out->okLength     = r->m_bOKLength   ? 1 : 0;
-        out->okDistance   = r->m_bDistance   ? 1 : 0;
-        out->okDistanceX  = r->m_bDistanceX  ? 1 : 0;
-        out->okDistanceY  = r->m_bDistanceY  ? 1 : 0;
-        out->missing      = r->m_bMissing    ? 1 : 0;
-        return 0;
+        switch (ar->m_nAlgoType)
+        {
+        case eAlgoEdge:
+        {
+            const RstAlgoEdge* r = static_cast<const RstAlgoEdge*>(ar->m_vRstInspAlgo);
+            out->rstShiftX    = r->m_dRstShiftX;
+            out->rstShiftY    = r->m_dRstShiftY;
+            out->rstRealAngle = r->m_dRstRealAngle;
+            out->rstAngle     = r->m_dRstAngle;
+            out->rstDistance  = r->m_dRstDistance;
+            out->rstDistanceX = r->m_dRstDistanceX;
+            out->rstDistanceY = r->m_dRstDistanceY;
+            out->rstLength0   = r->m_dRstLength[0];
+            out->okShiftX     = r->m_bOKShiftX   ? 1 : 0;
+            out->okShiftY     = r->m_bOKShiftY   ? 1 : 0;
+            out->okAngle      = r->m_bOKAngle    ? 1 : 0;
+            out->okLength     = r->m_bOKLength   ? 1 : 0;
+            out->okDistance   = r->m_bDistance   ? 1 : 0;
+            out->okDistanceX  = r->m_bDistanceX  ? 1 : 0;
+            out->okDistanceY  = r->m_bDistanceY  ? 1 : 0;
+            out->missing      = r->m_bMissing    ? 1 : 0;
+            return 0;
+        }
+        case eAlgoBodyEdge:
+        {
+            const RstAlgoBodyEdge* r = static_cast<const RstAlgoBodyEdge*>(ar->m_vRstInspAlgo);
+            out->rstShiftX    = r->m_dRstOffset_x;
+            out->rstShiftY    = r->m_dRstOffset_y;
+            out->rstRealAngle = r->m_dRstRealTheta;
+            out->rstAngle     = r->m_dRstTheta;
+            out->rstDistanceX = r->m_dRstDistanceX;
+            out->rstDistanceY = r->m_dRstDistanceY;
+            out->rstDistance  = std::sqrt((r->m_dRstDistanceX * r->m_dRstDistanceX) +
+                                          (r->m_dRstDistanceY * r->m_dRstDistanceY));
+            out->rstLength0   = r->m_dRstLength;
+            out->okShiftX     = r->m_bOKShiftX    ? 1 : 0;
+            out->okShiftY     = r->m_bOKShiftY    ? 1 : 0;
+            out->okAngle      = r->m_bOKAngle     ? 1 : 0;
+            out->okLength     = r->m_bOKLength    ? 1 : 0;
+            out->okDistanceX  = r->m_bOKDistanceX ? 1 : 0;
+            out->okDistanceY  = r->m_bOKDistanceY ? 1 : 0;
+            out->okDistance   = (out->okDistanceX != 0 && out->okDistanceY != 0) ? 1 : 0;
+            out->missing      = 0;
+            return 0;
+        }
+        default:
+            return -5;
+        }
     }
     catch (...) { return -100; }
 }
@@ -1094,27 +1509,101 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeResultPattern(
         if (out == nullptr) return -1;
         memset(out, 0, sizeof(*out));
         InspAlgoResult* ar = nullptr;
-        int rc = ResolveAlgoResult(wndType, wndIdx, algoIdx, eAlgoPattern, &out->hdr, &ar);
+        int rc = ResolveAlgoResultAny(wndType, wndIdx, algoIdx, &out->hdr, &ar);
         if (rc != 0) return rc;
-        const RstAlgoPattern* r = static_cast<const RstAlgoPattern*>(ar->m_vRstInspAlgo);
-        out->score       = r->score;
-        out->angle       = r->angle;
-        out->cogX        = r->cogX;
-        out->cogY        = r->cogY;
-        out->offsetX     = r->offsetX;
-        out->offsetY     = r->offsetY;
-        out->isReverse   = r->isReverse  ? 1 : 0;
-        out->okFind      = r->m_bOKFind  ? 1 : 0;
-        out->okScore     = r->m_bOKScore ? 1 : 0;
-        out->okAngle     = r->m_bOKAngle ? 1 : 0;
-        out->okOffsetX   = r->m_bOKOffsetX ? 1 : 0;
-        out->okOffsetY   = r->m_bOKOffsetY ? 1 : 0;
-        out->okPolarity  = r->m_bOKPolarity ? 1 : 0;
-        out->modelNum    = r->m_nModelNum;
-        out->divisionNum = r->m_nDivisionNum;
-        out->modelWidth  = r->ModelWidth;
-        out->modelHeight = r->ModelHeight;
-        return 0;
+        switch (ar->m_nAlgoType)
+        {
+        case eAlgoPattern:
+        {
+            const RstAlgoPattern* r = static_cast<const RstAlgoPattern*>(ar->m_vRstInspAlgo);
+            out->score       = r->score;
+            out->angle       = r->angle;
+            out->cogX        = r->cogX;
+            out->cogY        = r->cogY;
+            out->offsetX     = r->offsetX;
+            out->offsetY     = r->offsetY;
+            out->isReverse   = r->isReverse  ? 1 : 0;
+            out->okFind      = r->m_bOKFind  ? 1 : 0;
+            out->okScore     = r->m_bOKScore ? 1 : 0;
+            out->okAngle     = r->m_bOKAngle ? 1 : 0;
+            out->okOffsetX   = r->m_bOKOffsetX ? 1 : 0;
+            out->okOffsetY   = r->m_bOKOffsetY ? 1 : 0;
+            out->okPolarity  = r->m_bOKPolarity ? 1 : 0;
+            out->modelNum    = r->m_nModelNum;
+            out->divisionNum = r->m_nDivisionNum;
+            out->modelWidth  = r->ModelWidth;
+            out->modelHeight = r->ModelHeight;
+            return 0;
+        }
+        case eAlgoPatternDiff:
+        {
+            const RstAlgoPatternDiff* r = static_cast<const RstAlgoPatternDiff*>(ar->m_vRstInspAlgo);
+            out->score       = r->m_dAlignScore > 0.0 ? r->m_dAlignScore : r->m_dRstPatternScore[0];
+            out->angle       = r->m_dTheta;
+            out->cogX        = r->m_ptRstMatchingCenter.x;
+            out->cogY        = r->m_ptRstMatchingCenter.y;
+            out->offsetX     = r->m_ptRstShiftXY.x;
+            out->offsetY     = r->m_ptRstShiftXY.y;
+            out->isReverse   = 0;
+            out->okFind      = r->m_bOK ? 1 : 0;
+            out->okScore     = r->m_bMatchingOK ? 1 : 0;
+            out->okAngle     = 1;
+            out->okOffsetX   = 1;
+            out->okOffsetY   = 1;
+            out->okPolarity  = 1;
+            out->modelNum    = r->m_nSelectedModelIdx;
+            out->divisionNum = r->m_nRectCnt;
+            out->modelWidth  = r->m_nRectCnt > 0 ? static_cast<int>(r->m_dRstWidth[0]) : 0;
+            out->modelHeight = r->m_nRectCnt > 0 ? static_cast<int>(r->m_dRstLength[0]) : 0;
+            return 0;
+        }
+        case eAlgoOCR:
+        {
+            const RstAlgoOCR* r = static_cast<const RstAlgoOCR*>(ar->m_vRstInspAlgo);
+            out->score       = r->m_dStringScore;
+            out->angle       = r->m_dStrAngle;
+            out->cogX        = r->m_dStrPosX;
+            out->cogY        = r->m_dStrPosY;
+            out->offsetX     = 0.0;
+            out->offsetY     = 0.0;
+            out->isReverse   = r->m_bIsReverse ? 1 : 0;
+            out->okFind      = r->m_bOKString ? 1 : 0;
+            out->okScore     = r->m_bOKScore ? 1 : 0;
+            out->okAngle     = 1;
+            out->okOffsetX   = 1;
+            out->okOffsetY   = 1;
+            out->okPolarity  = r->m_bOKPolarity ? 1 : 0;
+            out->modelNum    = r->m_nStrCount;
+            out->divisionNum = r->m_nCharCount;
+            out->modelWidth  = r->m_nCharCount > 0 ? static_cast<int>(r->charWidth[0]) : 0;
+            out->modelHeight = r->m_nCharCount > 0 ? static_cast<int>(r->charHeight[0]) : 0;
+            return 0;
+        }
+        case eAlgoPOCR:
+        {
+            const RstAlgoPOCR* r = static_cast<const RstAlgoPOCR*>(ar->m_vRstInspAlgo);
+            out->score       = r->m_dStringScore;
+            out->angle       = static_cast<double>(r->RstRotate) * 180.0;
+            out->cogX        = r->ModelX;
+            out->cogY        = r->ModelY;
+            out->offsetX     = r->dRstShiftX;
+            out->offsetY     = r->dRstShiftY;
+            out->isReverse   = r->RstRotate != 0 ? 1 : 0;
+            out->okFind      = r->m_bOKString ? 1 : 0;
+            out->okScore     = r->m_bOKScore ? 1 : 0;
+            out->okAngle     = 1;
+            out->okOffsetX   = r->bRstShiftX ? 1 : 0;
+            out->okOffsetY   = r->bRstShiftY ? 1 : 0;
+            out->okPolarity  = r->m_bOKPolarity ? 1 : 0;
+            out->modelNum    = r->bAIOK ? 1 : 0;
+            out->divisionNum = r->m_nCharCount;
+            out->modelWidth  = static_cast<int>(r->ModelWidth);
+            out->modelHeight = static_cast<int>(r->ModelHeight);
+            return 0;
+        }
+        default:
+            return -5;
+        }
     }
     catch (...) { return -100; }
 }
