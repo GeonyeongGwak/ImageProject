@@ -243,6 +243,10 @@ public static class LegacyRawPartImportAdapter
         var partElement = root.Element("PartData") ?? root.Element("Part") ?? root.Descendants("PartData").FirstOrDefault();
         var partName = FirstValue(partElement, "Name", "PartCode", "PackageName", "ID", "RefID");
         part.Name = string.IsNullOrWhiteSpace(partName) ? "Imported Raw Part" : DecodeLegacyText(partName);
+        part.LegacyPartData.Id = FirstValue(partElement, "ID");
+        part.LegacyPartData.PartCode = DecodeLegacyText(FirstValue(partElement, "PartCode", "PCode", "Code"));
+        part.LegacyPartData.RefId = DecodeLegacyText(FirstValue(partElement, "RefID", "RefId", "ReferenceID", "ReferenceId"));
+        part.LegacyPartData.CommonCategory = DecodeLegacyText(FirstValue(partElement, "CommonCategory", "Category"));
         var transform = CreateRoiTransform(root, initDocument?.Root, partElement);
         part.PixelResolutionX = transform.PixelResolutionX;
         part.PixelResolutionY = transform.PixelResolutionY;
@@ -290,14 +294,31 @@ public static class LegacyRawPartImportAdapter
             name = $"Window ROI {index}";
         }
 
+        var rawPropertyType = FirstValue(element, "TypeNick", "Nick", "PropertyType", "Type");
+        var windowTypeName = NormalizeWindowTypeName(rawPropertyType);
+        var rawDirection = FirstValue(element, "Dir", "Direction", "WndDir", "LeadDirection", "LT_Dir");
+        var rawLeadType = FirstValue(element, "LeadType", "eLeadType");
         var window = new InspectionWindowData
         {
             Id = string.IsNullOrWhiteSpace(id) ? InspectionWindowData.CreateId() : id,
             Name = name.StartsWith("Window ROI", StringComparison.OrdinalIgnoreCase) ? name : $"Window ROI {index} - {name}",
-            TypeName = NormalizeWindowTypeName(FirstValue(element, "TypeNick", "Nick", "PropertyType", "Type")),
+            TypeName = windowTypeName,
             IsEnabled = ReadBoolValue(FirstValue(element, "ENABLE", "Enable", "Enb"), true),
             IsGroup = ReadBoolValue(FirstValue(element, "IsGroup", "Group", "Grp"), false),
             GroupId = FirstNonEmpty(FirstValue(element, "GroupID", "GrpID"), index.ToString()),
+            LegacyWindowData = new LegacyWindowData
+            {
+                ParentWindowId = FirstValue(element, "ParentWndId", "ParentWndID", "ParentWindowId", "ParentWindowID", "ParentID", "ParentId", "Parent"),
+                NickName = DecodeLegacyText(FirstValue(element, "NickName", "Nick", "TypeNick")),
+                CadModuleId = FirstValue(element, "CadModuleID", "CadModuleId", "CADModuleID", "CadModule"),
+                PropertyTypeName = windowTypeName,
+                LeadTypeName = NormalizeLeadTypeName(rawLeadType),
+                DirectionCode = ReadOptionalIntValue(rawDirection),
+                DirectionName = NormalizeDirectionName(rawDirection),
+                TopBottom = ReadIntValue(FirstValue(element, "TopBottom", "TopBtm", "TB"), 0),
+                WindowDataInfo = ReadUlongValue(FirstValue(element, "WndDataInfo", "WindowDataInfo", "DataInfo"), 0),
+                PartAlignWindow = ReadBoolValue(FirstValue(element, "PartAlignWnd", "PartAlignWindow", "PartAlign"), false)
+            },
             Roi = ParseRoi(element.Element("RelRoi") ?? element.Element("Roi"), transform)
         };
 
@@ -3504,6 +3525,21 @@ public static class LegacyRawPartImportAdapter
         var rawHeight = ReadDouble(roiElement, "h", "Height", "SizeY");
         var cx = ReadDouble(roiElement, "cx", "CenterX", "X");
         var cy = ReadDouble(roiElement, "cy", "CenterY", "Y");
+
+        // RelRoi <a> = ROI 의 회전각 (degree). 우리는 화면에 axis-aligned 사각형만
+        // 그리므로 임의 각도는 정확히 표현 못 하지만, 90/270° 부근의 회전은
+        // bounding box 의 가로/세로 길이를 서로 바꿔주면 시각적으로 맞춰진다.
+        // (U25 같은 part 가 회전된 window 를 가지는데 W/H 가 잘못 보였던 문제 해결.)
+        // 0°/180° 부근은 그대로 두어 정상 케이스에 영향 없음.
+        var rawAngle = ReadDouble(roiElement, "a", "Angle");
+        var normalizedAngle = ((rawAngle % 360.0) + 360.0) % 360.0;
+        var shouldSwapWh = (normalizedAngle > 45.0 && normalizedAngle <= 135.0)
+                        || (normalizedAngle > 225.0 && normalizedAngle <= 315.0);
+        if (shouldSwapWh)
+        {
+            (rawWidth, rawHeight) = (rawHeight, rawWidth);
+        }
+
         if (transform.HasResolution && LooksLikeMillimeterRoi(rawWidth, rawHeight))
         {
             var widthPixels = Math.Max(1, Round(rawWidth / transform.PixelResolutionX));
@@ -3720,6 +3756,50 @@ public static class LegacyRawPartImportAdapter
         return element == null ? 0 : ReadInt(element, names);
     }
 
+    private static int ReadIntValue(string value, int fallback)
+    {
+        if (int.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        if (double.TryParse(value, NumberStyles.Float, CultureInfo.InvariantCulture, out var number))
+        {
+            return Round(number);
+        }
+
+        return fallback;
+    }
+
+    private static int? ReadOptionalIntValue(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return null;
+        }
+
+        return ReadIntValue(value, int.MinValue) is var parsed && parsed != int.MinValue
+            ? parsed
+            : null;
+    }
+
+    private static ulong ReadUlongValue(string value, ulong fallback)
+    {
+        if (ulong.TryParse(value, NumberStyles.Integer, CultureInfo.InvariantCulture, out var parsed))
+        {
+            return parsed;
+        }
+
+        var trimmed = value.Trim();
+        if (trimmed.StartsWith("0x", StringComparison.OrdinalIgnoreCase)
+            && ulong.TryParse(trimmed.Substring(2), NumberStyles.HexNumber, CultureInfo.InvariantCulture, out parsed))
+        {
+            return parsed;
+        }
+
+        return fallback;
+    }
+
     private static int Round(double value)
     {
         return (int)Math.Round(value, MidpointRounding.AwayFromZero);
@@ -3773,6 +3853,50 @@ public static class LegacyRawPartImportAdapter
         };
     }
 
+    private static string NormalizeLeadTypeName(string value)
+    {
+        return string.IsNullOrWhiteSpace(value) ? "" : value.Trim();
+    }
+
+    private static string NormalizeDirectionName(string value)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return "";
+        }
+
+        var trimmed = value.Trim();
+        if (int.TryParse(trimmed, NumberStyles.Integer, CultureInfo.InvariantCulture, out var direction))
+        {
+            return direction switch
+            {
+                0 => "Top",
+                1 => "Left",
+                2 => "Bottom",
+                3 => "Right",
+                _ => trimmed
+            };
+        }
+
+        var key = new string(trimmed.Where(char.IsLetterOrDigit).Select(char.ToUpperInvariant).ToArray());
+        if (key.Contains("TOP", StringComparison.Ordinal) || key.Contains("UP", StringComparison.Ordinal))
+        {
+            return "Top";
+        }
+
+        if (key.Contains("LEFT", StringComparison.Ordinal))
+        {
+            return "Left";
+        }
+
+        if (key.Contains("BOTTOM", StringComparison.Ordinal) || key.Contains("DOWN", StringComparison.Ordinal))
+        {
+            return "Bottom";
+        }
+
+        return key.Contains("RIGHT", StringComparison.Ordinal) ? "Right" : trimmed;
+    }
+
     private static string FirstNonEmpty(params string[] values)
     {
         return values.FirstOrDefault(value => !string.IsNullOrWhiteSpace(value)) ?? "";
@@ -3805,4 +3929,3 @@ public static class LegacyRawPartImportAdapter
         public double OriginY => SourceHeight > 0 ? SourceHeight / 2.0 : 0;
     }
 }
-
