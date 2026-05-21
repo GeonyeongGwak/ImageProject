@@ -22,12 +22,18 @@ public static class NativeAlgoTypeIds
     public const int BodyBlob     = 3;
     public const int Ocr          = 5;
     public const int Pattern      = 6;
+    public const int Line         = 25;
     public const int Edge         = 26;
     public const int Pocr         = 31;
     public const int Bga          = 37;
+    public const int Bump         = 38;
     public const int NgBlob       = 39;
     public const int PadBw        = 40;
+    public const int ForeignOcv   = 41;
     public const int BodyEdge     = 42;
+    public const int Distance     = 44;
+    public const int EdgePoint    = 46;
     public const int PatternDiff  = 47;
     public const int ShapeX       = 48;
+    public const int LqBga        = 50;
 }

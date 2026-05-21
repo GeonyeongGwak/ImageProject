@@ -306,6 +306,10 @@ enum MptiBridgeAlgoFamily
 
 MPTI_BRIDGE_FLOW_API int MptiBridgeGetAlgoFamily(int algoType)
 {
+    // 본 함수는 "logical family" 를 반환 — flow API 지원 여부와 무관하게 알고리즘의
+    // 의미적 카테고리를 분류한다. 예를 들어 eAlgoBump 는 flow path 미지원이지만
+    // C# AlgorithmNativeBridgeAdapter 가 per-algo Blob bridge 로 라우팅하기 위해
+    // BLOB family 가 필요하다.
     switch (algoType)
     {
     case eAlgoAlign:
@@ -313,16 +317,22 @@ MPTI_BRIDGE_FLOW_API int MptiBridgeGetAlgoFamily(int algoType)
     case eAlgoBlob:
     case eAlgoBody_Blob:
     case eAlgoNGBlob:
+    case eAlgoBump:
         return MPTI_FAMILY_BLOB;
     case eAlgoEdge:
     case eAlgoBodyEdge:
+    case eAlgoLine:
+    case eAlgoDistance:
+    case eAlgoEdgePoint:
         return MPTI_FAMILY_EDGE;
     case eAlgoPattern:
     case eAlgoPatternDiff:
     case eAlgoOCR:
     case eAlgoPOCR:
+    case eAlgoForeignOCV:
         return MPTI_FAMILY_PATTERN;
     case eAlgoBGA:
+    case eAlgoLQBGA:
         return MPTI_FAMILY_BGA;
     case eAlgoPadBW:
         return MPTI_FAMILY_PADBW;

@@ -50,7 +50,7 @@ public static class AlgorithmCatalog
         Normal("AlgoTab_Search", "Tab Search", 8388608, "TabSearch", "Tabsearch"),
         Normal("AlgoColorBand_Search", "Color Band Search", 16777216, "ColorBandSearch", "ColorBandSearch"),
         Normal("AlgoGrid", "Grid", 33554432, "Grid", "Grid"),
-        Normal("AlgoLine", "Line", 67108864, "Line", "Line"),
+        Normal("AlgoLine", "Line", 67108864, "Line", "Line", NativeAlgoTypeIds.Line),
         Normal("AlgoEdge", "Edge", 134217728, "Edge", "Edge", NativeAlgoTypeIds.Edge),
         Normal("AlgoSolderCone", "Solder Cone", 268435456, "SolderCone", "Soldercone"),
         Normal("AlgoColorXY", "Color XY", 536870912, "ColorXY", "ColorXY"),
@@ -61,11 +61,11 @@ public static class AlgorithmCatalog
         Extended("AlgoBarcode", "Barcode", 1 << 3, "BarCode", "BarCode"),
         Extended("AlgoFillet", "Fillet", 1 << 4, "Fillet", "Fillet"),
         Extended("AlgoBGA", "BGA", 1 << 5, "BGA", "BGA", NativeAlgoTypeIds.Bga),
-        Extended("AlgoBump", "Bump", 1 << 6, "Bump", "Bump"),
+        Extended("AlgoBump", "Bump", 1 << 6, "Bump", "Bump", NativeAlgoTypeIds.Bump),
         Extended("AlgoNGBlob", "NG Blob", 1 << 7, "NGBlob", "NGBlob", NativeAlgoTypeIds.NgBlob),
         Extended("AlgoBodyEdge", "Body Edge", 1 << 8, "BodyEdge", "BodyEdge", NativeAlgoTypeIds.BodyEdge),
         Extended("AlgoPackageThickness", "Package Thickness", 1 << 9, "PackageThickness", "PackageThickness"),
-        Extended("AlgoDistance", "Distance", 1 << 10, "Distance", "Distance"),
+        Extended("AlgoDistance", "Distance", 1 << 10, "Distance", "Distance", NativeAlgoTypeIds.Distance),
         Extended("AlgoGWire", "G Wire", 1 << 11, "GWire", "GWire"),
         Extended("AlgoPatternDiff", "Pattern Diff", 1 << 12, "PatternDiff", "PatternDiff", NativeAlgoTypeIds.PatternDiff),
         Extended("AlgoPadBW", "Pad BW", 1 << 13, "Padbw", "PadBW", NativeAlgoTypeIds.PadBw),
@@ -73,9 +73,9 @@ public static class AlgorithmCatalog
         Extended("AlgoPadArray", "Pad Array", 1 << 15, "PadArray", "PadArray"),
         Extended("AlgoWire", "Wire", 1 << 11, "GWire", "GWire"),
         Extended("AlgoFoot", "Foot", 1 << 4, "Foot", "Foot"),
-        Extended("AlgoForeignOCV", "Foreign OCV", 1 << 12, "PatternDiff", "PatternDiff"),
-        Extended("AlgoEdgePoint", "Edge Point", 1 << 10, "Distance", "Distance"),
-        Extended("AlgoLQBGA", "LQ BGA", 1 << 5, "BGA", "BGA")
+        Extended("AlgoForeignOCV", "Foreign OCV", 1 << 12, "PatternDiff", "PatternDiff", NativeAlgoTypeIds.ForeignOcv),
+        Extended("AlgoEdgePoint", "Edge Point", 1 << 10, "Distance", "Distance", NativeAlgoTypeIds.EdgePoint),
+        Extended("AlgoLQBGA", "LQ BGA", 1 << 5, "BGA", "BGA", NativeAlgoTypeIds.LqBga)
     ];
 
     public static AlgorithmCatalogItem Find(string? type)
