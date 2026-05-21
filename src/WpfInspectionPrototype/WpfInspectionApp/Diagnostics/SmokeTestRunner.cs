@@ -1,5 +1,6 @@
 using System.IO;
 using WpfInspectionApp.Infrastructure;
+using WpfInspectionApp.Interop;
 using WpfInspectionApp.Models;
 using WpfInspectionApp.Services;
 using WpfInspectionApp.Services.FlowAlgorithms;
@@ -176,6 +177,10 @@ internal static class SmokeTestRunner
         VerifyPartRuntimeRoutesPatternDiffToPatternBridge();
         VerifyPartRuntimeRoutesOcrToPatternBridge();
         VerifyPartRuntimeRoutesPocrToPatternBridge();
+        // 2026-05-22 handoff (native-family-dispatch / bridge-adapter-family-driven) 의
+        // family lookup 회귀 잠금. AlgorithmCatalog 의 NativeAlgoType 과 native
+        // MptiBridgeGetAlgoFamily 의 매핑이 의도된 family 로 떨어지는지 확인.
+        VerifyAlgoFamilyLookupMatchesCatalog();
         VerifyFlowAlgorithmExecutionServiceRejectsMissingPtt();
         VerifyLightServiceRoundTrip(services.AlgorithmLight);
         VerifyNormalLightViewModelQuickPreset(services.AlgorithmLight);
@@ -784,6 +789,102 @@ internal static class SmokeTestRunner
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, runtimeStatusKey) == "native", $"{bridgeName} bridge status should be persisted to algorithm parameters for {algorithmType}.");
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, runtimeIsOkKey) == "True", $"{bridgeName} bridge OK state should be persisted for {algorithmType}.");
         Assert(AlgorithmParameterStore.GetValue(algorithm.Parameters, "Runtime.NativeBridgeName") == bridgeName, $"Unified native bridge name should be persisted as {bridgeName} for {algorithmType}.");
+    }
+
+    // -------------------------------------------------------------------------------------
+    // 2026-05-22 handoff family-dispatch 후속 회귀 테스트.
+    // AlgorithmCatalog 의 NativeAlgoType → MptiBridgeGetAlgoFamily 매핑이
+    // 의도한 family 로 떨어지는지 algorithm type 별로 잠근다.
+    //
+    // family 이 깨지면 RuntimeFlowAlgorithmAdapter 의 flow path 선택 +
+    // AlgorithmNativeBridgeAdapter 의 per-algo bridge 라우팅 양쪽이 동시에 잘못된다.
+    // 단일 native export 호출이라 비용도 낮다.
+    // -------------------------------------------------------------------------------------
+    private static void VerifyAlgoFamilyLookupMatchesCatalog()
+    {
+        // 각 family 의 모든 의도된 algorithm type. 새 entry 추가 시 여기 한 줄 + catalog +
+        // NativeAlgoTypeIds + native switch 4 곳에 동기화되어야 한다.
+        var expectations = new (string AlgorithmType, int ExpectedFamily, int ExpectedNativeAlgoType)[]
+        {
+            // FAMILY_ALIGN
+            ("AlgoAlign", MptiFlowNativeBridge.FAMILY_ALIGN, NativeAlgoTypeIds.Align),
+
+            // FAMILY_BLOB
+            ("AlgoBlob",      MptiFlowNativeBridge.FAMILY_BLOB, NativeAlgoTypeIds.Blob),
+            ("AlgoBody_Blob", MptiFlowNativeBridge.FAMILY_BLOB, NativeAlgoTypeIds.BodyBlob),
+            ("AlgoNGBlob",    MptiFlowNativeBridge.FAMILY_BLOB, NativeAlgoTypeIds.NgBlob),
+            ("AlgoBump",      MptiFlowNativeBridge.FAMILY_BLOB, NativeAlgoTypeIds.Bump),
+
+            // FAMILY_EDGE
+            ("AlgoEdge",      MptiFlowNativeBridge.FAMILY_EDGE, NativeAlgoTypeIds.Edge),
+            ("AlgoBodyEdge",  MptiFlowNativeBridge.FAMILY_EDGE, NativeAlgoTypeIds.BodyEdge),
+            ("AlgoLine",      MptiFlowNativeBridge.FAMILY_EDGE, NativeAlgoTypeIds.Line),
+            ("AlgoDistance",  MptiFlowNativeBridge.FAMILY_EDGE, NativeAlgoTypeIds.Distance),
+            ("AlgoEdgePoint", MptiFlowNativeBridge.FAMILY_EDGE, NativeAlgoTypeIds.EdgePoint),
+
+            // FAMILY_PATTERN
+            ("AlgoPattern",     MptiFlowNativeBridge.FAMILY_PATTERN, NativeAlgoTypeIds.Pattern),
+            ("AlgoPatternDiff", MptiFlowNativeBridge.FAMILY_PATTERN, NativeAlgoTypeIds.PatternDiff),
+            ("AlgoOCR",         MptiFlowNativeBridge.FAMILY_PATTERN, NativeAlgoTypeIds.Ocr),
+            ("AlgoPOCR",        MptiFlowNativeBridge.FAMILY_PATTERN, NativeAlgoTypeIds.Pocr),
+            ("AlgoForeignOCV",  MptiFlowNativeBridge.FAMILY_PATTERN, NativeAlgoTypeIds.ForeignOcv),
+
+            // FAMILY_BGA
+            ("AlgoBGA",   MptiFlowNativeBridge.FAMILY_BGA, NativeAlgoTypeIds.Bga),
+            ("AlgoLQBGA", MptiFlowNativeBridge.FAMILY_BGA, NativeAlgoTypeIds.LqBga),
+
+            // 단일 algorithm 인 family 들
+            ("AlgoPadBW",  MptiFlowNativeBridge.FAMILY_PADBW,  NativeAlgoTypeIds.PadBw),
+            ("AlgoShapeX", MptiFlowNativeBridge.FAMILY_SHAPEX, NativeAlgoTypeIds.ShapeX),
+            // FAMILY_BW: AlgoBW 는 NativeAlgoType=Unknown (flow path 미연결) 이지만 native
+            // GetAlgoFamily 자체는 eAlgoBW 에 대해 BW family 를 반환한다. 카탈로그 NativeAlgoType
+            // 이 0 이라 직접 검증은 별도 처리 (아래 BW 전용 assert).
+        };
+
+        foreach (var (algorithmType, expectedFamily, expectedNativeAlgoType) in expectations)
+        {
+            var catalog = AlgorithmCatalog.Find(algorithmType);
+            Assert(
+                catalog.NativeAlgoType == expectedNativeAlgoType,
+                $"Catalog NativeAlgoType for {algorithmType} should be {expectedNativeAlgoType}, got {catalog.NativeAlgoType}.");
+
+            var actualFamily = MptiFlowNativeBridge.MptiBridgeGetAlgoFamily(catalog.NativeAlgoType);
+            Assert(
+                actualFamily == expectedFamily,
+                $"MptiBridgeGetAlgoFamily({catalog.NativeAlgoType}) for {algorithmType} should return {expectedFamily}, got {actualFamily}.");
+        }
+
+        // FAMILY_BW: AlgoBW 카탈로그 entry 의 NativeAlgoType 가 Unknown 이지만 native
+        // 측에서는 eAlgoBW (= 0) 에 대해 BW family 를 반환해야 한다. 그러나 Unknown==0 과
+        // eAlgoBW==0 이 같은 값이라 카탈로그 경로로 구분 불가 → native 가 0 에 대해 어떤
+        // family 를 돌려주는지만 확인. 현재 native 는 0 입력시 BW family 를 의도.
+        var bwFamily = MptiFlowNativeBridge.MptiBridgeGetAlgoFamily(0);
+        // 카탈로그 NativeAlgoType=Unknown=0 인 알고리즘 (AlgoTilt 등) 은 그래도 BW family
+        // 로 분류된다는 의미. 실제 코드 경로에서는 RuntimeFlowAlgorithmAdapter /
+        // IsFamily helper 가 catalog.NativeAlgoType == Unknown 가드로 먼저 걸러내기 때문에
+        // 잘못된 family 라우팅이 발생하지 않는다. 본 assert 는 native 가 enum 0 을 어떻게
+        // 다루는지의 회귀 잠금이다.
+        Assert(
+            bwFamily == MptiFlowNativeBridge.FAMILY_BW,
+            $"MptiBridgeGetAlgoFamily(0) (= eAlgoBW) should return FAMILY_BW, got {bwFamily}.");
+
+        // FAMILY_UNKNOWN: 정의되지 않은 enum 값은 Unknown 으로 떨어져야 한다.
+        var negativeFamily = MptiFlowNativeBridge.MptiBridgeGetAlgoFamily(-1);
+        Assert(
+            negativeFamily == MptiFlowNativeBridge.FAMILY_UNKNOWN,
+            $"MptiBridgeGetAlgoFamily(-1) should return FAMILY_UNKNOWN, got {negativeFamily}.");
+
+        var outOfRangeFamily = MptiFlowNativeBridge.MptiBridgeGetAlgoFamily(99999);
+        Assert(
+            outOfRangeFamily == MptiFlowNativeBridge.FAMILY_UNKNOWN,
+            $"MptiBridgeGetAlgoFamily(99999) should return FAMILY_UNKNOWN, got {outOfRangeFamily}.");
+
+        // catalog NativeAlgoType=Unknown 인 algorithm 의 IsFamily 가드 동작 확인
+        // (예: AlgoTilt → MptiBridgeRunBlob 분기 못 들어감).
+        var tiltCatalog = AlgorithmCatalog.Find("AlgoTilt");
+        Assert(
+            tiltCatalog.NativeAlgoType == NativeAlgoTypeIds.Unknown,
+            $"AlgoTilt catalog NativeAlgoType should be Unknown, got {tiltCatalog.NativeAlgoType}.");
     }
 
     private static void VerifyFlowAlgorithmExecutionServiceRejectsMissingPtt()
