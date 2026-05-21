@@ -31,3 +31,7 @@ Thumbs.db
 Desktop.ini
 .idea/
 .vscode/
+
+# 내부 테스트용 PTT/Part 샘플 데이터 — 저장소에 올리지 않음.
+# 로컬 워킹트리에는 남기되 git 추적 제외.
+src/WpfInspectionPrototype/Models/
