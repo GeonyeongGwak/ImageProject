@@ -145,21 +145,22 @@ public static class MptiFlowNativeBridge
     public const int EINSP_PAD        = 7;
     public const int EINSP_BGA        = 9;
 
-    // Algorithm type enum (subset used here). Indices match the InspAlgoType enum in
-    // NativeSources/MPTILib_Algo/PInsp_Algo/InspParamDef_Algo.h.
-    public const int EALGO_BLOB    = 1;
-    public const int EALGO_ALIGN   = 2;
-    public const int EALGO_BODY_BLOB = 3;
-    public const int EALGO_OCR     = 5;
-    public const int EALGO_PATTERN = 6;
-    public const int EALGO_EDGE    = 26;
-    public const int EALGO_POCR    = 31;
-    public const int EALGO_BGA     = 37;
-    public const int EALGO_NGBLOB  = 39;
-    public const int EALGO_PADBW   = 40;
-    public const int EALGO_BODY_EDGE = 42;
-    public const int EALGO_PATTERN_DIFF = 47;
-    public const int EALGO_SHAPEX  = 48;
+    // Algorithm type enum (subset used here). NativeAlgoTypeIds (Models) 가 single
+    // source of truth — 본 alias 들은 backward compatibility 와 P/Invoke 호출부 가독성
+    // 위해 유지한다. 새 algoType 추가 시 NativeAlgoTypeIds 만 수정하면 됨.
+    public const int EALGO_BLOB         = WpfInspectionApp.Models.NativeAlgoTypeIds.Blob;
+    public const int EALGO_ALIGN        = WpfInspectionApp.Models.NativeAlgoTypeIds.Align;
+    public const int EALGO_BODY_BLOB    = WpfInspectionApp.Models.NativeAlgoTypeIds.BodyBlob;
+    public const int EALGO_OCR          = WpfInspectionApp.Models.NativeAlgoTypeIds.Ocr;
+    public const int EALGO_PATTERN      = WpfInspectionApp.Models.NativeAlgoTypeIds.Pattern;
+    public const int EALGO_EDGE         = WpfInspectionApp.Models.NativeAlgoTypeIds.Edge;
+    public const int EALGO_POCR         = WpfInspectionApp.Models.NativeAlgoTypeIds.Pocr;
+    public const int EALGO_BGA          = WpfInspectionApp.Models.NativeAlgoTypeIds.Bga;
+    public const int EALGO_NGBLOB       = WpfInspectionApp.Models.NativeAlgoTypeIds.NgBlob;
+    public const int EALGO_PADBW        = WpfInspectionApp.Models.NativeAlgoTypeIds.PadBw;
+    public const int EALGO_BODY_EDGE    = WpfInspectionApp.Models.NativeAlgoTypeIds.BodyEdge;
+    public const int EALGO_PATTERN_DIFF = WpfInspectionApp.Models.NativeAlgoTypeIds.PatternDiff;
+    public const int EALGO_SHAPEX       = WpfInspectionApp.Models.NativeAlgoTypeIds.ShapeX;
 
     // Native MptiBridgeGetAlgoFamily 반환값 — source of truth 는 MptiBridgeFlow.cpp.
     // 새 family 추가 시 native + 여기 둘 다 업데이트.

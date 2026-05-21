@@ -68,48 +68,23 @@ internal static class RuntimeFlowAlgorithmAdapter
         return true;
     }
 
-    // C# 의 algorithm.Type (string) → native InspAlgoType (int) 매핑.
-    // 새 algorithm 타입 추가 시 여기 한 줄 + native MptiBridgeAddAlgo / MptiBridgeGetAlgoFamily
-    // switch 만 업데이트하면 family-based dispatch 가 자동 동작.
-    private static readonly Dictionary<string, int> AlgoTypeMap = new(StringComparer.OrdinalIgnoreCase)
-    {
-        ["AlgoAlign"]       = MptiFlowNativeBridge.EALGO_ALIGN,
-        ["AlgoPadBW"]       = MptiFlowNativeBridge.EALGO_PADBW,
-        ["AlgoBlob"]        = MptiFlowNativeBridge.EALGO_BLOB,
-        ["AlgoBody_Blob"]   = MptiFlowNativeBridge.EALGO_BODY_BLOB,
-        ["AlgoNGBlob"]      = MptiFlowNativeBridge.EALGO_NGBLOB,
-        ["AlgoBGA"]         = MptiFlowNativeBridge.EALGO_BGA,
-        ["AlgoEdge"]        = MptiFlowNativeBridge.EALGO_EDGE,
-        ["AlgoBodyEdge"]    = MptiFlowNativeBridge.EALGO_BODY_EDGE,
-        ["AlgoPattern"]     = MptiFlowNativeBridge.EALGO_PATTERN,
-        ["AlgoPatternDiff"] = MptiFlowNativeBridge.EALGO_PATTERN_DIFF,
-        ["AlgoOCR"]         = MptiFlowNativeBridge.EALGO_OCR,
-        ["AlgoPOCR"]        = MptiFlowNativeBridge.EALGO_POCR,
-        ["AlgoShapeX"]      = MptiFlowNativeBridge.EALGO_SHAPEX,
-    };
-
     // OCR / POCR 만 EINSP_OCR. 나머지 Pattern family 는 EINSP_MOUNT.
     private static int ResolveInspType(int algoType)
     {
         return algoType switch
         {
-            MptiFlowNativeBridge.EALGO_ALIGN => MptiFlowNativeBridge.EINSP_ALIGN,
-            MptiFlowNativeBridge.EALGO_OCR => MptiFlowNativeBridge.EINSP_OCR,
-            MptiFlowNativeBridge.EALGO_POCR => MptiFlowNativeBridge.EINSP_OCR,
-            _ => MptiFlowNativeBridge.EINSP_MOUNT
+            NativeAlgoTypeIds.Align => MptiFlowNativeBridge.EINSP_ALIGN,
+            NativeAlgoTypeIds.Ocr   => MptiFlowNativeBridge.EINSP_OCR,
+            NativeAlgoTypeIds.Pocr  => MptiFlowNativeBridge.EINSP_OCR,
+            _                       => MptiFlowNativeBridge.EINSP_MOUNT
         };
     }
 
-    private static string ResolveDisplayName(string algorithmType)
-    {
-        // 알고리즘 식별이 가능하도록 카탈로그의 display 이름을 우선 사용.
-        var catalog = AlgorithmCatalog.Find(algorithmType);
-        return string.IsNullOrWhiteSpace(catalog.DisplayName) ? algorithmType : catalog.DisplayName;
-    }
-
     // 13-case algorithm-type switch 를 family-based dispatch 로 교체.
-    // family lookup 의 source of truth 는 native MptiBridgeGetAlgoFamily.
-    // → 새 algorithm 추가 시 native 의 family switch + 위 AlgoTypeMap 만 업데이트하면 됨.
+    // - native algoType lookup: AlgorithmCatalog 가 single source of truth (NativeAlgoType)
+    // - family lookup: native MptiBridgeGetAlgoFamily 가 single source of truth
+    // → 새 algorithm 추가 시 native 의 family switch + AlgorithmCatalog 의 NativeAlgoType
+    //   인수만 업데이트하면 자동 동작. C# 에 별도 매핑 테이블 없음.
     private static bool TryCreateFlowAlgorithm(
         InspectionModel model,
         AlgorithmRuntimePacket algorithm,
@@ -119,13 +94,17 @@ internal static class RuntimeFlowAlgorithmAdapter
         flowAlgorithm = null!;
         flowParameters = null!;
 
-        if (!AlgoTypeMap.TryGetValue(algorithm.Type, out var algoType))
+        var catalog = AlgorithmCatalog.Find(algorithm.Type);
+        if (catalog.NativeAlgoType == NativeAlgoTypeIds.Unknown)
         {
+            // flow path 미연결 algorithm (AlgoBW / AlgoTilt / AlgoGray_* / AlgoLead_* 등)
+            // → 호출자가 per-algo bridge fallback 으로 떨어뜨림.
             return false;
         }
 
+        var algoType = catalog.NativeAlgoType;
         var family = MptiFlowNativeBridge.MptiBridgeGetAlgoFamily(algoType);
-        var displayName = ResolveDisplayName(algorithm.Type);
+        var displayName = string.IsNullOrWhiteSpace(catalog.DisplayName) ? algorithm.Type : catalog.DisplayName;
         var inspType = ResolveInspType(algoType);
 
         switch (family)

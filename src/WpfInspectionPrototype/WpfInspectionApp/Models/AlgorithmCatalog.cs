@@ -6,25 +6,32 @@ public enum LegacyAlgorithmGroup
     Extended
 }
 
+// NativeAlgoType: native MptiBridge flow path 가 알아야 하는 InspAlgoType 값.
+// 0 (NativeAlgoTypeIds.Unknown) 은 flow path 미지원 — RuntimeFlowAlgorithmAdapter 가
+// fallback (per-algo bridge) 로 떨어뜨림.
 public sealed record AlgorithmCatalogItem(
     string Type,
     string DisplayName,
     LegacyAlgorithmGroup Group,
     int LegacyFlag,
     string LegacyName,
-    string ParameterFamily);
+    string ParameterFamily,
+    int NativeAlgoType = NativeAlgoTypeIds.Unknown);
 
 public static class AlgorithmCatalog
 {
+    // NOTE: nativeAlgoType 가 0(Unknown) 인 항목은 아직 flow path 미연결. 추가 작업 시
+    // native InspParamDef_Algo.h 에서 해당 eAlgo* 값 찾아 NativeAlgoTypeIds 에 상수 추가 +
+    // 본 entry 에 인수 넣고 MptiBridgeFlow.cpp 의 switch 도 확장하면 됨.
     public static IReadOnlyList<AlgorithmCatalogItem> All { get; } =
     [
         Normal("AlgoBW", "BlackWhite", 2, "BlackWhite", "BlackWhite"),
-        Normal("AlgoBlob", "Blob", 4, "Blob", "Blob"),
-        Normal("AlgoAlign", "Align", 8, "Align", "Align"),
-        Normal("AlgoBody_Blob", "Body Blob", 16, "BodyBlob", "BodyBlob"),
+        Normal("AlgoBlob", "Blob", 4, "Blob", "Blob", NativeAlgoTypeIds.Blob),
+        Normal("AlgoAlign", "Align", 8, "Align", "Align", NativeAlgoTypeIds.Align),
+        Normal("AlgoBody_Blob", "Body Blob", 16, "BodyBlob", "BodyBlob", NativeAlgoTypeIds.BodyBlob),
         Normal("AlgoTilt", "Tilt", 32, "Tilt", "Tilt"),
-        Normal("AlgoOCR", "OCR", 64, "OCR", "OCR"),
-        Normal("AlgoPattern", "Pattern", 128, "Pattern", "Pattern"),
+        Normal("AlgoOCR", "OCR", 64, "OCR", "OCR", NativeAlgoTypeIds.Ocr),
+        Normal("AlgoPattern", "Pattern", 128, "Pattern", "Pattern", NativeAlgoTypeIds.Pattern),
         Normal("AlgoColor", "Color", 256, "Color", "Color"),
         Normal("AlgoGray_Mean", "Gray Mean", 512, "GrayMean", "Graymean"),
         Normal("AlgoHeight_Mean", "Height Mean", 1024, "HeightMean", "Heightmean"),
@@ -44,25 +51,25 @@ public static class AlgorithmCatalog
         Normal("AlgoColorBand_Search", "Color Band Search", 16777216, "ColorBandSearch", "ColorBandSearch"),
         Normal("AlgoGrid", "Grid", 33554432, "Grid", "Grid"),
         Normal("AlgoLine", "Line", 67108864, "Line", "Line"),
-        Normal("AlgoEdge", "Edge", 134217728, "Edge", "Edge"),
+        Normal("AlgoEdge", "Edge", 134217728, "Edge", "Edge", NativeAlgoTypeIds.Edge),
         Normal("AlgoSolderCone", "Solder Cone", 268435456, "SolderCone", "Soldercone"),
         Normal("AlgoColorXY", "Color XY", 536870912, "ColorXY", "ColorXY"),
-        Normal("AlgoPOCR", "POCR", 1073741824, "POCR", "POCR"),
+        Normal("AlgoPOCR", "POCR", 1073741824, "POCR", "POCR", NativeAlgoTypeIds.Pocr),
         Extended("AlgoAlignEdge", "Align Edge", 1, "AlignEdge", "AlignEdge"),
         Extended("AlgoPadAlign", "Pad Align", 1 << 1, "PadAlign", "PadAlign"),
         Extended("AlgoDisColor", "DisColor", 1 << 2, "DisColor", "DisColor"),
         Extended("AlgoBarcode", "Barcode", 1 << 3, "BarCode", "BarCode"),
         Extended("AlgoFillet", "Fillet", 1 << 4, "Fillet", "Fillet"),
-        Extended("AlgoBGA", "BGA", 1 << 5, "BGA", "BGA"),
+        Extended("AlgoBGA", "BGA", 1 << 5, "BGA", "BGA", NativeAlgoTypeIds.Bga),
         Extended("AlgoBump", "Bump", 1 << 6, "Bump", "Bump"),
-        Extended("AlgoNGBlob", "NG Blob", 1 << 7, "NGBlob", "NGBlob"),
-        Extended("AlgoBodyEdge", "Body Edge", 1 << 8, "BodyEdge", "BodyEdge"),
+        Extended("AlgoNGBlob", "NG Blob", 1 << 7, "NGBlob", "NGBlob", NativeAlgoTypeIds.NgBlob),
+        Extended("AlgoBodyEdge", "Body Edge", 1 << 8, "BodyEdge", "BodyEdge", NativeAlgoTypeIds.BodyEdge),
         Extended("AlgoPackageThickness", "Package Thickness", 1 << 9, "PackageThickness", "PackageThickness"),
         Extended("AlgoDistance", "Distance", 1 << 10, "Distance", "Distance"),
         Extended("AlgoGWire", "G Wire", 1 << 11, "GWire", "GWire"),
-        Extended("AlgoPatternDiff", "Pattern Diff", 1 << 12, "PatternDiff", "PatternDiff"),
-        Extended("AlgoPadBW", "Pad BW", 1 << 13, "Padbw", "PadBW"),
-        Extended("AlgoShapeX", "Shape X", 1 << 14, "ShapeX", "ShapeX"),
+        Extended("AlgoPatternDiff", "Pattern Diff", 1 << 12, "PatternDiff", "PatternDiff", NativeAlgoTypeIds.PatternDiff),
+        Extended("AlgoPadBW", "Pad BW", 1 << 13, "Padbw", "PadBW", NativeAlgoTypeIds.PadBw),
+        Extended("AlgoShapeX", "Shape X", 1 << 14, "ShapeX", "ShapeX", NativeAlgoTypeIds.ShapeX),
         Extended("AlgoPadArray", "Pad Array", 1 << 15, "PadArray", "PadArray"),
         Extended("AlgoWire", "Wire", 1 << 11, "GWire", "GWire"),
         Extended("AlgoFoot", "Foot", 1 << 4, "Foot", "Foot"),
@@ -77,14 +84,14 @@ public static class AlgorithmCatalog
             ?? All.First(item => item.Type == "AlgoAlign");
     }
 
-    private static AlgorithmCatalogItem Normal(string type, string displayName, int legacyFlag, string legacyName, string parameterFamily)
+    private static AlgorithmCatalogItem Normal(string type, string displayName, int legacyFlag, string legacyName, string parameterFamily, int nativeAlgoType = NativeAlgoTypeIds.Unknown)
     {
-        return new AlgorithmCatalogItem(type, displayName, LegacyAlgorithmGroup.Normal, legacyFlag, legacyName, parameterFamily);
+        return new AlgorithmCatalogItem(type, displayName, LegacyAlgorithmGroup.Normal, legacyFlag, legacyName, parameterFamily, nativeAlgoType);
     }
 
-    private static AlgorithmCatalogItem Extended(string type, string displayName, int legacyFlag, string legacyName, string parameterFamily)
+    private static AlgorithmCatalogItem Extended(string type, string displayName, int legacyFlag, string legacyName, string parameterFamily, int nativeAlgoType = NativeAlgoTypeIds.Unknown)
     {
-        return new AlgorithmCatalogItem(type, displayName, LegacyAlgorithmGroup.Extended, legacyFlag, legacyName, parameterFamily);
+        return new AlgorithmCatalogItem(type, displayName, LegacyAlgorithmGroup.Extended, legacyFlag, legacyName, parameterFamily, nativeAlgoType);
     }
 }
 
