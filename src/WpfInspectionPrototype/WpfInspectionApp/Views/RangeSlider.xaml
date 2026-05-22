@@ -1,0 +1,64 @@
+<UserControl x:Class="WpfInspectionApp.Views.RangeSlider"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Height="22"
+             MinWidth="60">
+    <!--
+        2-thumb range slider. Min/Max 값을 한 트랙에 두 thumb 로 표현.
+        RangeMode (0=Inside, 1=Outside, 2=Upper, 3=Lower) 에 따라 thumb 활성 / 비활성:
+          - Upper: Min thumb 잠금 (Min=Minimum 고정), Max thumb 만 사용자 조작
+          - Lower: Max thumb 잠금 (Max=Maximum 고정), Min thumb 만 사용자 조작
+          - Inside/Outside: 두 thumb 모두 사용자 조작
+        참조: pemtoFramework / UI_Common.CtrlEnableChange_Range_2D 동작 매칭.
+    -->
+    <UserControl.Resources>
+        <!-- Thumb 비활성 시 자연스럽게 흐려보이도록 Trigger 로 Opacity 조절. -->
+        <Style x:Key="RangeThumbStyle" TargetType="Thumb">
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Thumb">
+                        <Ellipse x:Name="ThumbEllipse"
+                                 Fill="{DynamicResource AccentBlue}"
+                                 Stroke="{DynamicResource PrimaryText}"
+                                 StrokeThickness="1" />
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="ThumbEllipse" Property="Opacity" Value="0.35" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+    </UserControl.Resources>
+
+    <Grid x:Name="LayoutRoot" Background="Transparent" SnapsToDevicePixels="True">
+        <!-- 트랙 base (회색 가는 막대) -->
+        <Border Height="4"
+                VerticalAlignment="Center"
+                CornerRadius="2"
+                Background="{DynamicResource ControlBorder}" />
+
+        <!-- 활성 구간 (두 thumb 사이) — 테마 강조색으로 fill -->
+        <Border x:Name="ActiveBar"
+                Height="4"
+                VerticalAlignment="Center"
+                HorizontalAlignment="Left"
+                CornerRadius="2"
+                Background="{DynamicResource AccentBlue}" />
+
+        <!-- thumb 위치를 절대 좌표로 두기 위한 Canvas -->
+        <Canvas x:Name="ThumbCanvas" Background="Transparent">
+            <Thumb x:Name="MinThumb"
+                   Width="14" Height="14"
+                   Canvas.Top="4"
+                   Style="{StaticResource RangeThumbStyle}"
+                   DragDelta="MinThumb_DragDelta" />
+            <Thumb x:Name="MaxThumb"
+                   Width="14" Height="14"
+                   Canvas.Top="4"
+                   Style="{StaticResource RangeThumbStyle}"
+                   DragDelta="MaxThumb_DragDelta" />
+        </Canvas>
+    </Grid>
+</UserControl>
